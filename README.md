@@ -2,18 +2,18 @@
 
 ## 使用技術
 
-| 技術 | バージョン | 選定理由 |
-| --- | --- | --- |
-| React | 19.3 | 現行の安定版で、ViteのReact構成と互換性があるため |
-| Vite | 8.3 | 高速な開発サーバーとビルド環境を利用できるため |
-| TypeScript | 6.0 | Vite 8の公式テンプレートで採用されている安定版のため |
-| Tailwind CSS | 4.3 | Viteプラグインで簡単に導入でき、設定が少ないため |
-| Node.js | 24 LTS | Viteを動かせる長期サポート版のため |
-| Python | 3.13 | Django 5.2が正式対応する安定版のため |
-| Django | 5.2 LTS | 長期サポート対象で、セキュリティ更新を受けられるため |
-| mysqlclient | 2.3 | Python 3.13からMySQLへ接続できる安定版のため |
-| MySQL | 8.4 LTS | 長期サポート対象で、仕様変更が少ないため |
-| Docker Compose | v2 | チーム全員で同じ開発環境を再現できるため |
+| 技術 | バージョン |
+| --- | --- |
+| React | 19.3 |
+| Vite | 8.3 |
+| TypeScript | 6.0 |
+| Tailwind CSS | 4.3 |
+| Node.js | 24 LTS |
+| Python | 3.13 |
+| Django | 5.2 LTS |
+| mysqlclient | 2.3 |
+| MySQL | 8.4 LTS |
+| Docker Compose | v2 |
 
 ## 起動手順
 
