@@ -38,6 +38,35 @@ class User(AbstractUser):
         verbose_name="アカウント状態",
     )
 
+    # 基本情報
+    name = models.CharField(
+        max_length=50,
+        verbose_name="氏名",
+    )
+
+    phone = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="電話番号",
+    )
+
+    birth_date = models.DateField(
+        verbose_name="生年月日",
+    )
+
+    profile_image = models.URLField(
+        max_length=1000,
+        blank=True,
+        null=True,
+        verbose_name="プロフィール画像",
+    )
+
+    deleted_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="退会日時",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="作成日時",
@@ -103,7 +132,7 @@ class Producer(models.Model):
     description = models.TextField(blank=True, null=True)
     address = models.CharField(max_length=255)
     production_items = models.TextField(blank=True, null=True)
-    policy = models.TextField(blank=True, null=True)
+    production_policy = models.TextField(blank=True,null=True,verbose_name="生産方針",)
     farming_reason = models.TextField(blank=True, null=True)
     future_goal = models.TextField(blank=True, null=True)
     farming_start_year = models.PositiveSmallIntegerField(blank=True, null=True)
@@ -481,12 +510,120 @@ class ProducerFavorite(models.Model):
 # 17. エリア
 # ==========================================
 class Area(models.Model):
-    prefecture = models.CharField(max_length=100)
-    city = models.CharField(max_length=100)
-    name = models.CharField(max_length=100)
+    prefecture = models.ForeignKey(
+        "api.Prefecture",
+        on_delete=models.PROTECT,
+        related_name="areas",
+        verbose_name="都道府県",
+    )
+
+    city = models.CharField(
+        max_length=100,
+        verbose_name="市区町村",
+    )
+
+    name = models.CharField(
+        max_length=100,
+        verbose_name="エリア名",
+    )
 
     class Meta:
         db_table = "AREAS"
+        verbose_name = "エリア"
+        verbose_name_plural = "エリア"
 
     def __str__(self):
-        return f"{self.prefecture} {self.city} {self.name}"
+        return f"{self.prefecture.name} {self.city} {self.name}"
+
+
+# ==========================================
+# 18. 都道府県
+# ==========================================
+class Prefecture(models.Model):
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="都道府県名",
+    )
+
+    region = models.CharField(
+        max_length=50,
+        verbose_name="地方名",
+    )
+
+    class Meta:
+        db_table = "PREFECTURES"
+        verbose_name = "都道府県"
+        verbose_name_plural = "都道府県"
+
+    def __str__(self):
+        return self.name
+
+
+# ==========================================
+# 19. 住所
+# ==========================================
+class Address(models.Model):
+    user = models.ForeignKey(
+        "api.User",
+        on_delete=models.CASCADE,
+        related_name="addresses",
+        verbose_name="ユーザー",
+    )
+
+    recipient_name = models.CharField(
+        max_length=100,
+        verbose_name="宛名",
+    )
+
+    postal_code = models.CharField(
+        max_length=10,
+        verbose_name="郵便番号",
+    )
+
+    prefecture = models.ForeignKey(
+        "api.Prefecture",
+        on_delete=models.PROTECT,
+        related_name="addresses",
+        verbose_name="都道府県",
+    )
+
+    city = models.CharField(
+        max_length=100,
+        verbose_name="市区町村",
+    )
+
+    address_line1 = models.CharField(
+        max_length=255,
+        verbose_name="住所1",
+    )
+
+    address_line2 = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="住所2",
+    )
+
+    phone = models.CharField(
+        max_length=50,
+        verbose_name="電話番号",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="作成日時",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="更新日時",
+    )
+
+    class Meta:
+        db_table = "ADDRESSES"
+        verbose_name = "住所"
+        verbose_name_plural = "住所"
+
+    def __str__(self):
+        return f"{self.recipient_name} - {self.postal_code}"
