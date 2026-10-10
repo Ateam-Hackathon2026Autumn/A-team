@@ -8,7 +8,11 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+      - review_requested
       - closed
+  pull_request_review:
+    types:
+      - submitted
 
 permissions: {}
 
@@ -31,6 +35,12 @@ jobs:
       PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
       PR_MERGED: ${{ github.event.pull_request.merged }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      REQUESTED_REVIEWER: ${{ github.event.requested_reviewer.login }}
+      REQUESTED_TEAM: ${{ github.event.requested_team.name }}
+      REVIEW_STATE: ${{ github.event.review.state }}
+      REVIEW_URL: ${{ github.event.review.html_url }}
+      REVIEW_BODY: ${{ github.event.review.body }}
     steps:
       - name: Send notification
         shell: bash
@@ -52,6 +62,34 @@ jobs:
             text=$(printf '### 🚀 [%s](%s) がpushしました\n- Branch: `%s`\n- Commit: `%s`\n- URL: %s\n- Message: %s' \
               "${ACTOR}" "${actor_url}" "${REF_NAME}" "${short_sha}" \
               "${commit_url}" "${message}")
+          elif [[ "${EVENT_NAME}" == "pull_request_review" ]]; then
+            case "${REVIEW_STATE}" in
+              approved)
+                icon="✅"
+                status="を承認しました"
+                ;;
+              changes_requested)
+                icon="🛠️"
+                status="に修正を依頼しました"
+                ;;
+              *)
+                echo "Review state ${REVIEW_STATE} does not require a notification; skipping."
+                exit 0
+                ;;
+            esac
+
+            text=$(printf '### %s [%s](%s) がPull Request%s\n- Branch: `%s` → `%s`\n- PR: `#%s` %s\n- 作成者: %s\n- URL: %s' \
+              "${icon}" "${ACTOR}" "${actor_url}" "${status}" \
+              "${PR_HEAD_REF}" "${PR_BASE_REF}" "${PR_NUMBER}" "${PR_TITLE}" \
+              "${PR_AUTHOR}" "${REVIEW_URL:-${PR_URL}}")
+            if [[ -n "${REVIEW_BODY}" ]]; then
+              text+=$(printf '\n- コメント: %s' "${REVIEW_BODY}")
+            fi
+          elif [[ "${PR_ACTION}" == "review_requested" ]]; then
+            reviewer="${REQUESTED_REVIEWER:-${REQUESTED_TEAM:-未指定}}"
+            text=$(printf '### 👀 [%s](%s) が %s にレビューを依頼しました\n- Branch: `%s` → `%s`\n- PR: `#%s` %s\n- URL: %s' \
+              "${ACTOR}" "${actor_url}" "${reviewer}" "${PR_HEAD_REF}" \
+              "${PR_BASE_REF}" "${PR_NUMBER}" "${PR_TITLE}" "${PR_URL}")
           else
             case "${PR_ACTION}" in
               opened) status="作成" ;;
