@@ -22,9 +22,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "api",
+    "storages",
+    "marche",
 ]
 
-AUTH_USER_MODEL = "api.User"
+AUTH_USER_MODEL = "marche.User" 
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -76,6 +78,14 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+# 画像・書類、アップロードしたファイルの保存先を S3 にする設定
+STORAGES = {
+    "default": {"BACKEND": "storages.backends.s3.S3Storage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+AWS_STORAGE_BUCKET_NAME = "..." #保存先の S3 バケット名。"..." は仮の値なので、実際に作ったバケット名に置き換える
+
 
 LANGUAGE_CODE = "ja"
 TIME_ZONE = "Asia/Tokyo"
