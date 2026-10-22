@@ -1,3 +1,6 @@
+# ER図
+
+```mermaid
 erDiagram
   users ||--o{ users_groups : "user_id"
   auth_group ||--o{ users_groups : "group_id"
