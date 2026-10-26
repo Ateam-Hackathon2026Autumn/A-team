@@ -151,7 +151,7 @@ class Prefecture(models.Model):
     マスタ（47行）。エリアはここから引くので、producers などに area_id は持たせない。"""
 
     # JISコード（01〜47）
-    id = models.PositiveSmallIntegerField(
+    id = models.IntegerField(
         primary_key=True,
         verbose_name="JISコード",
     )
