@@ -121,9 +121,8 @@ class Notification(TimeStampedModel):
         verbose_name="本文",
     )
 
-    # 押したときに開く画面のパス（例：/dashboard/orders/123）（S3のキー）
-    link_path = models.ImageField(
-        upload_to="notifications/",
+    # 押したときに開く画面のパス（例：/dashboard/orders/123）（S3のキー）    
+    link_path = models.CharField(
         max_length=500,
         null=True,
         blank=True,
