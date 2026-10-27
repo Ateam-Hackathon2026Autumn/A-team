@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router';
 
+import AuthWrapper from './components/AuthWrapper';
 import DashboardLayout from './Layouts/DashboardLayout';
 import MainLayout from './Layouts/MainLayout';
 
@@ -69,105 +70,117 @@ import AdminStoryListPage from './pages/admin/AdminStoryListPage';
 function App() {
   return (
     <Routes>
-      {/* 一般ユーザー・共通 */}
-      <Route element={<MainLayout />}>
-        <Route path="/signin" element={<SigninPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/" element={<HomePage />} />
+      {/* ログイン状態の確認とアクセス制限（対象パスは AuthWrapper 内で定義） */}
+      <Route element={<AuthWrapper />}>
+        {/* 一般ユーザー・共通 */}
+        <Route element={<MainLayout />}>
+          <Route path="/signin" element={<SigninPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/" element={<HomePage />} />
 
-        <Route path="/products" element={<ProductListPage />} />
-        <Route path="/products/:productId" element={<ProductDetailPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/checkout/complete" element={<CheckoutCompletePage />} />
+          <Route path="/products" element={<ProductListPage />} />
+          <Route path="/products/:productId" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route
+            path="/checkout/complete"
+            element={<CheckoutCompletePage />}
+          />
 
-        <Route path="/jobs" element={<JobListPage />} />
-        <Route path="/jobs/:jobId" element={<JobDetailPage />} />
-        <Route path="/jobs/:jobId/apply" element={<JobApplyPage />} />
+          <Route path="/jobs" element={<JobListPage />} />
+          <Route path="/jobs/:jobId" element={<JobDetailPage />} />
+          <Route path="/jobs/:jobId/apply" element={<JobApplyPage />} />
 
-        <Route path="/experiences" element={<ExperienceListPage />} />
-        <Route
-          path="/experiences/:experienceId"
-          element={<ExperienceDetailPage />}
-        />
-        <Route
-          path="/experiences/:experienceId/apply"
-          element={<ExperienceApplyPage />}
-        />
+          <Route path="/experiences" element={<ExperienceListPage />} />
+          <Route
+            path="/experiences/:experienceId"
+            element={<ExperienceDetailPage />}
+          />
+          <Route
+            path="/experiences/:experienceId/apply"
+            element={<ExperienceApplyPage />}
+          />
 
-        <Route path="/learn" element={<LearnPage />} />
-        <Route path="/learn/:storyId" element={<StoryDetailPage />} />
-        <Route path="/producers" element={<ProducerListPage />} />
-        <Route
-          path="/producers/:producerId"
-          element={<ProducerProfilePage />}
-        />
+          <Route path="/learn" element={<LearnPage />} />
+          <Route path="/learn/:storyId" element={<StoryDetailPage />} />
+          <Route path="/producers" element={<ProducerListPage />} />
+          <Route
+            path="/producers/:producerId"
+            element={<ProducerProfilePage />}
+          />
 
-        <Route path="/mypage" element={<MyPage />} />
-        <Route path="/mypage/profile" element={<ProfileEditPage />} />
-        <Route path="/mypage/favorites" element={<FavoritesPage />} />
-        <Route path="/mypage/orders" element={<OrderHistoryPage />} />
-        <Route path="/mypage/orders/:orderId" element={<OrderDetailPage />} />
-        <Route path="/mypage/jobs" element={<JobApplicationsPage />} />
-        <Route
-          path="/mypage/experiences"
-          element={<ExperienceApplicationsPage />}
-        />
-        <Route path="/mypage/settings" element={<AccountSettingsPage />} />
+          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/mypage/profile" element={<ProfileEditPage />} />
+          <Route path="/mypage/favorites" element={<FavoritesPage />} />
+          <Route path="/mypage/orders" element={<OrderHistoryPage />} />
+          <Route
+            path="/mypage/orders/:orderId"
+            element={<OrderDetailPage />}
+          />
+          <Route path="/mypage/jobs" element={<JobApplicationsPage />} />
+          <Route
+            path="/mypage/experiences"
+            element={<ExperienceApplicationsPage />}
+          />
+          <Route path="/mypage/settings" element={<AccountSettingsPage />} />
 
-        {/* 生産者申請 */}
-        <Route
-          path="/producer-application/new"
-          element={<ProducerApplicationNewPage />}
-        />
-        <Route
-          path="/producer-application"
-          element={<ProducerApplicationStatusPage />}
-        />
-        <Route
-          path="/producer-application/edit"
-          element={<ProducerApplicationEditPage />}
-        />
+          {/* 生産者申請 */}
+          <Route
+            path="/producer-application/new"
+            element={<ProducerApplicationNewPage />}
+          />
+          <Route
+            path="/producer-application"
+            element={<ProducerApplicationStatusPage />}
+          />
+          <Route
+            path="/producer-application/edit"
+            element={<ProducerApplicationEditPage />}
+          />
+        </Route>
+
+        {/* 生産者 */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<DashboardHomePage />} />
+          <Route path="profile" element={<DashboardProfileEditPage />} />
+
+          <Route path="products" element={<DashboardProductListPage />} />
+          <Route path="products/new" element={<DashboardProductNewPage />} />
+          <Route
+            path="products/:productId/edit"
+            element={<DashboardProductEditPage />}
+          />
+
+          <Route path="jobs" element={<DashboardJobListPage />} />
+          <Route path="jobs/new" element={<DashboardJobNewPage />} />
+          <Route path="jobs/:jobId/edit" element={<DashboardJobEditPage />} />
+          <Route
+            path="jobs/:jobId/applicants"
+            element={<DashboardJobApplicantsPage />}
+          />
+
+          <Route
+            path="experiences"
+            element={<DashboardExperienceListPage />}
+          />
+          <Route
+            path="experiences/new"
+            element={<DashboardExperienceNewPage />}
+          />
+          <Route
+            path="experiences/:experienceId/edit"
+            element={<DashboardExperienceEditPage />}
+          />
+          <Route
+            path="experiences/:experienceId/participants"
+            element={<DashboardExperienceParticipantsPage />}
+          />
+
+          <Route path="story" element={<DashboardStoryEditPage />} />
+        </Route>
       </Route>
 
-      {/* 生産者 */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardHomePage />} />
-        <Route path="profile" element={<DashboardProfileEditPage />} />
-
-        <Route path="products" element={<DashboardProductListPage />} />
-        <Route path="products/new" element={<DashboardProductNewPage />} />
-        <Route
-          path="products/:productId/edit"
-          element={<DashboardProductEditPage />}
-        />
-
-        <Route path="jobs" element={<DashboardJobListPage />} />
-        <Route path="jobs/new" element={<DashboardJobNewPage />} />
-        <Route path="jobs/:jobId/edit" element={<DashboardJobEditPage />} />
-        <Route
-          path="jobs/:jobId/applicants"
-          element={<DashboardJobApplicantsPage />}
-        />
-
-        <Route path="experiences" element={<DashboardExperienceListPage />} />
-        <Route
-          path="experiences/new"
-          element={<DashboardExperienceNewPage />}
-        />
-        <Route
-          path="experiences/:experienceId/edit"
-          element={<DashboardExperienceEditPage />}
-        />
-        <Route
-          path="experiences/:experienceId/participants"
-          element={<DashboardExperienceParticipantsPage />}
-        />
-
-        <Route path="story" element={<DashboardStoryEditPage />} />
-      </Route>
-
-      {/* 管理者 */}
+      {/* 管理者（管理者用のログインチェックAPIで別途制御する） */}
       <Route path="/admin">
         <Route path="signin" element={<AdminSigninPage />} />
         <Route index element={<AdminDashboardPage />} />
