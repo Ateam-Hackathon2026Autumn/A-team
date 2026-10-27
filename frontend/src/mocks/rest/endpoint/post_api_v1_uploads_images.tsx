@@ -2,27 +2,30 @@ import type { RestMock } from '../../types';
 
 // 画像アップロードAPI POST /api/v1/uploads/images
 //
-// ※ 仕様書が未作成のため、レスポンスは仮の形（仕様が決まったら合わせて直す）
-//   key : 生産者登録などの profileImage / coverImage に渡す S3 のキー
+// multipart/form-data の file に画像（JPEG・PNG、5MB 以下）を入れて送る。DB には書き込まない
+//   key : S3 のキー（images/{userId}/{UUID}.jpg|png）。
+//         商品登録の imageKeys、生産者プロフィール更新の profileImage / coverImage などにそのまま渡す
 //   url : プレビュー表示用の URL
 //
-// 入力不正（400。形式・サイズ違反など）:
+// エラーにしたい場合は status と body を下記に書き換える
+//
+// 入力不正（status: 400。file なし・JPEG/PNG 以外など）:
 //   {
 //     errorCode: 'VALIDATION_ERROR',
 //     errorMsg: '入力内容に誤りがあります。',
-//     details: { file: ['JPEG または PNG の画像を選択してください。'] },
+//     details: { file: ['JPEGまたはPNGの画像を選択してください。'] },
 //   }
-//
-// 未ログイン（401）:
-//   { errorCode: 'NOT_AUTHENTICATED', errorMsg: 'ログインしてください。' }
+// 未ログイン（status: 401）:
+//   { errorCode: 'UNAUTHENTICATED', errorMsg: 'ログインしてください。' }
+// サイズ超過（status: 413。上限 5MB）:
+//   { errorCode: 'PAYLOAD_TOO_LARGE', errorMsg: '画像は5MB以下にしてください。' }
 const uploadsImageCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/uploads/images',
   status: 201,
   body: {
-    imageId: 101,
-    key: 'uploads/images/mock-upload-101.jpg',
-    url: 'https://picsum.photos/seed/upload101/800/600',
+    key: 'images/1/3f2b8c1e-6a4d-4f0e-9b7a-2d5c8e1f4a90.jpg',
+    url: 'https://picsum.photos/seed/upload1/800/600',
   },
 };
 
