@@ -1,0 +1,10 @@
+/* デザインの共通色をprototypeから抽出 */
+:root {
+        --green: #2f6b4f;
+        --ivory: #fafaf6;
+        --ink: #26332b;
+        --muted: #4d5a52;
+        --line: #dce0d5;
+        --sage: #eef2ea;
+        --orange: #f4a261;
+      }
