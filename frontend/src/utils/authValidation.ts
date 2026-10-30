@@ -1,4 +1,4 @@
-import type { SignupErrors, SignupFormValues } from "../../types/auth";
+import type { SignupErrors, SignupFormValues } from "../types/authForm";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordPattern = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!-/:-@\[-`{-~])[\x21-\x7E]{8,30}$/;
