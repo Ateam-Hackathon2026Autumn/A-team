@@ -2,76 +2,55 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* 画面イメージ（プロトタイプ）から抽出した共通色。bg-marche-green / text-marche-ink のように使う */
+@theme {
+  --color-marche-green: #2f6b4f;
+  --color-marche-ink: #26332b;
+  --color-marche-muted: #5b675f;
+  --color-marche-canvas: #f4f5f0;
+  --color-marche-line: #dce3d5;
+  --color-marche-sage: #e5f0e5;
+  --color-marche-orange: #f4a261;
+  --color-marche-red: #9a3220;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button:hover {
-  border-color: #646cff;
-}
-
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* 全ページ共通の最小限の初期スタイル（Tailwind のクラスで上書きできるよう base レイヤーに置く） */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
   }
 
-  a:hover {
-    color: #747bff;
+  body {
+    margin: 0;
+    font-family:
+      'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo,
+      system-ui, sans-serif;
+    line-height: 1.6;
+    color: var(--color-marche-ink);
+    background-color: var(--color-marche-canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
   }
 
   button {
-    background-color: #f9f9f9;
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
   }
 }
