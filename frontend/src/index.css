@@ -1,0 +1,84 @@
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-marche-green: #2f6b4f;
+  --color-marche-green-dark: #24553e;
+  --color-marche-ivory: #fafaf6;
+  --color-marche-ink: #26332b;
+  --color-marche-muted: #4d5a52;
+  --color-marche-line: #dce0d5;
+  --color-marche-sage: #eef2ea;
+  --color-marche-orange: #f4a261;
+
+  --font-sans: "Yu Gothic", Meiryo, system-ui, sans-serif;
+  --font-serif: "Yu Mincho", "Hiragino Mincho ProN", serif;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 160px;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--color-marche-ivory);
+    color: var(--color-marche-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-serif);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :focus-visible {
+    outline: 3px solid #c9843c;
+    outline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}

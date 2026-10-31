@@ -1,13 +1,21 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router";
-import App from "./App";
-import "./styles/global.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router';
+import './index.css';
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+import App from './App.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
+import { setupMock } from './mocks';
+
+// モック有効時のみ、コンソールに案内を表示（本番では何もしない）
+setupMock();
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
     <BrowserRouter>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </BrowserRouter>
-  </React.StrictMode>
+  </StrictMode>,
 );
