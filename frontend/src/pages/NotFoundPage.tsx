@@ -19,7 +19,7 @@ function NotFoundPage() {
         </p>
         <button
           type="button"
-          className="mt-8 rounded-full bg-[#2f6b4f] px-10 py-3.5 font-bold text-white"
+          className="mt-8 rounded-full border-0 bg-[#2f6b4f] px-10 py-3.5 font-bold text-white"
           onClick={() => navigate('/')}
         >
           ホームへ戻る

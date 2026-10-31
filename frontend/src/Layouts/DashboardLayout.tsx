@@ -35,8 +35,8 @@ function navLinkClassName({ isActive }: { isActive: boolean }) {
     'flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors';
 
   return isActive
-    ? `${base} bg-marche-sage text-marche-green`
-    : `${base} text-marche-ink hover:bg-marche-canvas`;
+    ? `${base} bg-marche-sage text-marche-green hover:text-marche-green`
+    : `${base} text-marche-ink hover:bg-marche-canvas hover:text-marche-ink`;
 }
 
 // 生産者管理画面の共通レイアウト
@@ -51,7 +51,8 @@ function DashboardLayout() {
     userInfo.producerApplicationStatus === 'pending';
 
   return (
-    <div className="min-h-dvh bg-marche-canvas text-marche-ink md:flex">
+    // 画面全体に固定してこの中でスクロールする
+    <div className="fixed inset-0 overflow-y-auto bg-marche-canvas text-marche-ink md:flex">
       <aside className="border-b border-marche-line bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0">
         <Link
           to="/dashboard"
@@ -92,7 +93,7 @@ function DashboardLayout() {
             </div>
             <Link
               to="/"
-              className="mt-2 block rounded-xl px-4 py-2 text-center text-xs font-bold text-marche-green hover:bg-marche-canvas"
+              className="mt-2 block rounded-xl px-4 py-2 text-center text-xs font-bold text-marche-green hover:bg-marche-canvas hover:text-marche-green"
             >
               サイトを見る
             </Link>
@@ -109,7 +110,7 @@ function DashboardLayout() {
             生産者登録の審査中です。承認されるまで、一部の機能は使えません。
             <Link
               to="/producer-application"
-              className="ml-2 font-bold text-marche-green underline"
+              className="ml-2 font-bold text-marche-green underline hover:text-marche-green"
             >
               申請状況を見る
             </Link>

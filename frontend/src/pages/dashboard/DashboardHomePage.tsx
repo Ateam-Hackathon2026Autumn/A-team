@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useAtomValue } from 'jotai';
 
 import { getDashboardSummary } from '../../api/dashboardApi';
+import DashboardButton from '../../components/DashboardButton';
 import {
   ChevronRightIcon,
   ExperienceIcon,
@@ -253,13 +254,13 @@ function DashboardHomePage() {
             <p className="mt-1 text-marche-muted">
               時間をおいて、もう一度お試しください。
             </p>
-            <button
-              type="button"
+            <DashboardButton
+              variant="secondary"
               onClick={handleReload}
-              className="mt-4 rounded-full border border-marche-line px-5 py-2 font-bold text-marche-green hover:bg-marche-canvas"
+              className="mt-4"
             >
               再読み込み
-            </button>
+            </DashboardButton>
           </div>
         ) : (
           <div
@@ -284,7 +285,7 @@ function DashboardHomePage() {
             <Link
               key={to}
               to={to}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-marche-green/50 bg-white px-4 py-4 font-bold text-marche-green hover:bg-marche-sage"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-marche-green/50 bg-white px-4 py-4 font-bold text-marche-green hover:bg-marche-sage hover:text-marche-green"
             >
               <PlusIcon className="size-4" />
               {label}

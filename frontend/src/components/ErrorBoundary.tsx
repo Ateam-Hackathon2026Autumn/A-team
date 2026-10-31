@@ -42,7 +42,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           </p>
           <button
             type="button"
-            className="mt-5 w-full rounded-full bg-[#2f6b4f] px-6 py-3 font-bold text-white"
+            className="mt-5 w-full rounded-full border-0 bg-[#2f6b4f] px-6 py-3 font-bold text-white"
             onClick={this.handleGoToHome}
           >
             ホームへ
