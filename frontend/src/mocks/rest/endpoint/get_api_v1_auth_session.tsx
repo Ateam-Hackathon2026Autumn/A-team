@@ -13,6 +13,7 @@ import type { RestMock } from '../../types';
 //   却下                  : false / 'rejected'    / null
 //   承認済みの生産者      : true  / 'approved'    / 'active'
 //   利用停止中の生産者    : false / 'approved'    / 'suspended'
+
 const authSession: RestMock = {
   method: 'GET',
   path: '/api/v1/auth/session',
@@ -31,5 +32,16 @@ const authSession: RestMock = {
     },
   },
 };
+
+// ログイン・新規登録画面確認用
+// const authSession: RestMock = {
+//   method: "GET",
+//   path: "/api/v1/auth/session",
+//   status: 200,
+//   body: {
+//     authenticated: false,
+//     user: null,
+//   },
+// };
 
 export { authSession };

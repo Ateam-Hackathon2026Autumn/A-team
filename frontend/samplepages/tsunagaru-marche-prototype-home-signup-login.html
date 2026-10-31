@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>つながるマルシェ｜つくる人と、つながる暮らし。</title>
+    <meta name="description" content="買う・体験する・働く・学ぶ。生産者と直接つながるマルシェの画面サンプル。" />
+    <style>
+      :root {
+        --green: #2f6b4f;
+        --ivory: #fafaf6;
+        --ink: #26332b;
+        --muted: #4d5a52;
+        --line: #dce0d5;
+        --sage: #eef2ea;
+        --orange: #f4a261;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 110px;
+      }
+      body {
+        margin: 0;
+        background: var(--ivory);
+        color: var(--ink);
+        font:
+          15px/1.8 "Yu Gothic",
+          Meiryo,
+          system-ui,
+          sans-serif;
+      }
+      a {
+        color: var(--green);
+        text-decoration: none;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      a,
+      input,
+      select {
+        touch-action: manipulation;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: not-allowed;
+        background: #e4e7de !important;
+        color: #697369 !important;
+        border-color: #e4e7de !important;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      button:hover:not(:disabled) {
+        filter: brightness(0.96);
+      }
+      :focus-visible {
+        outline: 3px solid #c9843c;
+        outline-offset: 4px;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1,
+      h2,
+      .brand {
+        font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      }
+      h2 {
+        font-size: 30px;
+        line-height: 1.5;
+      }
+      h3 {
+        font-size: 18px;
+      }
+      small,
+      .muted {
+        color: var(--muted);
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: auto;
+        padding: 0 32px;
+      }
+      .demo {
+        font-size: 11px;
+        text-align: center;
+        background: var(--sage);
+        padding: 5px 16px;
+        letter-spacing: 0.06em;
+      }
+      .header {
+        border-bottom: 1px solid var(--line);
+        background: var(--ivory);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        min-height: 78px;
+      }
+      .brand {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        color: var(--ink);
+        font-size: 21px;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+      .mark {
+        width: 35px;
+        height: 35px;
+        display: grid;
+        place-items: center;
+        background: var(--green);
+        color: white;
+        border-radius: 50%;
+        font-size: 21px;
+      }
+      .nav {
+        display: flex;
+        gap: 24px;
+        margin-left: auto;
+        align-items: center;
+      }
+      .nav a {
+        color: var(--ink);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .btn {
+        border: 1px solid var(--green);
+        background: var(--green);
+        color: white;
+        border-radius: 999px;
+        padding: 11px 24px;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        font-size: 14px;
+        min-height: 46px;
+        text-decoration: none !important;
+      }
+      .btn.outline {
+        color: var(--green);
+        background: transparent;
+      }
+      .btn.orange {
+        background: var(--orange);
+        color: var(--ink);
+        border-color: var(--orange);
+      }
+      .btn.light {
+        background: var(--ivory);
+        color: var(--green);
+        border-color: var(--ivory);
+      }
+      .btn.block {
+        display: flex;
+        width: 100%;
+        margin-top: 22px;
+      }
+      .plain {
+        border: 0;
+        background: transparent;
+        color: var(--green);
+        padding: 10px;
+      }
+      .hero {
+        position: relative;
+        background: #244b38;
+        overflow: hidden;
+        color: white;
+      }
+      .hero .wrap {
+        position: relative;
+        padding-top: 64px;
+        padding-bottom: 66px;
+        z-index: 1;
+      }
+      .hero h1 {
+        font-size: clamp(38px, 5vw, 64px);
+        line-height: 1.4;
+        letter-spacing: 0.06em;
+        margin: 16px 0;
+      }
+      .hero p {
+        color: #edf3ea;
+        font-size: 16px;
+        line-height: 2;
+      }
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: var(--green);
+        margin-bottom: 10px;
+      }
+      .hero .eyebrow {
+        color: #d9e7d2;
+      }
+      .hero-art {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 66%;
+        opacity: 0.9;
+      }
+      .hero:after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, #244b38 5%, #244b38f0 27%, #244b3830 70%);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .hero .row {
+        margin-top: 28px;
+      }
+      .hero-note {
+        position: absolute;
+        right: 32px;
+        bottom: 20px;
+        font-size: 11px;
+        z-index: 1;
+        color: #f1f4e9;
+      }
+      .section {
+        padding-top: 64px;
+        padding-bottom: 8px;
+      }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .four {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+      .entry {
+        padding: 25px 22px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        color: var(--ink);
+      }
+      .entry .icon {
+        font-size: 25px;
+        margin-bottom: 12px;
+        display: block;
+      }
+      .entry p {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 8px 0 14px;
+      }
+      .entry b {
+        font-size: 13px;
+        color: var(--green);
+      }
+      .entry:hover {
+        transform: translateY(-3px);
+        text-decoration: none;
+        transition: transform 0.2s;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+      .tab {
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 8px 20px;
+        background: transparent;
+        color: var(--muted);
+      }
+      .tab[aria-selected="true"] {
+        background: var(--green);
+        color: white;
+        border-color: var(--green);
+      }
+      .card {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+      }
+      .card-body {
+        padding: 18px;
+      }
+      .card small {
+        font-size: 12px;
+      }
+      .visual {
+        height: 165px;
+        background: #e4ebdd;
+        display: grid;
+        place-items: center;
+        font-size: 65px;
+        position: relative;
+        overflow: hidden;
+      }
+      .visual:before {
+        content: "";
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: #ffffff50;
+        left: -70px;
+        top: 30px;
+      }
+      .visual.gold {
+        background: #f0e2c5;
+      }
+      .visual.blue {
+        background: #dee9e8;
+      }
+      .visual.rose {
+        background: #ebddd1;
+      }
+      .badge {
+        font-size: 11px;
+        border-radius: 99px;
+        background: var(--sage);
+        color: var(--green);
+        padding: 4px 9px;
+        display: inline-block;
+        margin-bottom: 8px;
+      }
+      .price {
+        font-size: 21px;
+        font-weight: 700;
+        margin-top: 10px;
+      }
+      .heart {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        width: 36px;
+        height: 36px;
+        background: #fff;
+        border: 0;
+        border-radius: 50%;
+        font-size: 23px;
+        color: var(--green);
+      }
+      .heart[aria-pressed="true"] {
+        color: #b44c45;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .mini {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        background: white;
+        border-radius: 16px;
+      }
+      .mini .icon {
+        font-size: 40px;
+      }
+      .story {
+        background: var(--sage);
+        border-radius: 24px;
+        padding: 40px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        align-items: center;
+        margin-top: 64px;
+      }
+      .story p {
+        margin: 16px 0 24px;
+      }
+      .story-art {
+        min-height: 220px;
+        border-radius: 16px;
+        background: #d4dfc9;
+        display: grid;
+        place-items: center;
+        font-size: 90px;
+      }
+      .footer {
+        border-top: 1px solid var(--line);
+        margin-top: 72px;
+        padding: 32px 0 22px;
+      }
+      .footer .row {
+        justify-content: space-between;
+      }
+      .footer-links {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+      .copyright {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 25px;
+      }
+      .auth-shell {
+        max-width: 1060px;
+        margin: 56px auto 0;
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        overflow: hidden;
+        background: white;
+      }
+      .auth-aside {
+        background: var(--sage);
+        padding: 48px 36px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .auth-aside h2 {
+        font-size: 29px;
+        margin-top: 24px;
+      }
+      .auth-aside p {
+        font-size: 13px;
+        margin-top: 20px;
+      }
+      .aside-art {
+        font-size: 90px;
+        text-align: center;
+        padding: 50px 0;
+      }
+      .auth-content {
+        padding: 42px 48px;
+      }
+      .auth-content h1 {
+        font-size: 29px;
+        margin: 10px 0;
+      }
+      .auth-content > .muted {
+        font-size: 13px;
+      }
+      .field {
+        display: block;
+        margin-top: 19px;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .field input,
+      .field select {
+        display: block;
+        width: 100%;
+        height: 48px;
+        border: 1px solid #b8c3b5;
+        border-radius: 9px;
+        background: white;
+        padding: 10px 12px;
+        margin-top: 7px;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 400;
+        min-width: 0;
+      }
+      .field input[aria-invalid="true"] {
+        border-color: #ac3935;
+      }
+      .req {
+        font-size: 10px;
+        color: #8b3f32;
+        font-weight: 400;
+        margin-left: 7px;
+      }
+      .optional {
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 7px;
+      }
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .password {
+        position: relative;
+      }
+      .password input {
+        padding-right: 62px;
+      }
+      .reveal {
+        position: absolute;
+        right: 8px;
+        top: 4px;
+        border: 0;
+        background: none;
+        padding: 9px;
+        color: var(--green);
+        font-size: 12px;
+      }
+      .hint {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+        line-height: 1.7;
+        margin-top: 6px;
+        color: var(--muted);
+      }
+      .error {
+        display: block;
+        color: #a1322f;
+        font-weight: 500;
+        font-size: 12px;
+        margin-top: 5px;
+      }
+      .error:empty {
+        display: none;
+      }
+      .summary {
+        background: #fff0ea;
+        border-radius: 9px;
+        padding: 12px;
+        font-size: 13px;
+        color: #92362d;
+        margin-top: 18px;
+      }
+      .summary:empty {
+        display: none;
+      }
+      .separator {
+        border-top: 1px solid var(--line);
+        margin: 28px 0 20px;
+      }
+      .center {
+        text-align: center;
+      }
+      .right {
+        text-align: right;
+      }
+      .auth-note {
+        font-size: 11px;
+        text-align: center;
+        max-width: 900px;
+        margin: 18px auto;
+        color: var(--muted);
+      }
+      .steps {
+        display: flex;
+        justify-content: space-between;
+        list-style: none;
+        padding: 0;
+        margin: 0 0 30px;
+        position: relative;
+        gap: 12px;
+      }
+      .steps li {
+        font-size: 11px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+      }
+      .steps span {
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        height: 25px;
+        width: 25px;
+        font-size: 11px;
+      }
+      .steps .active {
+        color: var(--green);
+        font-weight: 700;
+      }
+      .steps .active span,
+      .steps .done span {
+        background: var(--green);
+        color: white;
+        border-color: var(--green);
+      }
+      .choice {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        border: 1px solid var(--line);
+        padding: 18px 16px;
+        border-radius: 13px;
+        margin-top: 15px;
+        cursor: pointer;
+      }
+      .choice:has(input:checked) {
+        border: 2px solid var(--green);
+        padding: 17px 15px;
+        background: #f1f6ed;
+      }
+      .choice input {
+        accent-color: var(--green);
+        width: 18px;
+        height: 18px;
+      }
+      .choice small {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+      }
+      .choice-icon {
+        font-size: 26px;
+      }
+      .interests {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 5px 12px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .chip:has(input:checked) {
+        background: var(--green);
+        color: white;
+      }
+      .chip input {
+        accent-color: var(--green);
+        margin-right: 5px;
+      }
+      .check {
+        display: flex;
+        align-items: start;
+        gap: 9px;
+        margin-top: 15px;
+        font-size: 12px;
+      }
+      .check input {
+        margin-top: 6px;
+        accent-color: var(--green);
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+      .success-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--sage);
+        color: var(--green);
+        font-size: 30px;
+        margin: 20px auto;
+        display: grid;
+        place-items: center;
+      }
+      .notice {
+        background: var(--sage);
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 12px;
+        margin-top: 22px;
+      }
+      .test-tools {
+        border-top: 1px solid var(--line);
+        margin-top: 24px;
+        padding-top: 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .test-tools select {
+        max-width: 100%;
+        padding: 6px;
+        margin-top: 6px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: white;
+        font-size: 12px;
+      }
+      dialog {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 32px;
+        max-width: min(540px, 90vw);
+        color: var(--ink);
+        background: var(--ivory);
+      }
+      dialog::backdrop {
+        background: #13241c80;
+      }
+      dialog h2 {
+        font-size: 23px;
+        margin-bottom: 16px;
+      }
+      dialog p {
+        margin-bottom: 16px;
+        font-size: 14px;
+      }
+      .close {
+        float: right;
+        border: 0;
+        background: none;
+        font-size: 26px;
+        color: var(--green);
+      }
+      .skip {
+        position: absolute;
+        top: -100px;
+      }
+      .skip:focus {
+        top: 0;
+        z-index: 100;
+        background: white;
+        padding: 12px;
+      }
+      @media (min-width: 1400px) {
+        .hero .wrap {
+          padding-top: 80px;
+          padding-bottom: 80px;
+        }
+      }
+      @media (max-width: 1000px) {
+        .nav {
+          gap: 12px;
+        }
+        .bar {
+          gap: 14px;
+        }
+        .brand {
+          font-size: 17px;
+        }
+        .actions .optional-action {
+          display: none;
+        }
+        .auth-shell {
+          margin: 32px 24px 0;
+        }
+        .auth-content {
+          padding: 32px;
+        }
+        .four {
+          gap: 12px;
+        }
+        .card-body {
+          padding: 14px;
+        }
+        .card h3 {
+          font-size: 16px;
+        }
+      }
+      @media (max-width: 720px) {
+        .wrap {
+          padding: 0 20px;
+        }
+        .bar {
+          min-height: 68px;
+          flex-wrap: wrap;
+          gap: 10px;
+          padding-top: 10px;
+          padding-bottom: 10px;
+        }
+        .brand {
+          font-size: 17px;
+        }
+        .actions {
+          margin-left: auto;
+          gap: 8px;
+        }
+        .actions .btn {
+          padding: 8px 15px;
+          font-size: 12px;
+          min-height: 40px;
+        }
+        .nav {
+          order: 3;
+          width: 100%;
+          justify-content: space-around;
+          font-size: 13px;
+          margin: 0;
+        }
+        .hero .wrap {
+          padding: 42px 24px 52px;
+        }
+        .hero-art {
+          width: 100%;
+          opacity: 0.5;
+        }
+        .hero h1 {
+          font-size: 40px;
+        }
+        .hero-note {
+          font-size: 9px;
+          right: 20px;
+        }
+        .section {
+          padding-top: 44px;
+        }
+        .four {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .entry {
+          padding: 18px 15px;
+        }
+        .two {
+          grid-template-columns: 1fr;
+        }
+        .section-head h2 {
+          font-size: 24px;
+        }
+        .section-head > a {
+          font-size: 12px;
+        }
+        .visual {
+          height: 135px;
+          font-size: 54px;
+        }
+        .story {
+          grid-template-columns: 1fr;
+          padding: 25px;
+          gap: 20px;
+        }
+        .story-art {
+          min-height: 160px;
+        }
+        .auth-shell {
+          display: block;
+          margin: 24px 16px 0;
+          border-radius: 18px;
+        }
+        .auth-aside {
+          display: none;
+        }
+        .auth-content {
+          padding: 26px 22px;
+        }
+        .auth-content h1 {
+          font-size: 26px;
+        }
+        .steps {
+          gap: 5px;
+        }
+        .steps li {
+          font-size: 10px;
+          gap: 5px;
+        }
+        .footer {
+          margin-top: 44px;
+        }
+        .footer .row {
+          gap: 20px;
+        }
+        .auth-note {
+          padding: 0 20px;
+        }
+        .mini {
+          padding: 20px;
+        }
+        .demo {
+          font-size: 10px;
+        }
+        .field-row {
+          gap: 12px;
+        }
+        .price {
+          font-size: 18px;
+        }
+      }
+      @media (max-width: 720px) {
+        .bar .brand {
+          font-size: 15px;
+          gap: 7px;
+        }
+        .bar .mark {
+          width: 28px;
+          height: 28px;
+          font-size: 18px;
+        }
+        .actions {
+          gap: 4px;
+        }
+        .actions > .plain {
+          padding: 6px;
+          font-size: 11px;
+        }
+        .actions .btn {
+          padding: 8px 12px;
+          font-size: 11px;
+        }
+        .hero h1 {
+          font-size: 32px;
+        }
+        .hero .btn {
+          font-size: 13px;
+          padding: 10px 18px;
+        }
+        .hero .eyebrow {
+          font-size: 10px;
+        }
+      }
+    </style>
+
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へ</a><noscript>このサンプルの動作にはJavaScriptを有効にしてください。</noscript>
+    
+    <div id="app"></div>
+    <dialog id="dialog">
+      <button class="close" aria-label="閉じる">×</button>
+      <div id="dialog-body"></div>
+    </dialog>
+    <script>
+      const DEMO_BASE = "https://marche-demo.invalid";
+      function routeURL() {
+        const route = location.hash.startsWith("#/") ? location.hash.slice(1) : "/";
+        return new URL(route, DEMO_BASE);
+      }
+      window.addEventListener("hashchange", () => {
+        state.busy = false;
+        state.draft = {};
+        render();
+        const id = routeURL().hash.slice(1);
+        if (id) document.getElementById(id)?.scrollIntoView();
+        else window.scrollTo(0, 0);
+      });
+      /* Browser-only prototype: no network requests, no persistence of personal data. */
+      const app = document.querySelector("#app");
+      const state = { step: 1, purpose: "", draft: {}, interests: [], user: null, tab: "featured", busy: false, scenario: "success", favorites: new Set() };
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const today = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const prefs =
+        "北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県".split(" ");
+      const interestList = [
+        ["vegetables", "野菜"],
+        ["fruits", "果物"],
+        ["seafood", "魚介"],
+        ["experiences", "体験"],
+        ["short_term_jobs", "短期のお仕事"],
+        ["farming", "就農"],
+      ];
+      const farm = `<svg class="hero-art" viewBox="0 0 900 550" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="900" height="550" fill="#b5c7a8"/><circle cx="690" cy="105" r="50" fill="#f0dcaa"/><path d="M0 260Q150 60 340 220Q550 50 900 215V550H0" fill="#678969"/><path d="M0 325Q240 150 510 300Q750 150 900 270V550H0" fill="#87a077"/><path d="M0 420Q350 200 900 340V550H0" fill="#c5bd87"/><path d="M-100 580Q350 200 1000 400M0 610Q400 260 1000 440M150 620Q480 330 1000 480M350 640Q600 390 1000 530" fill="none" stroke="#456d48" stroke-width="28"/><path d="M620 245v-60h95v60z" fill="#e4d5b3"/><path d="M600 188l65-50 70 50z" fill="#805c46"/><rect x="658" y="207" width="20" height="38" fill="#4c6550"/><path d="M808 270v-70" stroke="#596d48" stroke-width="8"/><ellipse cx="808" cy="180" rx="32" ry="50" fill="#3d644b"/></svg>`;
+      const brand = `<a class="brand" href="/" data-route><span class="mark">つ</span>つながるマルシェ</a>`;
+      function header(home = false) {
+        return `<div class="demo">2026 秋ハッカソン · 画面サンプル｜掲載情報は架空です。登録・ログイン・メール送信はデモ動作です。</div><header class="header"><div class="wrap bar">${brand}${home ? `<nav class="nav" aria-label="メイン"><a href="/#products" data-scroll="products">買う</a><a href="/#experiences" data-scroll="experiences">体験する</a><a href="/#jobs" data-scroll="jobs">働く</a><a href="/#learn" data-scroll="learn">学ぶ</a></nav>` : ""}<div class="actions" style="${home ? "" : "margin-left:auto"}">${home ? `<button class="plain optional-action" data-action="search" aria-label="検索">⌕ 検索</button><button class="plain optional-action" data-action="favorites" aria-label="お気に入り">♡</button><button class="plain optional-action" data-action="cart" aria-label="カート">▢</button>` : ""}${state.user ? `<button class="btn outline" data-action="mypage">${esc(state.user.lastName)}さん</button><button class="plain" data-action="logout">ログアウト</button>` : `<a class="${home ? "plain" : "btn outline"}" href="/signin" data-route>ログイン</a>${home ? '<a class="btn" href="/signup" data-route>新規登録</a>' : ""}`}</div></div></header>`;
+      }
+      const footer = () =>
+        `<footer class="footer"><div class="wrap"><div class="row">${brand}<div class="footer-links"><a href="/signup?purpose=producer" data-route>生産者の方へ</a><a href="#" data-action="faq">よくある質問</a><a href="#" data-action="contact">お問い合わせ</a><a href="#" data-action="terms">利用規約</a><a href="#" data-action="privacy">プライバシーポリシー</a></div></div><p class="copyright">© 2026 つながるマルシェ · Hackathon prototype</p></div></footer>`;
+      const products = [
+        ["🥬", "旬の野菜おまかせセット", "そらいろ農園", "長野県 安曇野市", "2,400", "green"],
+        ["🍎", "秋のふじりんご 3kg", "山本りんご園", "長野県 松本市", "3,200", "rose"],
+        ["🐟", "朝獲れ鮮魚の詰め合わせ", "みなと水産", "静岡県 沼津市", "3,800", "blue"],
+        ["🍠", "ほくほく紅はるか 2kg", "ひなたファーム", "茨城県 鉾田市", "1,800", "gold"],
+      ];
+      function productCards() {
+        return products
+          .map(
+            (p, i) =>
+              `<article class="card" data-product="${i}"><div class="visual ${p[5]}" aria-hidden="true">${p[0]}</div><button class="heart" data-fav="${i}" aria-label="${p[1]}をお気に入り${state.favorites.has(i) ? "から削除" : "に追加"}" aria-pressed="${state.favorites.has(i)}">${state.favorites.has(i) ? "♥" : "♡"}</button><div class="card-body"><small>${p[3]}</small><h3>${p[1]}</h3><small>${p[2]}</small><p class="price">¥${p[4]} <small>税込</small></p><button class="plain" data-detail="${i}">商品を見る →</button></div></article>`,
+          )
+          .join("");
+      }
+      function producerCards() {
+        const list =
+          state.tab === "featured"
+            ? [
+                ["🌿", "そらいろ農園", "長野県 安曇野市", "野菜と、豊かな日常を。", "体験受け入れ中"],
+                ["🍎", "山本りんご園", "長野県 松本市", "一つひとつに、秋の実り。", "旬の果物"],
+                ["🌊", "みなと水産", "静岡県 沼津市", "海のおいしさを、そのまま。", "水産"],
+                ["🌾", "ひなたファーム", "茨城県 鉾田市", "土と向き合う、毎日を。", "担い手募集中"],
+              ]
+            : [
+                ["🌱", "こもれび農園", "山梨県 北杜市", "小さな畑から、はじめよう。", "新規就農 1年目"],
+                ["🥕", "はるの畑", "千葉県 南房総市", "育てる喜びを分かち合う。", "新規就農 2年目"],
+              ];
+        return list
+          .map(
+            (p, i) =>
+              `<article class="card"><div class="visual ${i % 2 ? "gold" : ""}" aria-hidden="true">${p[0]}</div><div class="card-body"><span class="badge">${p[4]}</span><br><small>${p[2]}</small><h3>${p[1]}</h3><p class="muted" style="font-size:12px">${p[3]}</p><button class="plain" data-producer="${esc(p[1])}">生産者を知る →</button></div></article>`,
+          )
+          .join("");
+      }
+      function home() {
+        return `${header(true)}<main id="main"><section class="hero">${farm}<div class="wrap"><p class="eyebrow">FROM THE FIELD, TO YOUR EVERYDAY.</p><h1>つくる人と、<br>つながる暮らし。</h1><p>産地から届くおいしさ。心に残る体験。<br>未来につながる仕事。</p><div class="row"><a class="btn orange" href="/#products" data-scroll="products">旬の商品を探す <span>→</span></a><a class="btn light" href="/#jobs" data-scroll="jobs">仕事を探す <span>→</span></a></div></div><span class="hero-note">農業・畜産・水産の生産者と、直接つながる</span></section><div class="wrap"><section class="section"><div class="section-head"><div><p class="eyebrow">FOUR WAYS TO CONNECT</p><h2>あなたらしい、つながり方。</h2></div></div><div class="four">${[
+          ["🧺", "買う", "生産者から直接、旬のおいしさを。", "商品を見る", "products"],
+          ["🌱", "体験する", "畑や海へ。心に残る一日を。", "体験を探す", "experiences"],
+          ["🌾", "働く", "1日のお手伝いから、就農まで。", "仕事を探す", "jobs"],
+          ["📖", "学ぶ", "つくる人の想いと、工夫を知る。", "ストーリーを読む", "learn"],
+        ]
+          .map((x) => `<a class="entry" href="/#${x[4]}" data-scroll="${x[4]}"><span class="icon">${x[0]}</span><h3>${x[1]}</h3><p>${x[2]}</p><b>${x[3]} →</b></a>`)
+          .join(
+            "",
+          )}</div></section><section class="section" id="producers"><div class="section-head"><div><p class="eyebrow">MEET THE PRODUCERS</p><h2>つくる人に、会いに行こう。</h2></div></div><div class="tabs" role="tablist" aria-label="生産者の種類"><button id="featured-tab" role="tab" aria-controls="producer-grid" class="tab" data-tab="featured" aria-selected="${state.tab === "featured"}">注目の生産者</button><button id="new-tab" role="tab" aria-controls="producer-grid" class="tab" data-tab="new" aria-selected="${state.tab === "new"}">新規就農者</button></div><div class="four" id="producer-grid" role="tabpanel" aria-labelledby="${state.tab === "featured" ? "featured" : "new"}-tab">${producerCards()}</div></section><section class="section" id="products"><div class="section-head"><div><p class="eyebrow">SEASONAL PICKS</p><h2>いま味わいたい、旬の便り。</h2></div><button class="plain" data-action="all-products">すべての商品を見る →</button></div><div class="four" id="product-grid">${productCards()}</div></section><section class="section" id="jobs"><div class="section-head"><div><p class="eyebrow">WORK WITH NATURE</p><h2>地域とつながる、お仕事。</h2></div></div><div class="two">${[
+          ["🍎", "りんごの収穫をお手伝い", "長野県 松本市 · 11月上旬／1日〜", "時給 1,200円"],
+          ["🥬", "畑で野菜の収穫・出荷作業", "長野県 安曇野市 · 週末／未経験歓迎", "時給 1,100円"],
+        ]
+          .map((x) => `<article class="mini"><span class="icon" aria-hidden="true">${x[0]}</span><div><span class="badge">短期 · 未経験歓迎</span><h3>${x[1]}</h3><small>${x[2]}</small><p><b>${x[3]}</b></p><button class="plain" data-opportunity="${x[1]}">仕事の詳細を見る →</button></div></article>`)
+          .join("")}</div></section><section class="section" id="experiences"><div class="section-head"><div><p class="eyebrow">A DAY TO REMEMBER</p><h2>次の休日は、産地へ。</h2></div></div><div class="two">${[
+          ["🍠", "親子で楽しむ、さつまいも掘り", "茨城県 鉾田市 · 11月1日（日）", "1人 1,500円"],
+          ["🌾", "はじめての秋野菜収穫体験", "長野県 安曇野市 · 11月8日（日）", "1人 2,000円"],
+        ]
+          .map((x) => `<article class="mini"><span class="icon" aria-hidden="true">${x[0]}</span><div><span class="badge">近日開催</span><h3>${x[1]}</h3><small>${x[2]}</small><p><b>${x[3]}</b></p><button class="plain" data-opportunity="${x[1]}">体験の詳細を見る →</button></div></article>`)
+          .join(
+            "",
+          )}</div></section><section class="story" id="learn"><div class="story-art" aria-hidden="true">🌱</div><div><p class="eyebrow">PRODUCER'S STORY</p><h2>おいしさの向こうに、<br>つくる人の物語がある。</h2><p class="muted">土を育て、季節に寄り添う。<br>そらいろ農園が大切にする、畑と暮らしのお話。</p><button class="btn outline" data-action="story">ストーリーを読む →</button></div></section></div></main>${footer()}`;
+      }
+      const steps = () => `<ol class="steps" aria-label="登録の進行状況">${["利用目的", "アカウント情報", "完了"].map((x, i) => `<li class="${state.step === i + 1 ? "active" : state.step > i + 1 ? "done" : ""}" ${state.step === i + 1 ? 'aria-current="step"' : ""}><span>${state.step > i + 1 ? "✓" : i + 1}</span>${x}</li>`).join("")}</ol>`;
+      function shell(content, signup) {
+        return `${header()}<main id="main"><div class="auth-shell"><aside class="auth-aside"><div><p class="eyebrow">${signup ? "A NEW CONNECTION" : "WELCOME BACK"}</p><h2>つくる人を知る。<br>暮らしが、変わる。</h2><p>おいしい出会いも、新しい挑戦も。<br>あなたと産地をつなぐ場所へ。</p></div><div class="aside-art" aria-hidden="true">🌿</div><small>買う ・ 体験する ・ 働く ・ 学ぶ</small></aside><section class="auth-content">${content}</section></div><p class="auth-note">動作確認用のサンプルです。実際の個人情報は入力せず、架空の情報でお試しください。</p></main>${footer()}`;
+      }
+      function field(name, label, type = "text", extra = "") {
+        return `<label class="field" for="${name}">${label}<span class="req">必須</span><input id="${name}" name="${name}" type="${type}" value="${esc(state.draft[name])}" aria-describedby="${name}-error" required ${extra}></label><span class="error" id="${name}-error"></span>`;
+      }
+      function passField(confirm = false) {
+        return `<label class="field" for="password">パスワード<span class="req">必須</span><div class="password"><input id="password" name="password" type="password" required ${confirm ? 'minlength="8" maxlength="30" autocomplete="new-password"' : 'autocomplete="current-password"'} value="${esc(state.draft.password)}" aria-describedby="password-hint password-error"><button type="button" class="reveal" data-action="reveal" aria-pressed="false">表示</button></div><span id="password-hint" class="hint">${confirm ? "8〜30文字。半角の英大文字・英小文字・数字・記号を各1文字以上（空白不可）。" : "登録したパスワードを入力してください。"}</span></label><span class="error" id="password-error"></span>`;
+      }
+      function scenarioControls(signup) {
+        return `<details class="test-tools"><summary>デモの動作を切り替える</summary><label>送信結果<br><select id="scenario"><option value="success">成功</option>${(signup
+          ? [
+              ["400", "400：入力エラー"],
+              ["409", "409：メール重複"],
+              ["policy", "409：規約の版が更新"],
+              ["403", "403：CSRFエラー"],
+            ]
+          : [["401", "401：認証失敗"]]
+        )
+          .concat([
+            ["429", "429：回数制限"],
+            ["500", "500：サーバーエラー"],
+            ["network", "通信エラー"],
+          ])
+          .map((x) => `<option value="${x[0]}" ${state.scenario === x[0] ? "selected" : ""}>${x[1]}</option>`)
+          .join("")}</select></label>${signup ? "" : "<p>成功確認：demo@example.com / DemoPass123!</p>"}</details>`;
+      }
+      function signin() {
+        return shell(
+          `<p class="eyebrow">SIGN IN</p><h1>ログイン</h1><p class="muted">つながるマルシェへようこそ。</p>${new URLSearchParams(routeURL().search).has("returnTo") ? '<p class="notice">ログインすると、続きから手続きできます。</p>' : ""}<form id="signin-form" novalidate><div class="summary" role="alert" id="form-error"></div>${field("email", "メールアドレス", "email", 'autocomplete="email" maxlength="255" placeholder="example@example.com"')}${passField()}<div class="right"><button type="button" class="plain" data-action="reset" style="font-size:12px">パスワードをお忘れですか？</button></div><button class="btn block" id="submit">ログイン →</button></form><div class="separator"></div><p class="center muted" style="font-size:12px">アカウントをお持ちでない方</p><a class="btn outline block" href="/signup" data-route>新規登録</a>${scenarioControls(false)}`,
+          false,
+        );
+      }
+      function signup() {
+        let content = steps();
+        if (state.step === 1)
+          content += `<p class="eyebrow">CREATE YOUR ACCOUNT</p><h1>どのように<br>利用しますか？</h1><p class="muted">はじめに、利用目的を教えてください。</p><form id="purpose-form">${[
+            ["consumer", "🧺", "買う・体験する・働く", "商品の購入、体験への参加、仕事への応募"],
+            ["producer", "🌱", "生産者として利用する", "商品販売・体験・求人を掲載したい"],
+          ]
+            .map((x) => `<label class="choice"><input type="radio" name="purpose" value="${x[0]}" ${state.purpose === x[0] ? "checked" : ""}><span class="choice-icon" aria-hidden="true">${x[1]}</span><span><b>${x[2]}</b><small>${x[3]}</small></span></label>`)
+            .join(
+              "",
+            )}<p class="hint" style="margin-top:16px">生産者の方も、共通アカウントの作成後に登録申請へ進みます。</p><button class="btn block" id="next" ${state.purpose ? "" : "disabled"}>次へ →</button></form><p class="center" style="font-size:12px;margin-top:22px"><button class="plain" data-action="contact">お問い合わせはこちら →</button></p><div class="separator"></div><p class="center muted" style="font-size:12px">アカウントをお持ちの方は <a href="/signin" data-route>ログイン</a></p>`;
+        else if (state.step === 2)
+          content += `<p class="eyebrow">YOUR INFORMATION</p><h1>アカウント情報</h1><p class="muted">${state.purpose === "producer" ? "生産者申請の前に、共通アカウントを作成します。" : "あなたと産地の、新しいつながりを。"}</p><button class="plain" data-action="back" style="padding-left:0;font-size:12px">← 利用目的を選び直す</button><form id="signup-form" novalidate><div class="summary" role="alert" id="form-error"></div><div class="field-row"><div>${field("lastName", "姓", "text", 'maxlength="10" autocomplete="family-name" placeholder="山田"')}</div><div>${field("firstName", "名", "text", 'maxlength="10" autocomplete="given-name" placeholder="太郎"')}</div></div>${field("email", "メールアドレス", "email", 'maxlength="255" autocomplete="email" placeholder="example@example.com"')}${passField(true)}${field("phone", "電話番号", "tel", 'maxlength="50" autocomplete="tel" placeholder="09012345678"')}<p class="hint">例：09012345678（ハイフン付きも入力できます）</p>${field("birthDate", "生年月日", "date", `max="${today()}" autocomplete="bday"`)}<label class="field">都道府県<span class="optional">任意</span><select name="prefectureId"><option value="">選択してください</option>${prefs.map((x, i) => `<option value="${i + 1}" ${Number(state.draft.prefectureId) === i + 1 ? "selected" : ""}>${x}</option>`).join("")}</select></label><fieldset style="border:0;padding:0;margin:20px 0"><legend style="font-size:13px;font-weight:700">興味のあること<span class="optional">任意・複数選択可</span></legend><div class="interests">${interestList.map((x) => `<label class="chip"><input type="checkbox" name="interests" value="${x[0]}" ${state.interests.includes(x[0]) ? "checked" : ""}>${x[1]}</label>`).join("")}</div></fieldset><label class="check"><input type="checkbox" name="agreedToTerms" ${state.draft.agreedToTerms ? "checked" : ""}><span><button type="button" class="plain" style="padding:0" data-action="terms">利用規約</button>に同意する<span class="req">必須</span></span></label><span class="error" id="agreedToTerms-error"></span><label class="check"><input type="checkbox" name="agreedToPrivacyPolicy" ${state.draft.agreedToPrivacyPolicy ? "checked" : ""}><span><button type="button" class="plain" style="padding:0" data-action="privacy">プライバシーポリシー</button>に同意する<span class="req">必須</span></span></label><span class="error" id="agreedToPrivacyPolicy-error"></span><button class="btn block" id="submit">登録する →</button></form>${scenarioControls(true)}`;
+        else
+          content += `<div class="center"><div class="success-icon">✓</div><p class="eyebrow">WELCOME TO THE MARCHE</p><h1>登録が完了しました！</h1><p style="margin-top:18px">${esc(state.user?.lastName)}さん、ようこそ。</p><p class="muted" style="font-size:13px;margin-top:12px">${state.purpose === "producer" ? "続いて、生産者として利用するための<br>申請情報を入力してください。" : "つくる人との新しい出会いを<br>見つけてみましょう。"}</p><div class="notice">確認メールの配送受付を再現しました。<br><b>${esc(state.user?.email)}</b><br>デモのため、メールは送信されません。</div>${state.purpose === "producer" ? '<button class="btn block" data-action="application">生産者登録申請へ進む →</button><p class="hint">申請・管理者承認を経て、生産者として利用できます。</p>' : '<a class="btn block" href="/#products" data-scroll="products">商品を見てみる →</a><button class="btn outline block" data-action="mypage">マイページへ</button>'}<a href="/" data-route class="plain" style="display:inline-block;margin-top:18px">ホームへ</a></div>`;
+        return shell(content, true);
+      }
+      function render() {
+        const path = routeURL().pathname;
+        app.innerHTML = path === "/signup" ? signup() : path === "/signin" ? signin() : home();
+        document.title = (path === "/signup" ? "新規登録" : path === "/signin" ? "ログイン" : "つくる人と、つながる暮らし。") + "｜つながるマルシェ";
+        document.querySelectorAll("a[data-route],a[data-scroll]").forEach((a) => {
+          const href = a.getAttribute("href");
+          if (href?.startsWith("/")) a.setAttribute("href", "#" + href);
+        });
+      }
+      function navigate(url) {
+        if (url.startsWith("#/")) url = url.slice(1);
+        const parsed = new URL(url, DEMO_BASE);
+        if (parsed.origin !== DEMO_BASE) return;
+        state.busy = false;
+        state.draft.password = "";
+        history.pushState({}, "", "#" + parsed.pathname + parsed.search + parsed.hash);
+        if (parsed.pathname === "/signup" && state.step !== 3) {
+          state.step = 1;
+          if (parsed.searchParams.get("purpose") === "producer") state.purpose = "producer";
+        }
+        render();
+        const section = parsed.hash.slice(1);
+        if (section) document.getElementById(section)?.scrollIntoView();
+        else window.scrollTo(0, 0);
+      }
+      function modal(title, body) {
+        document.querySelector("#dialog-body").innerHTML = `<h2>${esc(title)}</h2>${body}`;
+        document.querySelector("#dialog").showModal();
+      }
+      document.querySelector(".close").onclick = () => document.querySelector("#dialog").close();
+      function capture(form) {
+        const fd = new FormData(form);
+        for (const [k, v] of fd) if (k !== "interests") state.draft[k] = v;
+        if (form.id === "signup-form") {
+          state.draft.agreedToTerms = fd.has("agreedToTerms");
+          state.draft.agreedToPrivacyPolicy = fd.has("agreedToPrivacyPolicy");
+          state.interests = fd.getAll("interests");
+        }
+      }
+      function validate(d, signup = true) {
+        const errors = {};
+        if (signup) {
+          for (const n of ["lastName", "firstName"]) if (!String(d[n] || "").trim() || [...d[n].trim()].length > 10) errors[n] = "1〜10文字で入力してください。";
+          if (!d.phone?.trim() || !/^\+?[0-9() -]{7,50}$/.test(d.phone) || d.phone.replace(/\D/g, "").length < 7) errors.phone = "電話番号を正しく入力してください。";
+          if (!d.birthDate || !/^\d{4}-\d{2}-\d{2}$/.test(d.birthDate) || Number.isNaN(Date.parse(d.birthDate)) || new Date(d.birthDate).toISOString().slice(0, 10) !== d.birthDate || d.birthDate > today()) errors.birthDate = "過去または今日の、実在する日付を入力してください。";
+          if (!d.agreedToTerms) errors.agreedToTerms = "利用規約への同意が必要です。";
+          if (!d.agreedToPrivacyPolicy) errors.agreedToPrivacyPolicy = "プライバシーポリシーへの同意が必要です。";
+          if (!/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!-/:-@\[-`{-~])[\x21-\x7E]{8,30}$/.test(d.password || "")) errors.password = "8〜30文字で、英大文字・英小文字・数字・記号を各1文字以上含めてください。";
+        } else if (!d.password) errors.password = "パスワードを入力してください。";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(d.email || "").trim()) || String(d.email).trim().length > 255) errors.email = "メールアドレスを正しく入力してください。";
+        return errors;
+      }
+      function showErrors(errors) {
+        document.querySelectorAll(".error").forEach((x) => (x.textContent = ""));
+        document.querySelectorAll("[aria-invalid]").forEach((x) => x.removeAttribute("aria-invalid"));
+        for (const [k, v] of Object.entries(errors)) {
+          const error = document.getElementById(k + "-error");
+          if (error) error.textContent = v;
+          const input = document.querySelector(`[name="${k}"]`);
+          if (input) input.setAttribute("aria-invalid", "true");
+        }
+        if (Object.keys(errors).length) {
+          document.querySelector("#form-error").textContent = "入力内容をご確認ください。";
+          document.querySelector(`[name="${Object.keys(errors)[0]}"]`)?.focus();
+          return true;
+        }
+        document.querySelector("#form-error").textContent = "";
+        return false;
+      }
+      // Adapter contract for implementation: POST /api/v1/users with credentials: include,
+      // X-CSRFToken from GET /api/v1/auth/csrf. This prototype intentionally sends nothing.
+      function registrationPayload() {
+        const d = state.draft;
+        return {
+          lastName: d.lastName.trim(),
+          firstName: d.firstName.trim(),
+          email: d.email.trim().toLowerCase(),
+          password: d.password,
+          phone: d.phone.trim(),
+          birthDate: d.birthDate,
+          prefectureId: d.prefectureId ? Number(d.prefectureId) : null,
+          interests: state.interests,
+          agreedToTerms: !!d.agreedToTerms,
+          agreedToPrivacyPolicy: !!d.agreedToPrivacyPolicy,
+          termsVersion: "demo-2026-10-24",
+          privacyPolicyVersion: "demo-2026-10-24",
+        };
+      }
+      async function submit(form, signup) {
+        if (state.busy) return;
+        capture(form);
+        if (showErrors(validate(state.draft, signup))) return;
+        state.busy = true;
+        const button = document.querySelector("#submit");
+        button.disabled = true;
+        button.textContent = signup ? "登録しています…" : "ログインしています…";
+        form.setAttribute("aria-busy", "true");
+        const payload = signup ? registrationPayload() : null;
+        await new Promise((r) => setTimeout(r, 650));
+        if (!document.contains(form)) return;
+        state.busy = false;
+        button.disabled = false;
+        button.textContent = signup ? "登録する →" : "ログイン →";
+        form.removeAttribute("aria-busy");
+        const sc = state.scenario;
+        if (sc === "400") {
+          showErrors({ phone: "電話番号の形式を確認してください。" });
+          return;
+        }
+        if (sc !== "success") {
+          const messages = {
+            409: "このメールアドレスは登録済みです。ログイン画面からお進みください。",
+            401: "メールアドレスまたはパスワードを確認してください。",
+            403: "リクエストを確認できませんでした。もう一度登録ボタンを押してください。",
+            policy: "規約が更新されました。内容を確認して、再度同意してください。",
+            429: "操作が多すぎます。時間をおいて再度お試しください。",
+            500: "サーバーで問題が発生しました。時間をおいて再度お試しください。",
+            network: "通信できませんでした。接続を確認して再度お試しください。",
+          };
+          document.querySelector("#form-error").innerHTML = esc(messages[sc]) + (sc === "409" ? ' <a href="/signin" data-route>ログインへ</a>' : "");
+          if (sc === "policy") {
+            for (const n of ["agreedToTerms", "agreedToPrivacyPolicy"]) {
+              state.draft[n] = false;
+              form.elements[n].checked = false;
+            }
+          }
+          return;
+        }
+        if (!signup && (state.draft.email.trim().toLowerCase() !== "demo@example.com" || state.draft.password !== "DemoPass123!")) {
+          document.querySelector("#form-error").textContent = "メールアドレスまたはパスワードを確認してください。デモ用の情報は「デモの動作を切り替える」に記載しています。";
+          return;
+        }
+        state.user = { lastName: signup ? payload.lastName : "山田", email: signup ? payload.email : "demo@example.com", isProducer: false, producerApplicationStatus: "not_applied", producerAccountStatus: null, emailVerified: false };
+        state.draft = {};
+        state.interests = [];
+        if (signup) {
+          state.step = 3;
+          render();
+          window.scrollTo(0, 0);
+        } else {
+          const dest = new URLSearchParams(routeURL().search).get("returnTo");
+          const safe = dest && /^\/(?!\/)/.test(dest) && !dest.includes("\\");
+          if (safe && ["/", "/signup"].includes(new URL(dest, DEMO_BASE).pathname)) navigate(dest);
+          else {
+            navigate("/");
+            if (dest) modal("ログインしました", "<p>元のページへ戻る動作を再現しました。商品詳細・応募・生産者申請などの画面は、この3画面サンプルの対象外です。</p>");
+          }
+        }
+      }
+      document.addEventListener("submit", (e) => {
+        if (e.target.id === "purpose-form") {
+          e.preventDefault();
+          if (state.purpose) {
+            state.step = 2;
+            render();
+            window.scrollTo(0, 0);
+          }
+        }
+        if (["signup-form", "signin-form"].includes(e.target.id)) {
+          e.preventDefault();
+          submit(e.target, e.target.id === "signup-form");
+        }
+      });
+      document.addEventListener("change", (e) => {
+        if (e.target.name === "purpose") {
+          state.purpose = e.target.value;
+          document.querySelector("#next").disabled = false;
+        }
+        if (e.target.id === "scenario") state.scenario = e.target.value;
+      });
+      document.addEventListener("click", (e) => {
+        const t = e.target.closest("a,button");
+        if (!t) return;
+        if (t.hasAttribute("data-route")) {
+          e.preventDefault();
+          if (state.busy) return;
+          state.draft = {};
+          state.interests = [];
+          state.scenario = "success";
+          navigate(t.getAttribute("href"));
+          return;
+        }
+        if (t.dataset.scroll) {
+          e.preventDefault();
+          if (routeURL().pathname !== "/") navigate("/#" + t.dataset.scroll);
+          else document.getElementById(t.dataset.scroll)?.scrollIntoView();
+          return;
+        }
+        if (t.dataset.tab) {
+          state.tab = t.dataset.tab;
+          document.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x.dataset.tab === state.tab)));
+          document.querySelector("#producer-grid").innerHTML = producerCards();
+          document.querySelector("#producer-grid").setAttribute("aria-labelledby", state.tab + "-tab");
+          return;
+        }
+        if (t.hasAttribute("data-fav")) {
+          const id = +t.dataset.fav;
+          state.favorites.has(id) ? state.favorites.delete(id) : state.favorites.add(id);
+          t.textContent = state.favorites.has(id) ? "♥" : "♡";
+          t.setAttribute("aria-pressed", String(state.favorites.has(id)));
+          t.setAttribute("aria-label", products[id][1] + (state.favorites.has(id) ? "をお気に入りから削除" : "をお気に入りに追加"));
+          return;
+        }
+        if (t.dataset.detail) {
+          const p = products[+t.dataset.detail];
+          modal(p[1], `<p>${p[2]} · ${p[3]}<br>¥${p[4]}（税込）</p><p>商品詳細・購入はサンプルの対象外です。画面遷移の入口として表示しています。</p>`);
+          return;
+        }
+        if (t.hasAttribute("data-detail")) {
+          const p = products[0];
+          modal(p[1], `<p>${p[2]} · ${p[3]}<br>¥${p[4]}（税込）</p><p>商品詳細・購入はサンプルの対象外です。</p>`);
+          return;
+        }
+        if (t.dataset.producer) {
+          modal(t.dataset.producer, "<p>これは架空の生産者プロフィールです。生産者の想いや、商品・体験・求人へつながる入口を想定しています。</p>");
+          return;
+        }
+        if (t.dataset.opportunity) {
+          modal(t.dataset.opportunity, `<p>掲載情報は架空です。実際の応募・体験申込は行われません。</p><button class="btn" id="continue-signin">${state.user ? "アカウントを確認する" : "ログインして手続きを続ける"}</button>`);
+          document.querySelector("#continue-signin").onclick = () => {
+            document.querySelector("#dialog").close();
+            if (state.user) actions.mypage();
+            else navigate("/signin?returnTo=" + encodeURIComponent("/#jobs"));
+          };
+          return;
+        }
+        const action = t.dataset.action;
+        if (action) {
+          e.preventDefault();
+          actions[action]?.();
+        }
+      });
+      const actions = {
+        reveal() {
+          const input = document.querySelector("#password");
+          input.type = input.type === "password" ? "text" : "password";
+          const b = document.querySelector(".reveal");
+          b.textContent = input.type === "password" ? "表示" : "隠す";
+          b.setAttribute("aria-pressed", String(input.type === "text"));
+        },
+        back() {
+          capture(document.querySelector("#signup-form"));
+          state.step = 1;
+          render();
+          window.scrollTo(0, 0);
+        },
+        logout() {
+          state.user = null;
+          state.step = 1;
+          state.purpose = "";
+          state.draft = {};
+          state.scenario = "success";
+          navigate("/");
+        },
+        application() {
+          modal("生産者登録申請へ", `<p>遷移先：<code>/producer-application/new</code></p><p>共通アカウントは作成済みです。申請後は管理者の承認待ちとなります。生産者権限は、承認まで付与されません。</p><p>生産者申請画面は今回の3画面サンプルの対象外です。</p>`);
+        },
+        mypage() {
+          if (!state.user) {
+            navigate("/signin?returnTo=/mypage");
+            return;
+          }
+          modal("マイページへの入口", `<p>${esc(state.user.lastName)}さん · ${esc(state.user.email)}</p><p>デモログイン中／生産者申請：未申請<br>遷移先：<code>/mypage</code></p><button class="btn" id="apply-producer">生産者登録を申請する</button>`);
+          document.querySelector("#apply-producer").onclick = () => actions.application();
+        },
+        terms() {
+          modal("利用規約（サンプル）", "<p>デモ版：demo-2026-10-24</p><p>これは画面確認用の仮の規約です。実サービスの利用規約ではありません。本番では正式な本文と版をAPIの現行版に合わせて表示します。</p>");
+        },
+        privacy() {
+          modal("プライバシーポリシー（サンプル）", "<p>デモ版：demo-2026-10-24</p><p>入力情報はこのページを開いている間のメモリだけで扱い、サーバーへ送信しません。ページの再読み込みで消えます。実サービスでは正式なポリシーを表示します。</p>");
+        },
+        contact() {
+          modal("お問い合わせ", "<p>お問い合わせはアカウント作成不要の導線とします。</p><p>問い合わせフォームの送信機能は、このサンプルには含まれていません。</p>");
+        },
+        faq() {
+          modal("よくある質問", "<p><b>生産者として利用するには？</b><br>共通アカウントを作成し、生産者登録申請を行います。管理者の承認後に利用できます。</p><p><b>このサンプルで購入できますか？</b><br>画面と登録フローの確認用のため、購入はできません。</p>");
+        },
+        reset() {
+          modal("パスワードの再設定", "<p>再設定メールの送信は、このサンプルでは行いません。本番ではパスワード再設定の手続きへ進みます。</p>");
+        },
+        favorites() {
+          const ps = [...state.favorites].map((i) => products[i][1]);
+          modal("お気に入り", ps.length ? "<p>" + ps.map(esc).join("<br>") + "</p>" : "<p>まだ登録されていません。商品カードの♡を押すと追加できます。</p>");
+        },
+        cart() {
+          modal("カート", "<p>カートは空です。購入機能は、この3画面サンプルの対象外です。</p>");
+        },
+        search() {
+          modal("商品を検索", '<form id="search-form"><label class="field">商品名・生産者・産地<input name="q" type="search" placeholder="野菜、長野、そらいろ…"></label><button class="btn block">検索する</button><p class="hint">ホームに掲載した4商品の中から検索します。</p></form>');
+          document.querySelector("#search-form").onsubmit = (e) => {
+            e.preventDefault();
+            const q = new FormData(e.target).get("q").trim();
+            document.querySelector("#dialog").close();
+            navigate("/#products");
+            let n = 0;
+            document.querySelectorAll("[data-product]").forEach((c) => {
+              const hit = products[+c.dataset.product].join(" ").includes(q);
+              c.hidden = !hit;
+              if (hit) n++;
+            });
+            modal("検索結果", `<p>「${esc(q)}」：${n}件。商品欄に結果を表示しました。</p>`);
+          };
+        },
+        "all-products"() {
+          document.querySelectorAll("[data-product]").forEach((c) => (c.hidden = false));
+          document.querySelector("#products").scrollIntoView();
+        },
+        story() {
+          modal("土を育て、季節に寄り添う", "<p>そらいろ農園のストーリー（架空のサンプル）</p><p>朝の畑で土に触れ、野菜の様子を見る。一つひとつの変化を大切にしながら、旬のおいしさを届けています。</p><p>生産者プロフィールから商品や体験へつながる構成を想定しています。</p>");
+        },
+      };
+      window.addEventListener("popstate", () => {
+        state.busy = false;
+        state.draft = {};
+        render();
+      });
+      if (new URLSearchParams(routeURL().search).get("purpose") === "producer") state.purpose = "producer";
+      render();
+      if (routeURL().hash) setTimeout(() => document.getElementById(routeURL().hash.slice(1))?.scrollIntoView(), 0);
+    </script>
+  </body>
+</html>

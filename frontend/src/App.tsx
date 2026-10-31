@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import AuthWrapper from './components/AuthWrapper';
 import DashboardLayout from './Layouts/DashboardLayout';
 import MainLayout from './Layouts/MainLayout';
+import AuthLayout from "./Layouts/AuthLayout";
 
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import CartPage from './pages/CartPage';
@@ -74,8 +75,11 @@ function App() {
       <Route element={<AuthWrapper />}>
         {/* 一般ユーザー・共通 */}
         <Route element={<MainLayout />}>
-          <Route path="/signin" element={<SigninPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route element={<AuthLayout />}>
+            <Route path="/signin" element={<SigninPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+          </Route>
+          
           <Route path="/" element={<HomePage />} />
 
           <Route path="/products" element={<ProductListPage />} />
