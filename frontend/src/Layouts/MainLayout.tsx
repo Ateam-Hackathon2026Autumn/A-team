@@ -1,14 +1,17 @@
-import { Outlet } from 'react-router';
+import { Outlet } from "react-router";
+import Header from "../components/layout/Header";
+import Footer from "../components/layout/Footer";
 
-// 一般ユーザー向けの共通レイアウト（ヘッダー・フッターは今後追加）
-function MainLayout() {
+export default function MainLayout() {
   return (
-    <div className="min-h-dvh bg-[#f4f5f0] text-[#26332b]">
-      <main>
+    <div className="flex min-h-dvh flex-col bg-marche-ivory text-marche-ink">
+      <Header />
+
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1">
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 }
-
-export default MainLayout;
