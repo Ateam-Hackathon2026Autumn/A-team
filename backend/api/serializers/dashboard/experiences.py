@@ -189,6 +189,7 @@ class DashboardExperienceCreateSerializer(serializers.Serializer):
     """体験登録時の入力検証。"""
 
     prefecture_id = serializers.IntegerField(
+        required=False,
         min_value=1,
         error_messages={
             "required": "開催地の都道府県を指定してください。",
@@ -471,6 +472,16 @@ class DashboardExperienceDeleteResponseSerializer(serializers.Serializer):
 class DashboardExperienceApplicationQuerySerializer(
     DashboardPaginationSerializer
 ):
+
+    slot_id = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        error_messages={
+            "invalid": "予約枠IDは整数で指定してください。",
+            "min_value": "予約枠IDは1以上で指定してください。",
+        },
+    )
+    
     """体験申込者一覧のクエリ検証。"""
 
     status = serializers.ChoiceField(
