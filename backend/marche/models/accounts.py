@@ -1,3 +1,5 @@
+# 会員情報・ログイン認証・エリア・都道府県・配送先住所を管理するモデル定義
+
 """アカウント・住所マスタ"""
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -7,10 +9,22 @@ from .base import TimeStampedModel
 
 
 class UserManager(BaseUserManager):
-    """email でログインするためのマネージャー（username を使わない）"""
+    """ ユーザー登録の共通処理 / email でログインするためのマネージャー（username を使わない）
+        ユーザーを作成する処理を担当
+    """
 
     use_in_migrations = True
+    
+    @classmethod
+    def normalize_email(cls, email):
+        """前後の空白を除き、全体を小文字にする（大文字・小文字を区別しない）"""
+        return (email or "").strip().lower()
 
+    def get_by_natural_key(self, username):
+        # ログイン時もメールアドレスを同じルールで正規化してから探す
+        return self.get(**{self.model.USERNAME_FIELD: self.normalize_email(username)})
+    
+    # ユーザーを作成する共通メソッド
     def _create_user(self, email, password, **extra):
         if not email:
             raise ValueError("メールアドレスは必須です")
@@ -19,11 +33,13 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+    # 一般ユーザーを作成する
     def create_user(self, email, password=None, **extra):
         extra.setdefault("is_staff", False)
         extra.setdefault("is_superuser", False)
         return self._create_user(email, password, **extra)
 
+    # 管理者ユーザーを作成する
     def create_superuser(self, email, password=None, **extra):
         extra.setdefault("is_staff", True)
         extra.setdefault("is_superuser", True)
@@ -32,7 +48,7 @@ class UserManager(BaseUserManager):
         return self._create_user(email, password, **extra)
 
 class User(AbstractUser):
-    """ユーザー
+    """会員情報・ログイン情報(ユーザー)
 
     AbstractUser を継承し、username を外して email でログインする。
     消費者・生産者・運営の全員がここに1行持つ。生産者かどうかは producer（producers の行）の有無、
@@ -82,6 +98,30 @@ class User(AbstractUser):
         blank=True,
         verbose_name="会員のプロフィール画像",
     )
+    
+    # メールアドレスを確認した日時。未確認なら空
+    email_verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="メールアドレス確認日時",
+    )
+
+    # 住まいの都道府県（任意）
+    prefecture = models.ForeignKey(
+        "marche.Prefecture",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="users",
+        verbose_name="都道府県",
+    )
+
+    # 興味のあること（vegetables / fruits / seafood / experiences / short_term_jobs / farming）
+    interests = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="興味のあること",
+    )
 
     # 退会日時。利用停止と退会を見分ける
     deleted_at = models.DateTimeField(
@@ -111,10 +151,15 @@ class User(AbstractUser):
     @property
     def is_producer(self):
         return hasattr(self, "producer")
+    
+    # メール認証日時が登録されていれば True、登録されていなければ False を返す
+    @property
+    def email_verified(self):
+        return self.email_verified_at is not None
 
 
 class Area(models.Model):
-    """エリア
+    """北海道・東北など7つのエリア
 
     マスタ（7行）。体験・求人の「エリアから探す」のタグ一覧。"""
 
@@ -146,7 +191,7 @@ class Area(models.Model):
 
 
 class Prefecture(models.Model):
-    """都道府県
+    """47都道府県
 
     マスタ（47行）。エリアはここから引くので、producers などに area_id は持たせない。"""
 
@@ -179,7 +224,7 @@ class Prefecture(models.Model):
 
 
 class Address(TimeStampedModel):
-    """お届け先
+    """会員のお届け先住所
 
     会員の住所録。1人で複数件（自宅・実家・贈答先）持てる。注文時は値を orders にコピーするので、編集・削除しても過去の注文は変わらない。"""
 
@@ -240,3 +285,46 @@ class Address(TimeStampedModel):
         db_table = "addresses"
         verbose_name = "お届け先"
         verbose_name_plural = "お届け先"
+        
+        
+        
+class UserConsent(TimeStampedModel):
+    """規約への同意履歴
+
+    新規登録などで、どの版の利用規約・プライバシーポリシーに同意したかを1行ずつ残す。"""
+
+    class DocumentType(models.TextChoices):
+        TERMS = "terms", "利用規約"
+        PRIVACY_POLICY = "privacy_policy", "プライバシーポリシー"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="consents",
+        verbose_name="同意した会員",
+    )
+
+    # terms（利用規約）/ privacy_policy（プライバシーポリシー）
+    document_type = models.CharField(
+        max_length=20,
+        choices=DocumentType.choices,
+        verbose_name="規約の種類",
+    )
+
+    # 同意した版（画面に表示した版）
+    version = models.CharField(
+        max_length=30,
+        verbose_name="版",
+    )
+
+    agreed_at = models.DateTimeField(
+        verbose_name="同意日時",
+    )
+
+    class Meta:
+        db_table = "user_consents"
+        verbose_name = "規約への同意"
+        verbose_name_plural = "規約への同意"
+        indexes = [
+            models.Index(fields=["user", "document_type"], name="idx_user_consents_user_doc"),
+        ]
