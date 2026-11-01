@@ -1,6 +1,35 @@
-"""api/services/cart.py の単体テスト
+"""api/services/cart.py の単体テスト"""
+from django.test import TestCase
 
-API を通さずに関数を直接呼び、境界値（0件・上限・端数）を確認する
-  - 会員は user_id、ゲストは session_key でカートを引く
-  - ログイン・新規登録時に、控えておいたゲストの session_key の行を user_id に付け替える（同じ商品は数量合算、上限10）
-"""
+from marche.models import CartItem
+
+from ...services.cart import merge_guest_cart
+from ..utils import make_product, make_user
+
+
+class MergeGuestCartTests(TestCase):
+    def setUp(self):
+        self.user = make_user()
+        self.other = make_user(email="other@example.com")
+        self.carrot = make_product(name="にんじん")
+        self.onion = make_product(name="たまねぎ")
+
+    def test_moves_items_and_sums_same_product_up_to_10(self):
+        CartItem.objects.create(user=self.user, product=self.carrot, quantity=7)
+        CartItem.objects.create(session_key="guest", product=self.carrot, quantity=6)
+        CartItem.objects.create(session_key="guest", product=self.onion, quantity=1)
+
+        self.assertEqual(merge_guest_cart("guest", self.user), 2)
+        cart = {i.product_id: i.quantity for i in CartItem.objects.filter(user=self.user)}
+        self.assertEqual(cart, {self.carrot.id: 10, self.onion.id: 1})
+        self.assertFalse(CartItem.objects.filter(session_key="guest").exists())
+
+    def test_other_sessions_and_users_are_untouched(self):
+        CartItem.objects.create(session_key="another-guest", product=self.carrot, quantity=1)
+        CartItem.objects.create(user=self.other, product=self.carrot, quantity=3)
+        merge_guest_cart("guest", self.user)
+        self.assertEqual(CartItem.objects.filter(session_key="another-guest").count(), 1)
+        self.assertEqual(CartItem.objects.get(user=self.other).quantity, 3)
+
+    def test_no_session_key(self):
+        self.assertEqual(merge_guest_cart(None, self.user), 0)
