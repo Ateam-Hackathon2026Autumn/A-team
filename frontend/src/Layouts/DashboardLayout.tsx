@@ -52,22 +52,31 @@ function DashboardLayout() {
 
   return (
     // 画面全体に固定してこの中でスクロールする
-    <div className="fixed inset-0 overflow-y-auto bg-marche-canvas text-marche-ink md:flex">
-      <aside className="border-b border-marche-line bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0">
-        <Link
-          to="/dashboard"
-          className="flex items-center gap-3 px-5 pt-4 pb-3 md:pt-6 md:pb-5"
-        >
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-marche-green text-base font-bold text-white">
-            つ
-          </span>
-          <span className="leading-tight">
-            <span className="block text-sm font-bold">つながるマルシェ</span>
-            <span className="block text-xs text-marche-muted">
-              生産者管理画面
+    <div className="fixed inset-0 overflow-y-auto bg-marche-canvas font-sans text-[15px] leading-[1.8] text-marche-ink md:flex">
+      <aside className="box-border border-0 border-b border-solid border-marche-line bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0">
+        {/* スマホ: ロゴの右に一般サイトへ戻るリンク（PC ではサイドバー下部に表示） */}
+        <div className="flex items-center justify-between gap-3 pr-4 md:block md:pr-0">
+          <Link
+            to="/dashboard"
+            className="flex min-w-0 items-center gap-3 px-5 pt-4 pb-3 text-marche-ink no-underline md:pt-6 md:pb-5"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-marche-green text-base font-bold text-white">
+              つ
             </span>
-          </span>
-        </Link>
+            <span className="leading-tight">
+              <span className="block text-sm font-bold">つながるマルシェ</span>
+              <span className="block text-xs text-marche-muted">
+                生産者管理画面
+              </span>
+            </span>
+          </Link>
+          <Link
+            to="/"
+            className="shrink-0 rounded-full border border-solid border-marche-line px-3 py-1.5 text-xs font-bold text-marche-green no-underline hover:bg-marche-canvas hover:text-marche-green md:hidden">
+            サイトを見る
+          </Link>
+        </div>
+
 
         <nav
           aria-label="生産者メニュー"
