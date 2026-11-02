@@ -18,7 +18,7 @@ type NativeButtonProps = CommonProps & { to?: undefined } & Omit<
 type Props = LinkButtonProps | NativeButtonProps;
 
 const baseClassName =
-  'inline-flex items-center justify-center gap-2 rounded-full border font-bold transition-colors disabled:pointer-events-none disabled:opacity-50';
+  'box-border inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-solid font-bold no-underline transition-colors [font-family:inherit] disabled:pointer-events-none disabled:opacity-50';
 
 const variantClassNames = {
   primary: 'border-marche-green bg-marche-green text-white hover:bg-marche-green-dark',
