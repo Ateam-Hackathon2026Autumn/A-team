@@ -599,7 +599,7 @@ function DashboardProductForm({
                 aria-label={`写真${index + 1}を削除`}
                 disabled={image.status === 'uploading'}
                 onClick={() => removeImage(image)}
-                className="absolute top-1.5 right-1.5 box-border grid size-7 cursor-pointer place-items-center rounded-full border-0 bg-white/90 p-0 text-sm font-bold text-marche-ink [font-family:inherit] disabled:cursor-not-allowed disabled:opacity-50"
+                className="absolute top-1.5 right-1.5 box-border grid size-7 cursor-pointer place-items-center rounded-full border-0 bg-white/90 p-0 text-sm font-bold text-marche-ink font-[inherit] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 ×
               </button>
@@ -613,7 +613,7 @@ function DashboardProductForm({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 aria-describedby={errors.images === undefined ? undefined : 'product-images-error'}
-                className={`box-border flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-marche-canvas p-0 text-sm font-bold text-marche-green [font-family:inherit] hover:bg-marche-sage ${errors.images === undefined ? 'border-marche-green/40' : 'border-marche-red'}`}
+                className={`box-border flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-marche-canvas p-0 text-sm font-bold text-marche-green font-[inherit] hover:bg-marche-sage ${errors.images === undefined ? 'border-marche-green/40' : 'border-marche-red'}`}
               >
                 <PlusIcon />
                 写真を追加

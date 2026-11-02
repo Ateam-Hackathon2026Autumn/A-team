@@ -179,7 +179,7 @@ function DashboardProductRow({
             onChange={(event) => setStockDraft(event.target.value)}
             onBlur={commitStockDraft}
             onKeyDown={handleStockKeyDown}
-            className="box-border w-14 rounded-lg border border-solid border-marche-line bg-white py-1.5 text-center text-base font-bold text-marche-ink [font-family:inherit] disabled:opacity-60"
+            className="box-border w-14 rounded-lg border border-solid border-marche-line bg-white py-1.5 text-center text-base font-bold text-marche-ink font-[inherit] disabled:opacity-60"
           />
           <button
             type="button"

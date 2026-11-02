@@ -172,7 +172,7 @@ function StatCardItem({ card }: { card: StatCard }) {
 
 function StatCardSkeleton() {
   return (
-    <div className="h-[118px] animate-pulse box-border rounded-2xl border border-solid border-marche-line bg-white p-4 sm:p-5">
+    <div className="h-29.5 animate-pulse box-border rounded-2xl border border-solid border-marche-line bg-white p-4 sm:p-5">
       <div className="h-4 w-24 rounded bg-marche-canvas" />
       <div className="mt-3 h-7 w-20 rounded bg-marche-canvas" />
       <div className="mt-2 h-3 w-16 rounded bg-marche-canvas" />
