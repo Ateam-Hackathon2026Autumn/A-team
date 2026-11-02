@@ -93,6 +93,14 @@ function PlusIcon(props: IconProps) {
   );
 }
 
+function MinusIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12h14" />
+    </Icon>
+  );
+}
+
 function ChevronRightIcon(props: IconProps) {
   return (
     <Icon {...props}>
@@ -106,6 +114,7 @@ export {
   ExperienceIcon,
   HomeIcon,
   JobIcon,
+  MinusIcon,
   PlusIcon,
   ProductIcon,
   ProfileIcon,
