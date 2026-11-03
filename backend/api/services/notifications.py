@@ -1,13 +1,32 @@
 """サイト内の通知とメールをまとめて送る
 
-view から呼ぶ業務ロジック。複数のAPI・バッチで同じ処理を使うものをここにまとめる。
+- notify(): notifications に1行登録し、トランザクションが確定したらメールも送る
+  - 処理がロールバックされたら、通知も消えてメールも送られない
+  - メールの送信に失敗しても、処理自体は成功として扱う（mail.send がログに残す）
+  - 退会・停止済み（is_active=False）の会員には何もしない
+- notification_type: new_order / shipped / cancel_requested / canceled / application_result / reservation
 
-書くもの:
-  - notifications に1行登録し、同時にメールを送る（ゲストにはメールのみ）
-  - notification_type: new_order / shipped / cancel_requested / canceled / application_result / reservation
+これから追加するもの:
+  - ゲストへのメールのみの送信（注文）
   - チャットは notifications に入れない。相手がそのやり取りに未読を持っていないときだけメール
   - 止められるメール（メッセージ・お気に入りの新着・お知らせ）だけ notification_settings を見る
 
-使う場所:
-  - 注文・発送・キャンセル・予約・応募結果・レビュー返信などの各処理
+使う場所: 予約枠の中止（実装済み）、注文・発送・キャンセル・予約・応募結果などの各処理
 """
+from django.db import transaction
+
+from marche.models import Notification
+
+from . import mail
+
+
+def notify(user, notification_type, title, body, link_path=None):
+    """通知を1件作り、同じ内容のメールを送る。作った Notification を返す（送らなかったら None）"""
+    if not user.is_active:
+        return None
+    notification = Notification.objects.create(
+        user=user, notification_type=notification_type, title=title, body=body, link_path=link_path,
+    )
+    greeting = f"{user.last_name} {user.first_name} 様\n\n"
+    transaction.on_commit(lambda: mail.send(user.email, title, greeting + body))
+    return notification

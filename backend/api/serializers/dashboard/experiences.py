@@ -1,731 +1,228 @@
+"""体験管理・予約枠・申込者 のシリアライザー
+
+使う view: api/views/dashboard/experiences.py
+レスポンスの形は Notion の API 定義、カラム名は claude/er-diagram.md に合わせる。
+キーは Python ではスネークケースで書き、レスポンス時にキャメルケースへ自動変換される。
+
+- リクエストの検証: StrictSerializer / QuerySerializer を継承（定義にない項目・重複したクエリは 400）
+- 入力エラーは 400（項目ごとのメッセージ）。状態の衝突（409）は view で判定する
+"""
+from django.utils import timezone
 from rest_framework import serializers
 
-# ============================================================
-# 共通設定
-# ============================================================
+from marche.models import Experience, ExperienceSlot, Prefecture, PublishStatus, Reservation
 
-PUBLISH_STATUS_CHOICES = (
-    "draft",
-    "public",
-    "private",
-    "suspended",
-)
+from ...common.pagination import PageQuerySerializer
+from ...common.serializers import AwareDateTimeField, StrictSerializer
 
-SLOT_STATUS_CHOICES = (
-    "open",
-    "closed",
-    "canceled",
-)
+MAX_INT = 2_147_483_647
+# 生産者が自分で選べる公開状態（suspended は運営だけが付ける）
+PRODUCER_PUBLISH_CHOICES = [PublishStatus.DRAFT, PublishStatus.PUBLIC, PublishStatus.PRIVATE]
 
-RESERVATION_STATUS_CHOICES = (
-    "applied",
-    "confirmed",
-    "canceled",
-    "attended",
-)
 
 # ============================================================
-# 共通バリデーション
+# 体験一覧・登録・詳細・更新
 # ============================================================
 
-class DashboardPaginationSerializer(serializers.Serializer):
-    """一覧APIのページネーション用クエリ。"""
+class ExperienceListQuerySerializer(PageQuerySerializer):
+    """GET /dashboard/experiences のクエリ。publishStatus 省略で全状態"""
 
-    page = serializers.IntegerField(
-        required=False,
-        default=1,
-        min_value=1,
-        error_messages={
-            "invalid": "ページ番号は整数で指定してください。",
-            "min_value": "ページ番号は1以上で指定してください。",
-        },
-    )
+    publish_status = serializers.ChoiceField(choices=PublishStatus.choices, required=False)
 
-    page_size = serializers.IntegerField(
-        required=False,
-        default=20,
-        min_value=1,
-        max_value=100,
-        error_messages={
-            "invalid": "1ページあたりの件数は整数で指定してください。",
-            "min_value": "1ページあたりの件数は1以上で指定してください。",
-            "max_value": "1ページあたりの件数は100以下で指定してください。",
-        },
-    )
 
-class DashboardExperienceIdSerializer(serializers.Serializer):
-    """体験IDの検証。"""
+class ExperienceSummarySerializer(serializers.ModelSerializer):
+    """体験一覧の1件。slot_count・application_count・next_start_at は view の annotate で付ける"""
 
-    experience_id = serializers.IntegerField(
-        min_value=1,
-        error_messages={
-            "required": "体験IDは必須です。",
-            "invalid": "体験IDは整数で指定してください。",
-            "min_value": "体験IDは1以上で指定してください。",
-        },
-    )
+    slot_count = serializers.IntegerField()
+    application_count = serializers.IntegerField()
+    next_start_at = serializers.DateTimeField(allow_null=True)
 
-class DashboardExperienceSlotIdSerializer(serializers.Serializer):
-    """予約枠IDの検証。"""
+    class Meta:
+        model = Experience
+        fields = ["id", "title", "publish_status", "prefecture_id", "price_adult", "price_child",
+                  "slot_count", "application_count", "next_start_at", "created_at", "updated_at"]
 
-    slot_id = serializers.IntegerField(
-        min_value=1,
-        error_messages={
-            "required": "予約枠IDは必須です。",
-            "invalid": "予約枠IDは整数で指定してください。",
-            "min_value": "予約枠IDは1以上で指定してください。",
-        },
-    )
 
-# ============================================================
-# 体験一覧
-# GET /api/v1/dashboard/experiences
-# ============================================================
+class FlowItemSerializer(StrictSerializer):
+    """当日の流れの1行 {time: "10:00", text: "集合"}"""
 
-class DashboardExperienceListQuerySerializer(
-    DashboardPaginationSerializer
-):
-    """体験一覧のクエリパラメータ。"""
+    time = serializers.RegexField(r"^([01]\d|2[0-3]):[0-5]\d$", error_messages={
+        "invalid": "時刻は HH:MM（例: 09:30）で入力してください。"})
+    text = serializers.CharField(max_length=500)
 
-    search = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=100,
-        error_messages={
-            "max_length": "検索キーワードは100文字以内で入力してください。",
-        },
-    )
 
-    publish_status = serializers.ChoiceField(
-        required=False,
-        choices=PUBLISH_STATUS_CHOICES,
-        error_messages={
-            "invalid_choice": (
-                "公開状態は draft、public、private、suspended の"
-                "いずれかを指定してください。"
-            ),
-        },
-    )
+class ExperienceWriteSerializer(StrictSerializer):
+    """体験の登録（POST）・更新（PATCH、partial=True で使う）の入力
 
-class DashboardExperienceImageSerializer(serializers.Serializer):
-    """体験画像のレスポンス。"""
-
-    id = serializers.IntegerField(read_only=True)
-    image = serializers.CharField(read_only=True)
-    sort_order = serializers.IntegerField(read_only=True)
-
-class DashboardExperienceSlotSummarySerializer(serializers.Serializer):
-    """体験に関連する開催日程のレスポンス。"""
-
-    id = serializers.IntegerField(read_only=True)
-    start_at = serializers.DateTimeField(read_only=True)
-    duration_min = serializers.IntegerField(read_only=True)
-    capacity = serializers.IntegerField(read_only=True)
-    reserved_count = serializers.IntegerField(read_only=True)
-    status = serializers.CharField(read_only=True)
-
-class DashboardExperienceResponseSerializer(serializers.Serializer):
-    """体験情報のレスポンス形式。
-
-    ER図の experiences テーブルに対応する。
+    - 文字列は前後の空白を除き、空白だけなら 400（DRF の CharField の初期設定）
+    - prefecture_id は省略すると view で生産者の都道府県にする。存在しない ID は 400
+    - images は画像アップロード（ステップ12）ができるまで空配列だけ受け付ける
     """
 
-    id = serializers.IntegerField(read_only=True)
-    producer_id = serializers.IntegerField(read_only=True)
-    prefecture_id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(max_length=100)
+    prefecture_id = serializers.PrimaryKeyRelatedField(
+        source="prefecture", queryset=Prefecture.objects.all(), required=False)
+    description = serializers.CharField(max_length=10000)
+    place = serializers.CharField(max_length=200)
+    price_adult = serializers.IntegerField(min_value=0, max_value=MAX_INT)
+    price_child = serializers.IntegerField(min_value=0, max_value=MAX_INT, required=False, allow_null=True)
+    age_condition = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
+    family_ok = serializers.BooleanField(required=False)
+    beginner_ok = serializers.BooleanField(required=False)
+    flow = serializers.ListField(child=FlowItemSerializer(), max_length=50, required=False, allow_null=True)
+    belongings = serializers.ListField(child=serializers.CharField(max_length=500), max_length=50,
+                                       required=False, allow_null=True)
+    notes = serializers.ListField(child=serializers.CharField(max_length=500), max_length=50,
+                                  required=False, allow_null=True)
+    cancel_policy = serializers.CharField(max_length=10000)
+    publish_status = serializers.ChoiceField(choices=PRODUCER_PUBLISH_CHOICES, required=False)
+    images = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
 
-    title = serializers.CharField(read_only=True)
-    description = serializers.CharField(read_only=True)
-    place = serializers.CharField(read_only=True)
+    def validate_age_condition(self, value):
+        return value or None  # 空文字は「条件なし」として null で保存する
 
-    price_adult = serializers.IntegerField(read_only=True)
-    price_child = serializers.IntegerField(
-        read_only=True,
-        allow_null=True,
-    )
-
-    age_condition = serializers.CharField(
-        read_only=True,
-        allow_null=True,
-    )
-
-    family_ok = serializers.BooleanField(read_only=True)
-    beginner_ok = serializers.BooleanField(read_only=True)
-
-    flow = serializers.JSONField(read_only=True, allow_null=True)
-    belongings = serializers.JSONField(read_only=True, allow_null=True)
-    notes = serializers.JSONField(read_only=True, allow_null=True)
-
-    cancel_policy = serializers.CharField(read_only=True)
-    publish_status = serializers.CharField(read_only=True)
-
-    created_at = serializers.DateTimeField(read_only=True)
-    updated_at = serializers.DateTimeField(read_only=True)
-
-    images = DashboardExperienceImageSerializer(
-        many=True,
-        read_only=True,
-    )
-
-    slots = DashboardExperienceSlotSummarySerializer(
-        many=True,
-        read_only=True,
-    )
-
-class DashboardExperienceListResponseSerializer(serializers.Serializer):
-    """体験一覧のレスポンス。"""
-
-    results = DashboardExperienceResponseSerializer(many=True)
-    total = serializers.IntegerField(min_value=0)
-    page = serializers.IntegerField(min_value=1)
-    page_size = serializers.IntegerField(min_value=1)
-
-# ============================================================
-# 体験登録
-# POST /api/v1/dashboard/experiences
-# ============================================================
-
-class DashboardExperienceCreateSerializer(serializers.Serializer):
-    """体験登録時の入力検証。"""
-
-    prefecture_id = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        error_messages={
-            "required": "開催地の都道府県を指定してください。",
-            "invalid": "都道府県IDは整数で指定してください。",
-            "min_value": "都道府県IDは1以上で指定してください。",
-        },
-    )
-
-    title = serializers.CharField(
-        max_length=100,
-        error_messages={
-            "required": "体験タイトルを入力してください。",
-            "blank": "体験タイトルを入力してください。",
-            "max_length": "体験タイトルは100文字以内で入力してください。",
-        },
-    )
-
-    description = serializers.CharField(
-        error_messages={
-            "required": "体験内容を入力してください。",
-            "blank": "体験内容を入力してください。",
-        },
-    )
-
-    place = serializers.CharField(
-        max_length=200,
-        error_messages={
-            "required": "開催場所・集合場所を入力してください。",
-            "blank": "開催場所・集合場所を入力してください。",
-            "max_length": "開催場所は200文字以内で入力してください。",
-        },
-    )
-
-    price_adult = serializers.IntegerField(
-        min_value=0,
-        error_messages={
-            "required": "大人1名の料金を入力してください。",
-            "invalid": "大人料金は整数で入力してください。",
-            "min_value": "大人料金は0円以上で指定してください。",
-        },
-    )
-
-    price_child = serializers.IntegerField(
-        required=False,
-        allow_null=True,
-        min_value=0,
-        error_messages={
-            "invalid": "子ども料金は整数で入力してください。",
-            "min_value": "子ども料金は0円以上で指定してください。",
-        },
-    )
-
-    age_condition = serializers.CharField(
-        required=False,
-        allow_null=True,
-        allow_blank=True,
-        max_length=50,
-        error_messages={
-            "max_length": "年齢条件は50文字以内で入力してください。",
-        },
-    )
-
-    family_ok = serializers.BooleanField(
-        required=False,
-        default=False,
-        error_messages={
-            "required": "親子参加の可否を指定してください。",
-            "invalid": "親子参加の可否は真偽値で指定してください。",
-        },
-    )
-
-    beginner_ok = serializers.BooleanField(
-        required=False,
-        default=False,
-        error_messages={
-            "required": "初心者歓迎の可否を指定してください。",
-            "invalid": "初心者歓迎の可否は真偽値で指定してください。",
-        },
-    )
-
-    flow = serializers.JSONField(
-        required=False,
-        allow_null=True,
-        error_messages={
-            "invalid": "当日の流れはJSON形式で指定してください。",
-        },
-    )
-
-    belongings = serializers.JSONField(
-        required=False,
-        allow_null=True,
-        error_messages={
-            "invalid": "持ち物はJSON形式で指定してください。",
-        },
-    )
-
-    notes = serializers.JSONField(
-        required=False,
-        allow_null=True,
-        error_messages={
-            "invalid": "注意事項はJSON形式で指定してください。",
-        },
-    )
-
-    cancel_policy = serializers.CharField(
-        error_messages={
-            "required": "キャンセルポリシーを入力してください。",
-            "blank": "キャンセルポリシーを入力してください。",
-        },
-    )
-
-    publish_status = serializers.ChoiceField(
-        required=False,
-        default="draft",
-        choices=PUBLISH_STATUS_CHOICES,
-        error_messages={
-            "invalid_choice": (
-                "公開状態は draft、public、private、suspended の"
-                "いずれかを指定してください。"
-            ),
-        },
-    )
-
-    def validate_title(self, value):
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError(
-                "体験タイトルを入力してください。"
-            )
-
+    def validate_images(self, value):
+        if value:
+            raise serializers.ValidationError("画像の登録は準備中です。空の配列で送ってください。")
         return value
 
-    def validate_description(self, value):
-        value = value.strip()
+    def validate(self, attrs):
+        attrs.pop("images", None)  # 準備中のため保存しない
+        if self.partial and not self.initial_data:
+            raise serializers.ValidationError("更新する項目を1つ以上指定してください。")
+        return attrs
 
-        if not value:
-            raise serializers.ValidationError(
-                "体験内容を入力してください。"
-            )
 
-        return value
+class ExperienceImageSerializer(serializers.Serializer):
+    """体験画像 {id, imageKey, url, sortOrder}"""
 
-    def validate_place(self, value):
-        value = value.strip()
+    id = serializers.IntegerField()
+    image_key = serializers.CharField(source="image.name")
+    url = serializers.CharField(source="image.url")
+    sort_order = serializers.IntegerField()
 
-        if not value:
-            raise serializers.ValidationError(
-                "開催場所・集合場所を入力してください。"
-            )
 
-        return value
+class ExperienceDetailSerializer(serializers.ModelSerializer):
+    """体験詳細（編集画面用の全項目と画像）。予約枠は予約枠一覧APIで取る"""
 
-    def validate_cancel_policy(self, value):
-        value = value.strip()
+    images = ExperienceImageSerializer(source="experience_images", many=True)
 
-        if not value:
-            raise serializers.ValidationError(
-                "キャンセルポリシーを入力してください。"
-            )
+    class Meta:
+        model = Experience
+        fields = ["id", "producer_id", "title", "prefecture_id", "description", "place", "price_adult",
+                  "price_child", "age_condition", "family_ok", "beginner_ok", "flow", "belongings", "notes",
+                  "cancel_policy", "publish_status", "images", "created_at", "updated_at"]
 
-        return value
 
-    def validate_flow(self, value):
-        if value is not None and not isinstance(value, list):
-            raise serializers.ValidationError(
-                "当日の流れは配列形式で指定してください。"
-            )
+class ExperienceWriteResponseSerializer(serializers.ModelSerializer):
+    """登録・更新のレスポンス"""
 
-        if value is not None:
-            for index, item in enumerate(value):
-                if not isinstance(item, dict):
-                    raise serializers.ValidationError(
-                        f"当日の流れの{index + 1}件目はオブジェクト形式で"
-                        "指定してください。"
-                    )
+    class Meta:
+        model = Experience
+        fields = ["id", "producer_id", "publish_status", "created_at", "updated_at"]
 
-                if "time" not in item or "text" not in item:
-                    raise serializers.ValidationError(
-                        f"当日の流れの{index + 1}件目には"
-                        "time と text が必要です。"
-                    )
-
-        return value
-
-    def validate_belongings(self, value):
-        if value is not None and not isinstance(value, list):
-            raise serializers.ValidationError(
-                "持ち物は配列形式で指定してください。"
-            )
-
-        return value
-
-    def validate_notes(self, value):
-        if value is not None and not isinstance(value, list):
-            raise serializers.ValidationError(
-                "注意事項は配列形式で指定してください。"
-            )
-
-        return value
-
-# ============================================================
-# 体験更新
-# PATCH /api/v1/dashboard/experiences/:experienceId
-# ============================================================
-
-class DashboardExperienceUpdateSerializer(
-    DashboardExperienceCreateSerializer
-):
-    """体験更新時の入力検証。
-
-    PATCHなので全項目を必須にはしない。
-    """
-
-    prefecture_id = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        error_messages={
-            "invalid": "都道府県IDは整数で指定してください。",
-            "min_value": "都道府県IDは1以上で指定してください。",
-        },
-    )
-
-    title = serializers.CharField(
-        required=False,
-        max_length=100,
-        error_messages={
-            "blank": "体験タイトルを入力してください。",
-            "max_length": "体験タイトルは100文字以内で入力してください。",
-        },
-    )
-
-    description = serializers.CharField(
-        required=False,
-        error_messages={
-            "blank": "体験内容を入力してください。",
-        },
-    )
-
-    place = serializers.CharField(
-        required=False,
-        max_length=200,
-        error_messages={
-            "blank": "開催場所・集合場所を入力してください。",
-            "max_length": "開催場所は200文字以内で入力してください。",
-        },
-    )
-
-    price_adult = serializers.IntegerField(
-        required=False,
-        min_value=0,
-        error_messages={
-            "invalid": "大人料金は整数で入力してください。",
-            "min_value": "大人料金は0円以上で指定してください。",
-        },
-    )
-
-    cancel_policy = serializers.CharField(
-        required=False,
-        error_messages={
-            "blank": "キャンセルポリシーを入力してください。",
-        },
-    )
-
-# ============================================================
-# 体験削除
-# DELETE /api/v1/dashboard/experiences/:experienceId
-# ============================================================
-
-class DashboardExperienceDeleteResponseSerializer(serializers.Serializer):
-    """体験削除のレスポンス。"""
-
-    message = serializers.CharField()
 
 # ============================================================
 # 体験申込者一覧
-# GET /api/v1/dashboard/experiences/:experienceId/applications
 # ============================================================
 
-class DashboardExperienceApplicationQuerySerializer(
-    DashboardPaginationSerializer
-):
+class ApplicationQuerySerializer(PageQuerySerializer):
+    status = serializers.ChoiceField(choices=Reservation.Status.choices, required=False)
+    slot_id = serializers.IntegerField(min_value=1, required=False)
 
-    slot_id = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        error_messages={
-            "invalid": "予約枠IDは整数で指定してください。",
-            "min_value": "予約枠IDは1以上で指定してください。",
-        },
-    )
-    
-    """体験申込者一覧のクエリ検証。"""
 
-    status = serializers.ChoiceField(
-        required=False,
-        choices=RESERVATION_STATUS_CHOICES,
-        error_messages={
-            "invalid_choice": (
-                "予約状況は applied、confirmed、canceled、attended の"
-                "いずれかを指定してください。"
-            ),
-        },
-    )
+class ReservedSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExperienceSlot
+        fields = ["id", "start_at", "duration_min", "status"]
 
-class DashboardExperienceApplicationResponseSerializer(
-    serializers.Serializer
-):
-    """申込者1件分のレスポンス。
 
-    reservations と users をJOINして取得したデータを想定する。
+class ApplicationSerializer(serializers.ModelSerializer):
+    """申込者1件。メールアドレス・生年月日・Stripe の ID は返さない。
+
+    退会・停止済みの会員は氏名・代表者氏名・電話・メッセージを null にする（user.id と isActive=false は残す）。
     """
 
-    id = serializers.IntegerField(read_only=True)
-    reservation_no = serializers.CharField(read_only=True)
-    slot_id = serializers.IntegerField(read_only=True)
-    user_id = serializers.IntegerField(read_only=True)
+    slot = ReservedSlotSerializer()
+    user = serializers.SerializerMethodField()
 
-    adult_count = serializers.IntegerField(read_only=True)
-    child_count = serializers.IntegerField(read_only=True)
-    infant_count = serializers.IntegerField(read_only=True)
+    class Meta:
+        model = Reservation
+        fields = ["id", "reservation_no", "slot", "user", "adult_count", "child_count", "infant_count",
+                    "representative_name", "phone", "message", "total_amount", "status", "policy_agreed_at",
+                    "created_at"]
 
-    representative_name = serializers.CharField(read_only=True)
-    phone = serializers.CharField(read_only=True)
-    message = serializers.CharField(read_only=True, allow_null=True)
+    @staticmethod
+    def _is_active(user):
+        return user.is_active and user.deleted_at is None
 
-    total_amount = serializers.IntegerField(read_only=True)
-    status = serializers.CharField(read_only=True)
-    policy_agreed_at = serializers.DateTimeField(read_only=True)
+    def get_user(self, obj):
+        active = self._is_active(obj.user)
+        return {
+            "id": obj.user_id,
+            "last_name": obj.user.last_name if active else None,
+            "first_name": obj.user.first_name if active else None,
+            "is_active": active,
+        }
 
-    created_at = serializers.DateTimeField(read_only=True)
-    updated_at = serializers.DateTimeField(read_only=True)
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        if not self._is_active(obj.user):
+            for key in ("representative_name", "phone", "message"):
+                data[key] = None
+        return data
 
-class DashboardExperienceApplicationListResponseSerializer(
-    serializers.Serializer
-):
-    """体験申込者一覧のレスポンス。"""
-
-    results = DashboardExperienceApplicationResponseSerializer(many=True)
-    total = serializers.IntegerField(min_value=0)
-    page = serializers.IntegerField(min_value=1)
-    page_size = serializers.IntegerField(min_value=1)
 
 # ============================================================
-# 予約枠一覧
-# GET /api/v1/dashboard/experiences/:experienceId/slots
+# 予約枠
 # ============================================================
 
-class DashboardExperienceSlotQuerySerializer(
-    DashboardPaginationSerializer
-):
-    """予約枠一覧のクエリ検証。"""
+class SlotQuerySerializer(PageQuerySerializer):
+    status = serializers.ChoiceField(choices=ExperienceSlot.Status.choices, required=False)
 
+
+class SlotSerializer(serializers.ModelSerializer):
+    """予約枠。remainingCapacity は残りの人数（マイナスにはしない）"""
+
+    remaining_capacity = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExperienceSlot
+        fields = ["id", "experience_id", "start_at", "duration_min", "capacity", "status", "reserved_count",
+                  "remaining_capacity", "created_at", "updated_at"]
+
+    def get_remaining_capacity(self, obj):
+        return max(obj.capacity - obj.reserved_count, 0)
+
+
+def validate_future(value):
+    if value <= timezone.now():
+        raise serializers.ValidationError("開催日時は現在より後の日時を指定してください。")
+    return value
+
+
+class SlotCreateSerializer(StrictSerializer):
+    """予約枠の登録。新しく作るときの状態は open か closed（省略で open）"""
+
+    start_at = AwareDateTimeField(validators=[validate_future])
+    duration_min = serializers.IntegerField(min_value=1, max_value=10080)
+    capacity = serializers.IntegerField(min_value=1, max_value=MAX_INT)
     status = serializers.ChoiceField(
-        required=False,
-        choices=SLOT_STATUS_CHOICES,
-        error_messages={
-            "invalid_choice": (
-                "予約枠の状態は open、closed、canceled の"
-                "いずれかを指定してください。"
-            ),
-        },
-    )
+        choices=[ExperienceSlot.Status.OPEN, ExperienceSlot.Status.CLOSED], required=False,
+        default=ExperienceSlot.Status.OPEN)
 
-class DashboardExperienceSlotResponseSerializer(serializers.Serializer):
-    """開催日程・予約枠のレスポンス。"""
 
-    id = serializers.IntegerField(read_only=True)
-    experience_id = serializers.IntegerField(read_only=True)
+class SlotUpdateSerializer(StrictSerializer):
+    """予約枠の更新・中止。送った項目だけ変える。canceled（中止）は他の項目と同時に送れない"""
 
-    start_at = serializers.DateTimeField(read_only=True)
-    duration_min = serializers.IntegerField(read_only=True)
-    capacity = serializers.IntegerField(read_only=True)
-    reserved_count = serializers.IntegerField(read_only=True)
-
-    status = serializers.CharField(read_only=True)
-    created_at = serializers.DateTimeField(read_only=True)
-    updated_at = serializers.DateTimeField(read_only=True)
-
-class DashboardExperienceSlotListResponseSerializer(
-    serializers.Serializer
-):
-    """予約枠一覧のレスポンス。"""
-
-    results = DashboardExperienceSlotResponseSerializer(many=True)
-    total = serializers.IntegerField(min_value=0)
-    page = serializers.IntegerField(min_value=1)
-    page_size = serializers.IntegerField(min_value=1)
-
-# ============================================================
-# 予約枠登録
-# POST /api/v1/dashboard/experiences/:experienceId/slots
-# ============================================================
-
-class DashboardExperienceSlotCreateSerializer(serializers.Serializer):
-    """開催日程・予約枠の登録時の入力検証。"""
-
-    start_at = serializers.DateTimeField(
-        error_messages={
-            "required": "開催日時を入力してください。",
-            "invalid": "開催日時は正しい日時形式で指定してください。",
-        },
-    )
-
-    duration_min = serializers.IntegerField(
-        min_value=1,
-        error_messages={
-            "required": "所要時間を入力してください。",
-            "invalid": "所要時間は整数で入力してください。",
-            "min_value": "所要時間は1分以上で指定してください。",
-        },
-    )
-
-    capacity = serializers.IntegerField(
-        min_value=1,
-        error_messages={
-            "required": "定員を入力してください。",
-            "invalid": "定員は整数で入力してください。",
-            "min_value": "定員は1人以上で指定してください。",
-        },
-    )
-
-    status = serializers.ChoiceField(
-        required=False,
-        default="open",
-        choices=SLOT_STATUS_CHOICES,
-        error_messages={
-            "invalid_choice": (
-                "予約枠の状態は open、closed、canceled の"
-                "いずれかを指定してください。"
-            ),
-        },
-    )
-
-    def validate_start_at(self, value):
-        from django.utils import timezone
-
-        if value <= timezone.now():
-            raise serializers.ValidationError(
-                "開催日時は現在より後の日時を指定してください。"
-            )
-
-        return value
-
-    def validate(self, attrs):
-        # reserved_count は登録時にクライアントから受け取らない。
-        # DBの初期値としてView側で0を設定する。
-        return attrs
-
-# ============================================================
-# 予約枠更新・中止
-# PATCH /api/v1/dashboard/experiences/:experienceId/slots/:slotId
-# ============================================================
-
-class DashboardExperienceSlotUpdateSerializer(
-    serializers.Serializer
-):
-    """開催日程・予約枠の更新時の入力検証。"""
-
-    start_at = serializers.DateTimeField(
-        required=False,
-        error_messages={
-            "invalid": "開催日時は正しい日時形式で指定してください。",
-        },
-    )
-
-    duration_min = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        error_messages={
-            "invalid": "所要時間は整数で入力してください。",
-            "min_value": "所要時間は1分以上で指定してください。",
-        },
-    )
-
-    capacity = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        error_messages={
-            "invalid": "定員は整数で入力してください。",
-            "min_value": "定員は1人以上で指定してください。",
-        },
-    )
-
-    status = serializers.ChoiceField(
-        required=False,
-        choices=SLOT_STATUS_CHOICES,
-        error_messages={
-            "invalid_choice": (
-                "予約枠の状態は open、closed、canceled の"
-                "いずれかを指定してください。"
-            ),
-        },
-    )
-
-    def validate_start_at(self, value):
-        from django.utils import timezone
-
-        if value <= timezone.now():
-            raise serializers.ValidationError(
-                "開催日時は現在より後の日時を指定してください。"
-            )
-
-        return value
+    start_at = AwareDateTimeField(required=False, validators=[validate_future])
+    duration_min = serializers.IntegerField(min_value=1, max_value=10080, required=False)
+    capacity = serializers.IntegerField(min_value=1, max_value=MAX_INT, required=False)
+    status = serializers.ChoiceField(choices=ExperienceSlot.Status.choices, required=False)
 
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError(
-                "更新する項目を1つ以上指定してください。"
-            )
-
+            raise serializers.ValidationError("更新する項目を1つ以上指定してください。")
+        if attrs.get("status") == ExperienceSlot.Status.CANCELED and len(attrs) > 1:
+            raise serializers.ValidationError({"status": ["中止するときは、ほかの項目を同時に変更できません。"]})
         return attrs
-
-class DashboardExperienceSlotDeleteResponseSerializer(
-    serializers.Serializer
-):
-    """予約枠削除のレスポンス。"""
-
-    message = serializers.CharField()
-
-# """体験管理・予約枠・申込者 のシリアライザー
-
-# 使う view: api/views/dashboard/experiences.py
-
-# このファイルに書くもの（リクエストの検証用・レスポンスの形用）:
-#   - 体験一覧（生産者）（GET /api/v1/dashboard/experiences）: クエリ・入力の検証とレスポンス
-#   - 体験登録（POST /api/v1/dashboard/experiences）: 入力の検証とレスポンス
-#   - 体験詳細（生産者）（GET /api/v1/dashboard/experiences/:experienceId）: クエリ・入力の検証とレスポンス
-#   - 体験更新（PATCH /api/v1/dashboard/experiences/:experienceId）: 入力の検証とレスポンス
-#   - 体験削除（DELETE /api/v1/dashboard/experiences/:experienceId）: 入力の検証とレスポンス
-#   - 体験申込者一覧（GET /api/v1/dashboard/experiences/:experienceId/applications）: クエリ・入力の検証とレスポンス
-#   - 予約枠一覧（GET /api/v1/dashboard/experiences/:experienceId/slots）: クエリ・入力の検証とレスポンス
-#   - 予約枠登録（POST /api/v1/dashboard/experiences/:experienceId/slots）: 入力の検証とレスポンス
-#   - 予約枠更新・中止（PATCH /api/v1/dashboard/experiences/:experienceId/slots/:slotId）: 入力の検証とレスポンス
-#   - 予約枠削除（DELETE /api/v1/dashboard/experiences/:experienceId/slots/:slotId）: 入力の検証とレスポンス
-
-# 入力エラーは 400（項目ごとのメッセージ）。カラム名は claude/er-diagram.md に合わせる
-# """
-
