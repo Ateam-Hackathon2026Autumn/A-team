@@ -1,9 +1,43 @@
 """権限クラス
 
-書くもの:
-  - 生産者: ログイン中で自分の producers があり approval_status=approved（満たさなければ 403）
-  - 生産者が掲載停止中（producers.publish_status=suspended）のときにできない操作は 409
-  -   できる: 閲覧、プロフィール更新、配送設定、発送・キャンセル承認拒否、採用・不採用、予約枠の中止
-  -   できない: 商品・体験・求人・ストーリー・予約枠の登録・更新・削除、在庫更新、レビュー返信
-  - 管理者: is_staff かつ権限グループ（審査担当・CS・管理者）に属する（満たさなければ 403）
+生産者APIの共通チェック（api-spec「生産者APIの共通チェック」）:
+  - ログインしていなければ 401
+  - 自分の producers がない、または approval_status が approved でなければ 403（FORBIDDEN）
+  - 生産者が掲載停止中（producers.publish_status=suspended）のときにできない操作は 409（PRODUCER_SUSPENDED）
+      できる: 閲覧、プロフィール更新、配送設定、発送・キャンセル承認拒否、採用・不採用、予約枠の中止
+      できない: 商品・体験・求人・ストーリー・予約枠の登録・更新・削除、在庫更新、レビュー返信
+    → できない操作の view の中で ensure_producer_not_suspended(producer) を呼ぶ
+
+使い方:
+    class XxxView(APIView):
+        permission_classes = [IsApprovedProducer]
+
+        def post(self, request):
+            producer = request.user.producer
+            ensure_producer_not_suspended(producer)
+
+管理者の権限（is_staff かつ権限グループ）は管理者APIのステップで追加する。
 """
+from rest_framework.permissions import BasePermission
+
+from marche.models import Producer, PublishStatus
+
+from .exceptions import Conflict
+
+
+class IsApprovedProducer(BasePermission):
+    """承認済みの生産者だけ通す。未ログインは DRF が 401 にする"""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        producer = getattr(user, "producer", None)  # 生産者でなければ None
+        return producer is not None and producer.approval_status == Producer.ApprovalStatus.APPROVED
+
+
+def ensure_producer_not_suspended(producer):
+    """生産者が掲載停止中なら 409 にする（登録・更新・削除の前に呼ぶ）"""
+    if producer.publish_status == PublishStatus.SUSPENDED:
+        raise Conflict("PRODUCER_SUSPENDED",
+                        "掲載停止中のため、この操作はできません。運営にお問い合わせください。")

@@ -1,19 +1,21 @@
-"""生産者向け の URL
+"""生産者向けの URL（/api/v1/dashboard/...）
 
 api/urls/__init__.py から /api/v1/dashboard/ に include する。
-
-ここに並べる view:
-  - api/views/dashboard/summary.py
-  - api/views/dashboard/profile.py
-  - api/views/dashboard/shipping_settings.py
-  - api/views/dashboard/products.py
-  - api/views/dashboard/orders.py
-  - api/views/dashboard/experiences.py
-  - api/views/dashboard/jobs.py
-  - api/views/dashboard/story.py
-  - api/views/dashboard/reviews.py
-  - api/views/dashboard/sales.py
-  - api/views/dashboard/analytics.py
-
-パスは api-spec.md のとおり（末尾スラッシュなし）。:id は <int:...> にする
+パスは Notion の API 定義のとおり（末尾スラッシュなし）。:id は <int:...> にする。
 """
+from django.urls import path
+
+from ..views.dashboard import experiences
+
+urlpatterns = [
+    # 体験管理・予約枠・申込者
+    path("experiences", experiences.ExperienceListCreateView.as_view(), name="dashboard-experiences"),
+    path("experiences/<int:experience_id>", experiences.ExperienceDetailView.as_view(),
+          name="dashboard-experience-detail"),
+    path("experiences/<int:experience_id>/applications", experiences.ExperienceApplicationListView.as_view(),
+          name="dashboard-experience-applications"),
+    path("experiences/<int:experience_id>/slots", experiences.SlotListCreateView.as_view(),
+          name="dashboard-experience-slots"),
+    path("experiences/<int:experience_id>/slots/<int:slot_id>", experiences.SlotDetailView.as_view(),
+          name="dashboard-experience-slot-detail"),
+]

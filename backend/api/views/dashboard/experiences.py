@@ -1,716 +1,327 @@
+"""体験管理・予約枠・申込者（生産者ダッシュボード）
+
+認証: 承認済みの生産者（IsApprovedProducer。未ログイン 401、生産者でない・承認前は 403）
+掲載停止中の生産者: 閲覧と予約枠の「中止」だけできる。登録・更新・削除は 409 PRODUCER_SUSPENDED
+他の生産者の体験・別の体験の予約枠は 404（存在を隠す）
+
+このファイルの API（シーケンス図は Notion の同名の図）:
+    - 体験一覧（生産者）: GET    /api/v1/dashboard/experiences
+    - 体験登録:           POST   /api/v1/dashboard/experiences
+        ・prefectureId 省略時は生産者の都道府県。公開には画像1枚以上（409 IMAGE_REQUIRED）
+    - 体験詳細（生産者）: GET    /api/v1/dashboard/experiences/:experienceId
+    - 体験更新:           PATCH  /api/v1/dashboard/experiences/:experienceId
+        ・料金を変えても既存予約の total_amount は変えない
+        ・運営に掲載停止された体験は、内容の編集は可、publishStatus の変更は 409 CONTENT_SUSPENDED
+    - 体験削除:           DELETE /api/v1/dashboard/experiences/:experienceId
+        ・予約されたことがあれば 409 HAS_RESERVATIONS（非公開にしてもらう）。成功は 204
+    - 体験申込者一覧:     GET    /api/v1/dashboard/experiences/:experienceId/applications
+    - 予約枠一覧:         GET    /api/v1/dashboard/experiences/:experienceId/slots
+    - 予約枠登録:         POST   /api/v1/dashboard/experiences/:experienceId/slots
+        ・1件ずつ。startAt は未来。同じ開始日時の枠は 409 DUPLICATE_SLOT
+    - 予約枠更新・中止:   PATCH  /api/v1/dashboard/experiences/:experienceId/slots/:slotId
+        ・過去・中止済みは 409 SLOT_NOT_EDITABLE
+        ・予約があれば startAt・durationMin は変更不可（409 SLOT_TIME_LOCKED。同じ値は可）
+        ・capacity は reserved_count 以上（409 CAPACITY_BELOW_RESERVED）
+        ・canceled（中止）にすると申込済み・確定済みの予約を全キャンセルし、予約者に通知とメール
+            （元に戻せない。生産者が掲載停止中でも中止はできる）
+    - 予約枠削除:         DELETE /api/v1/dashboard/experiences/:experienceId/slots/:slotId
+        ・過去は 409 SLOT_NOT_EDITABLE、予約されたことがあれば 409 HAS_RESERVATIONS（中止にしてもらう）。成功は 204
+
+同時実行: 更新・削除は体験 → 予約枠 → 予約の順に select_for_update でロックしてから確かめる
+（予約申込API も同じ順でロックする）。
 """
-生産者ダッシュボード：体験管理API
-
-GET    /api/v1/dashboard/experiences/
-POST   /api/v1/dashboard/experiences/
-
-GET    /api/v1/dashboard/experiences/<experience_id>/
-PATCH  /api/v1/dashboard/experiences/<experience_id>/
-DELETE /api/v1/dashboard/experiences/<experience_id>/
-
-GET    /api/v1/dashboard/experiences/<experience_id>/applications/
-
-GET    /api/v1/dashboard/experiences/<experience_id>/slots/
-POST   /api/v1/dashboard/experiences/<experience_id>/slots/
-
-PATCH  /api/v1/dashboard/experiences/<experience_id>/slots/<slot_id>/
-DELETE /api/v1/dashboard/experiences/<experience_id>/slots/<slot_id>/
-"""
-
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Min, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.models import (
-    Experience,
-    ExperienceSlot,
-    Prefecture,
-    Reservation,
+from marche.models import Experience, ExperienceSlot, Notification, PublishStatus, Reservation
+
+from ...common.exceptions import Conflict
+from ...common.pagination import paginate, validate_query
+from ...common.permissions import IsApprovedProducer, ensure_producer_not_suspended
+from ...serializers.dashboard.experiences import (
+    ApplicationQuerySerializer,
+    ApplicationSerializer,
+    ExperienceDetailSerializer,
+    ExperienceListQuerySerializer,
+    ExperienceSummarySerializer,
+    ExperienceWriteResponseSerializer,
+    ExperienceWriteSerializer,
+    SlotCreateSerializer,
+    SlotQuerySerializer,
+    SlotSerializer,
+    SlotUpdateSerializer,
 )
+from ...services.notifications import notify
 
-from api.serializers.dashboard.experiences import (
-    DashboardExperienceIdSerializer,
-    DashboardExperienceSlotIdSerializer,
-    DashboardExperienceListQuerySerializer,
-    DashboardExperienceResponseSerializer,
-    DashboardExperienceListResponseSerializer,
-    DashboardExperienceCreateSerializer,
-    DashboardExperienceUpdateSerializer,
-    DashboardExperienceDeleteResponseSerializer,
-    DashboardExperienceApplicationQuerySerializer,
-    DashboardExperienceApplicationListResponseSerializer,
-    DashboardExperienceSlotQuerySerializer,
-    DashboardExperienceSlotListResponseSerializer,
-    DashboardExperienceSlotCreateSerializer,
-    DashboardExperienceSlotUpdateSerializer,
-    DashboardExperienceSlotDeleteResponseSerializer,
-)
+# 予約枠の中止で取り消す予約の状態（attended・canceled は対象外）
+ACTIVE_RESERVATION_STATUSES = [Reservation.Status.APPLIED, Reservation.Status.CONFIRMED]
 
 
-class DashboardExperienceBaseView(APIView):
-    """
-    体験管理APIの共通処理。
+class ProducerExperienceView(APIView):
+    """体験管理APIの共通部分"""
 
-    現時点ではログイン中の生産者を request.user.producer から取得する。
-    共通権限処理が完成したら、そのインターフェースに合わせて統合する。
-    """
+    permission_classes = [IsApprovedProducer]
 
-    permission_classes = [IsAuthenticated]
+    @property
+    def producer(self):
+        return self.request.user.producer
 
-    def get_experience(self, request, experience_id):
-        """
-        ログイン中の生産者自身の体験だけを取得する。
-        """
+    def get_experience(self, experience_id, lock=False):
+        """自分の体験を1件取る。他の生産者の体験・存在しない ID は 404"""
+        queryset = Experience.objects.filter(producer=self.producer)
+        if lock:
+            queryset = queryset.select_for_update()
+        return get_object_or_404(queryset, pk=experience_id)
 
-        producer = request.user.producer
+    def get_slot(self, experience, slot_id, lock=False):
+        """その体験の予約枠を1件取る。別の体験の枠は 404"""
+        queryset = ExperienceSlot.objects.filter(experience=experience)
+        if lock:
+            queryset = queryset.select_for_update()
+        return get_object_or_404(queryset, pk=slot_id)
 
-        return get_object_or_404(
-            Experience.objects.prefetch_related(
-                "experience_images",
-                "experience_slots",
-            ),
-            pk=experience_id,
-            producer=producer,
-        )
+
+def ensure_can_publish(experience, new_status):
+    """公開（public）にする条件。画像が1枚以上必要"""
+    if new_status == PublishStatus.PUBLIC and not experience.experience_images.exists():
+        raise Conflict("IMAGE_REQUIRED", "公開するには画像を1枚以上登録してください。")
+
+
+def has_reservations(**filters):
+    """予約されたことがあるか（キャンセル済みも含む）"""
+    return Reservation.objects.filter(**filters).exists()
 
 
 # =========================================================
-# 体験一覧・新規登録
+# 体験一覧・登録
 # =========================================================
 
-class ExperienceListCreateView(DashboardExperienceBaseView):
-    """
-    体験一覧取得・新規登録
-    """
+class ExperienceListCreateView(ProducerExperienceView):
 
     def get(self, request):
-        """
-        GET /api/v1/dashboard/experiences/
+        query = validate_query(ExperienceListQuerySerializer, request)
+        queryset = Experience.objects.filter(producer=self.producer)
+        if "publish_status" in query:
+            queryset = queryset.filter(publish_status=query["publish_status"])
 
-        ログイン中の生産者が登録した体験一覧を返す。
-        """
-
-        producer = request.user.producer
-
-        query_serializer = DashboardExperienceListQuerySerializer(
-            data=request.query_params
-        )
-        query_serializer.is_valid(raise_exception=True)
-
-        query = query_serializer.validated_data
-
-        experiences = Experience.objects.filter(
-            producer=producer
-        ).prefetch_related(
-            "experience_images",
-            "experience_slots",
-        ).order_by("-created_at")
-
-        # 公開状態による絞り込み
-        publish_status = query.get("publish_status")
-
-        if publish_status:
-            experiences = experiences.filter(
-                publish_status=publish_status
-            )
-
-        # キーワード検索
-        search = query.get("search")
-
-        if search:
-            experiences = experiences.filter(
-                Q(title__icontains=search)
-                | Q(description__icontains=search)
-                | Q(place__icontains=search)
-            )
-
-        # ページネーション
-        page = query.get("page", 1)
-        page_size = query.get("page_size", 20)
-
-        total = experiences.count()
-
-        start = (page - 1) * page_size
-        end = start + page_size
-
-        experiences = experiences[start:end]
-
-        response_serializer = DashboardExperienceListResponseSerializer(
-            {
-                "total": total,
-                "page": page,
-                "page_size": page_size,
-                "results": experiences,
-            }
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        # 枠の数・申込の数・次回開催日時は、JOIN して集計し、一覧と同じ1回の SQL で取る
+        annotated = queryset.annotate(
+            slot_count=Count("experience_slots", distinct=True),
+            application_count=Count("experience_slots__reservations", distinct=True),
+            next_start_at=Min("experience_slots__start_at", filter=Q(
+                experience_slots__status=ExperienceSlot.Status.OPEN,
+                experience_slots__start_at__gt=timezone.now(),
+            )),
+        ).order_by("-created_at", "-id")
+        return Response(paginate(annotated, query, ExperienceSummarySerializer, count_queryset=queryset))
 
     @transaction.atomic
     def post(self, request):
-        """
-        POST /api/v1/dashboard/experiences/
-
-        体験を新規登録する。
-        """
-
-        producer = request.user.producer
-
-        serializer = DashboardExperienceCreateSerializer(
-            data=request.data
-        )
+        producer = self.producer
+        ensure_producer_not_suspended(producer)
+        serializer = ExperienceWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        validated_data = serializer.validated_data.copy()
-
-        # 都道府県
-        prefecture_id = validated_data.pop(
-            "prefecture_id",
-            None,
-        )
-
-        if prefecture_id is not None:
-            prefecture = get_object_or_404(
-                Prefecture,
-                pk=prefecture_id,
-            )
-        else:
-            prefecture = producer.prefecture
-
-        # 画像登録機能が未実装のため、公開状態での登録は制限する。
-        # TODO: ExperienceImage登録API完成後に画像の有無を確認する。
-        publish_status = validated_data.get(
-            "publish_status",
-            "draft",
-        )
-
-        if publish_status == "public":
-            return Response(
-                {
-                    "detail": (
-                        "画像登録機能が完成するまで体験を公開できません。"
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        experience = Experience.objects.create(
-            producer=producer,
-            prefecture=prefecture,
-            **validated_data,
-        )
-
-        response_serializer = DashboardExperienceResponseSerializer(
-            experience
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED,
-        )
+        experience = Experience(producer=producer, **data)
+        if "prefecture" not in data:
+            experience.prefecture = producer.prefecture
+        # 画像はまだ登録できないので、公開を選ぶと 409 になる
+        if experience.publish_status == PublishStatus.PUBLIC:
+            raise Conflict("IMAGE_REQUIRED", "公開するには画像を1枚以上登録してください。")
+        experience.save()
+        return Response(ExperienceWriteResponseSerializer(experience).data, status=status.HTTP_201_CREATED)
 
 
 # =========================================================
 # 体験詳細・更新・削除
 # =========================================================
 
-class ExperienceDetailView(DashboardExperienceBaseView):
-    """
-    体験詳細取得・更新・削除
-    """
+class ExperienceDetailView(ProducerExperienceView):
 
     def get(self, request, experience_id):
-        """
-        GET /api/v1/dashboard/experiences/<experience_id>/
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
+        experience = get_object_or_404(
+            Experience.objects.filter(producer=self.producer).prefetch_related("experience_images"),
+            pk=experience_id,
         )
-
-        serializer = DashboardExperienceResponseSerializer(
-            experience
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        return Response(ExperienceDetailSerializer(experience).data)
 
     @transaction.atomic
     def patch(self, request, experience_id):
-        """
-        PATCH /api/v1/dashboard/experiences/<experience_id>/
-
-        体験情報を更新する。
-
-        料金を変更しても既存予約の total_amount は変更しない。
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
-        )
-
-        serializer = DashboardExperienceUpdateSerializer(
-            experience,
-            data=request.data,
-            partial=True,
-        )
+        ensure_producer_not_suspended(self.producer)
+        experience = self.get_experience(experience_id, lock=True)
+        serializer = ExperienceWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        validated_data = serializer.validated_data.copy()
+        new_status = data.get("publish_status")
+        if new_status is not None and new_status != experience.publish_status:
+            if experience.publish_status == PublishStatus.SUSPENDED:
+                raise Conflict("CONTENT_SUSPENDED",
+                                "運営により掲載停止中のため、公開状態は変更できません。")
+            ensure_can_publish(experience, new_status)
 
-        # 都道府県の変更
-        prefecture_id = validated_data.pop(
-            "prefecture_id",
-            None,
-        )
-
-        if prefecture_id is not None:
-            validated_data["prefecture"] = get_object_or_404(
-                Prefecture,
-                pk=prefecture_id,
-            )
-
-        # 既存予約の total_amount は変更しない。
-        for field, value in validated_data.items():
+        # 料金を変えても、既存の予約の total_amount はそのまま（予約時に保存済み）
+        for field, value in data.items():
             setattr(experience, field, value)
-
         experience.save()
-
-        response_serializer = DashboardExperienceResponseSerializer(
-            experience
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        return Response(ExperienceWriteResponseSerializer(experience).data)
 
     @transaction.atomic
     def delete(self, request, experience_id):
-        """
-        DELETE /api/v1/dashboard/experiences/<experience_id>/
-
-        予約履歴がある体験は削除できない。
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
-        )
-
-        # 予約履歴の有無を確認
-        has_reservation = Reservation.objects.filter(
-            slot__experience=experience,
-        ).exists()
-
-        if has_reservation:
-            return Response(
-                {
-                    "detail": (
-                        "予約履歴がある体験は削除できません。"
-                        "公開状態を非公開に変更してください。"
-                    )
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        experience.delete()
-
-        response_serializer = DashboardExperienceDeleteResponseSerializer(
-            {
-                "message": "体験を削除しました。"
-            }
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        ensure_producer_not_suspended(self.producer)
+        experience = self.get_experience(experience_id, lock=True)
+        if has_reservations(slot__experience=experience):
+            raise Conflict("HAS_RESERVATIONS",
+                            "予約されたことがある体験は削除できません。非公開にしてください。")
+        experience.delete()  # 予約枠・画像も一緒に消える（S3 のファイルは消さない）
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # =========================================================
 # 体験申込者一覧
 # =========================================================
 
-class ExperienceApplicationListView(DashboardExperienceBaseView):
-    """
-    体験申込者一覧
-    """
+class ExperienceApplicationListView(ProducerExperienceView):
 
     def get(self, request, experience_id):
-        """
-        GET /api/v1/dashboard/experiences/<experience_id>/applications/
+        experience = self.get_experience(experience_id)
+        query = validate_query(ApplicationQuerySerializer, request)
 
-        体験に紐づく予約情報を取得する。
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
-        )
-
-        query_serializer = DashboardExperienceApplicationQuerySerializer(
-            data=request.query_params
-        )
-        query_serializer.is_valid(raise_exception=True)
-
-        query = query_serializer.validated_data
-
-        reservations = Reservation.objects.filter(
-            slot__experience=experience,
-        ).select_related(
-            "slot",
-            "user",
-        ).order_by("-created_at")
-
-        # 予約枠による絞り込み
-        slot_id = query.get("slot_id")
-
-        if slot_id:
-            reservations = reservations.filter(
-                slot_id=slot_id,
-            )
-
-        # 予約ステータスによる絞り込み
-        reservation_status = query.get("status")
-
-        if reservation_status:
-            reservations = reservations.filter(
-                status=reservation_status,
-            )
-
-        # ページネーション
-        page = query.get("page", 1)
-        page_size = query.get("page_size", 20)
-
-        total = reservations.count()
-
-        start = (page - 1) * page_size
-        end = start + page_size
-
-        reservations = reservations[start:end]
-
-        response_serializer = (
-            DashboardExperienceApplicationListResponseSerializer(
-                {
-                    "total": total,
-                    "page": page,
-                    "page_size": page_size,
-                    "results": reservations,
-                }
-            )
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        queryset = Reservation.objects.filter(slot__experience=experience)
+        if "slot_id" in query:
+            self.get_slot(experience, query["slot_id"])  # 別の体験の枠なら 404
+            queryset = queryset.filter(slot_id=query["slot_id"])
+        if "status" in query:
+            queryset = queryset.filter(status=query["status"])
+        queryset = queryset.select_related("slot", "user").order_by("-created_at", "-id")
+        return Response(paginate(queryset, query, ApplicationSerializer))
 
 
 # =========================================================
-# 予約枠一覧・新規登録
+# 予約枠一覧・登録
 # =========================================================
 
-class ExperienceSlotListCreateView(DashboardExperienceBaseView):
-    """
-    予約枠一覧取得・新規登録
-    """
+class SlotListCreateView(ProducerExperienceView):
 
     def get(self, request, experience_id):
-        """
-        GET /api/v1/dashboard/experiences/<experience_id>/slots/
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
-        )
-
-        query_serializer = DashboardExperienceSlotQuerySerializer(
-            data=request.query_params
-        )
-        query_serializer.is_valid(raise_exception=True)
-
-        query = query_serializer.validated_data
-
-        slots = ExperienceSlot.objects.filter(
-            experience=experience,
-        ).order_by("start_at")
-
-        slot_status = query.get("status")
-
-        if slot_status:
-            slots = slots.filter(
-                status=slot_status,
-            )
-
-        page = query.get("page", 1)
-        page_size = query.get("page_size", 20)
-
-        total = slots.count()
-
-        start = (page - 1) * page_size
-        end = start + page_size
-
-        slots = slots[start:end]
-
-        response_serializer = (
-            DashboardExperienceSlotListResponseSerializer(
-                {
-                    "total": total,
-                    "page": page,
-                    "page_size": page_size,
-                    "results": slots,
-                }
-            )
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        experience = self.get_experience(experience_id)
+        query = validate_query(SlotQuerySerializer, request)
+        queryset = ExperienceSlot.objects.filter(experience=experience)
+        if "status" in query:
+            queryset = queryset.filter(status=query["status"])
+        return Response(paginate(queryset.order_by("start_at", "id"), query, SlotSerializer))
 
     @transaction.atomic
     def post(self, request, experience_id):
-        """
-        POST /api/v1/dashboard/experiences/<experience_id>/slots/
-
-        予約枠を1件登録する。
-        start_at は未来の日時である必要がある。
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
-        )
-
-        serializer = DashboardExperienceSlotCreateSerializer(
-            data=request.data
-        )
+        ensure_producer_not_suspended(self.producer)
+        experience = self.get_experience(experience_id, lock=True)  # 同じ日時の枠の二重登録を防ぐ
+        serializer = SlotCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        slot = serializer.save(
-            experience=experience,
-            reserved_count=0,
-        )
+        ensure_no_duplicate_slot(experience, data["start_at"])
+        slot = ExperienceSlot.objects.create(experience=experience, reserved_count=0, **data)
+        return Response(SlotSerializer(slot).data, status=status.HTTP_201_CREATED)
 
-        response_serializer = (
-            DashboardExperienceSlotListResponseSerializer
-        )
 
-        # 1件登録のため、単体レスポンスを返す。
-        from api.serializers.dashboard.experiences import (
-            DashboardExperienceSlotResponseSerializer,
-        )
-
-        return Response(
-            DashboardExperienceSlotResponseSerializer(slot).data,
-            status=status.HTTP_201_CREATED,
-        )
+def ensure_no_duplicate_slot(experience, start_at, exclude_id=None):
+    queryset = ExperienceSlot.objects.filter(experience=experience, start_at=start_at)
+    if exclude_id is not None:
+        queryset = queryset.exclude(pk=exclude_id)
+    if queryset.exists():
+        raise Conflict("DUPLICATE_SLOT", "同じ開催日時の予約枠がすでにあります。")
 
 
 # =========================================================
 # 予約枠更新・中止・削除
 # =========================================================
 
-class ExperienceSlotDetailView(DashboardExperienceBaseView):
-    """
-    予約枠更新・中止・削除
-    """
-
-    def get_slot(self, request, experience_id, slot_id):
-        """
-        ログイン中の生産者自身の体験に属する予約枠だけを取得する。
-        """
-
-        experience = self.get_experience(
-            request,
-            experience_id,
-        )
-
-        return get_object_or_404(
-            ExperienceSlot,
-            pk=slot_id,
-            experience=experience,
-        )
+class SlotDetailView(ProducerExperienceView):
 
     @transaction.atomic
     def patch(self, request, experience_id, slot_id):
-        """
-        PATCH /api/v1/dashboard/experiences/<experience_id>/slots/<slot_id>/
-
-        予約枠を更新する。
-
-        ・過去または中止済みの予約枠は更新不可
-        ・予約がある場合、start_at / duration_min は変更不可
-        ・capacity は reserved_count 以上
-        ・中止処理は関連する通知・メール・返金処理が完成するまで実行不可
-        """
-
-        slot = self.get_slot(
-            request,
-            experience_id,
-            slot_id,
-        )
-
-        if slot.start_at <= timezone.now():
-            return Response(
-                {
-                    "detail": "過去または開始済みの予約枠は更新できません。"
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        if slot.status == "canceled":
-            return Response(
-                {
-                    "detail": "中止済みの予約枠は更新できません。"
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        serializer = DashboardExperienceSlotUpdateSerializer(
-            slot,
-            data=request.data,
-            partial=True,
-        )
+        serializer = SlotUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        canceling = data.get("status") == ExperienceSlot.Status.CANCELED
+        if not canceling:
+            ensure_producer_not_suspended(self.producer)  # 中止だけは掲載停止中でもできる
 
-        validated_data = serializer.validated_data
+        experience = self.get_experience(experience_id, lock=True)
+        slot = self.get_slot(experience, slot_id, lock=True)
+        ensure_slot_editable(slot)
 
-        # 中止処理は関連機能が未完成のため一時停止する。
-        if validated_data.get("status") == "canceled":
-            # TODO:
-            # ・確定済み予約のキャンセル
-            # ・reserved_count の整合性確認
-            # ・予約者への通知
-            # ・予約者へのメール送信
-            # ・決済返金の仕様確認と実装
-            return Response(
-                {
-                    "detail": (
-                        "予約枠の中止機能は現在準備中です。"
-                    )
-                },
-                status=status.HTTP_501_NOT_IMPLEMENTED,
-            )
+        if canceling:
+            cancel_slot(experience, slot)
+            return Response(SlotSerializer(slot).data)
 
-        # 予約履歴の有無
-        has_reservation = Reservation.objects.filter(
-            slot=slot,
-        ).exists()
+        changing_time = any(
+            field in data and data[field] != getattr(slot, field) for field in ("start_at", "duration_min"))
+        if changing_time and has_reservations(slot=slot):
+            raise Conflict("SLOT_TIME_LOCKED", "予約がある予約枠は、開催日時・所要時間を変更できません。")
+        if "capacity" in data and data["capacity"] < slot.reserved_count:
+            raise Conflict("CAPACITY_BELOW_RESERVED", "定員は現在の予約人数より少なくできません。")
+        if "start_at" in data:
+            ensure_no_duplicate_slot(experience, data["start_at"], exclude_id=slot.pk)
 
-        # 予約がある場合、日時と所要時間は変更不可
-        if has_reservation:
-            if (
-                "start_at" in validated_data
-                or "duration_min" in validated_data
-            ):
-                return Response(
-                    {
-                        "detail": (
-                            "予約がある予約枠の開始日時・所要時間は変更できません。"
-                        )
-                    },
-                    status=status.HTTP_409_CONFLICT,
-                )
-
-        # 定員は予約済み人数を下回れない
-        new_capacity = validated_data.get(
-            "capacity",
-            slot.capacity,
-        )
-
-        if new_capacity < slot.reserved_count:
-            return Response(
-                {
-                    "detail": (
-                        "定員は現在の予約数を下回る値に変更できません。"
-                    )
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        for field, value in validated_data.items():
+        for field, value in data.items():
             setattr(slot, field, value)
-
         slot.save()
-
-        from api.serializers.dashboard.experiences import (
-            DashboardExperienceSlotResponseSerializer,
-        )
-
-        return Response(
-            DashboardExperienceSlotResponseSerializer(slot).data,
-            status=status.HTTP_200_OK,
-        )
+        return Response(SlotSerializer(slot).data)
 
     @transaction.atomic
     def delete(self, request, experience_id, slot_id):
-        """
-        DELETE /api/v1/dashboard/experiences/<experience_id>/slots/<slot_id>/
-
-        予約履歴がある予約枠は削除できない。
-        過去の予約枠も削除できない。
-        """
-
-        slot = self.get_slot(
-            request,
-            experience_id,
-            slot_id,
-        )
-
+        ensure_producer_not_suspended(self.producer)
+        experience = self.get_experience(experience_id, lock=True)
+        slot = self.get_slot(experience, slot_id, lock=True)
         if slot.start_at <= timezone.now():
-            return Response(
-                {
-                    "detail": "過去または開始済みの予約枠は削除できません。"
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        has_reservation = Reservation.objects.filter(
-            slot=slot,
-        ).exists()
-
-        if has_reservation:
-            return Response(
-                {
-                    "detail": (
-                        "予約履歴がある予約枠は削除できません。"
-                        "中止処理を行ってください。"
-                    )
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
+            raise Conflict("SLOT_NOT_EDITABLE", "開始済みの予約枠は削除できません。")
+        if has_reservations(slot=slot):
+            raise Conflict("HAS_RESERVATIONS",
+                           "予約されたことがある予約枠は削除できません。中止にしてください。")
         slot.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        from api.serializers.dashboard.experiences import (
-            DashboardExperienceSlotDeleteResponseSerializer,
-        )
 
-        response_serializer = (
-            DashboardExperienceSlotDeleteResponseSerializer(
-                {
-                    "message": "予約枠を削除しました。"
-                }
-            )
-        )
+def ensure_slot_editable(slot):
+    if slot.status == ExperienceSlot.Status.CANCELED:
+        raise Conflict("SLOT_NOT_EDITABLE", "中止済みの予約枠は変更できません。")
+    if slot.start_at <= timezone.now():
+        raise Conflict("SLOT_NOT_EDITABLE", "開始済みの予約枠は変更できません。")
 
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
+
+def cancel_slot(experience, slot):
+    """予約枠を中止する。申込済み・確定済みの予約をすべてキャンセルし、予約者に通知とメールを送る
+
+    体験の支払いは当日現地なので返金はない。呼び出し側で体験・予約枠をロックしておく。
+    """
+    reservations = list(
+        Reservation.objects.select_for_update().select_related("user")
+        .filter(slot=slot, status__in=ACTIVE_RESERVATION_STATUSES).order_by("id")
+    )
+    released = sum(r.adult_count + r.child_count + r.infant_count for r in reservations)
+    Reservation.objects.filter(pk__in=[r.pk for r in reservations]).update(
+        status=Reservation.Status.CANCELED, updated_at=timezone.now())
+
+    slot.status = ExperienceSlot.Status.CANCELED
+    slot.reserved_count = max(slot.reserved_count - released, 0)
+    slot.save(update_fields=["status", "reserved_count", "updated_at"])
+
+    start = timezone.localtime(slot.start_at).strftime("%Y年%m月%d日 %H:%M")
+    for reservation in reservations:
+        notify(
+            reservation.user,
+            Notification.NotificationType.RESERVATION,
+            title="体験の開催が中止になりました",
+            body=(
+                f"ご予約の体験「{experience.title}」（{start}〜）は、主催者の都合により中止になりました。\n"
+                f"予約番号 {reservation.reservation_no} の予約はキャンセルされました。\n"
+                "参加費は当日現地でのお支払いのため、返金の手続きはありません。\n"
+            ),
         )
