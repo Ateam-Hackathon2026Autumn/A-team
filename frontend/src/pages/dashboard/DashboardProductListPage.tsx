@@ -74,11 +74,20 @@ function DashboardProductListPage() {
       try {
         const data = await getDashboardProducts(page);
 
-        if (isActive) {
-          setProducts(data.items);
-          setTotal(data.total);
-          setTotalPages(data.totalPages);
+        if (!isActive) {
+          return;
         }
+
+        // 削除などで今のページが総ページ数を超えた（空になった）ら、最後のページへ戻る
+        if (data.items.length === 0 && page > 1 && page > data.totalPages) {
+          setProducts(null);
+          setPage(Math.max(1, data.totalPages));
+          return;
+        }
+
+        setProducts(data.items);
+        setTotal(data.total);
+        setTotalPages(data.totalPages);
       } catch (error) {
         // セッション切れ。ログイン状態を確認し直すため再読み込みする
         if (error instanceof ApiError && error.status === 401) {
@@ -221,22 +230,15 @@ function DashboardProductListPage() {
     runProductAction(product.id, async () => {
       await deleteProduct(product.id, product.etag);
 
-      const remaining = (products ?? []).filter(
-        ({ id }) => id !== product.id,
-      );
-
-      // このページの商品がなくなったら前のページへ
-      if (remaining.length === 0 && page > 1) {
-        changePage(page - 1);
-        return;
-      }
-
+      // 取り直すまでの間も削除した商品が残らないよう、先に一覧から外す
       setProducts((current) =>
         current === null
           ? null
           : current.filter(({ id }) => id !== product.id),
       );
-      setTotal((count) => count - 1);
+      // 総件数・総ページ数・今のページの商品を合わせるため一覧を取り直す
+      // （今のページが空になった場合は、取得結果を見て最後のページへ戻る）
+      setReloadCount((count) => count + 1);
     });
   };
 

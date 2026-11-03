@@ -19,13 +19,22 @@ import type { RestMock } from '../../types';
 //   { errorCode: 'UNAUTHENTICATED', errorMsg: 'ログインしてください。' }
 // サイズ超過（status: 413。上限 5MB）:
 //   { errorCode: 'PAYLOAD_TOO_LARGE', errorMsg: '画像は5MB以下にしてください。' }
+//
+// 本物の API は画像ごとに別のキーを返すため、モックも呼ばれるたびに連番で別のキー・URL を返す
+// （同じキーだと、複数枚追加しても保存時に1枚にまとまってしまう）
+let uploadCount = 0;
+
 const uploadsImageCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/uploads/images',
   status: 201,
-  body: {
-    key: 'images/1/3f2b8c1e-6a4d-4f0e-9b7a-2d5c8e1f4a90.jpg',
-    url: 'https://picsum.photos/seed/upload1/800/600',
+  get body() {
+    uploadCount += 1;
+
+    return {
+      key: `images/1/mock-upload-${uploadCount}.jpg`,
+      url: `https://picsum.photos/seed/upload${uploadCount}/800/600`,
+    };
   },
 };
 
