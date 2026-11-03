@@ -1,4 +1,5 @@
 import type { RestMock } from '../../types';
+import { mockCartBody, refreshMockCart } from './get_api_v1_cart';
 
 // カート商品削除API DELETE /api/v1/cart/items/:itemId
 //
@@ -13,6 +14,14 @@ const cartItemDelete: RestMock = {
   method: 'DELETE',
   path: '/api/v1/cart/items/:itemId',
   status: 204,
+  handler(url) {
+    const itemId = Number(url.pathname.split('/').at(-1));
+    const index = mockCartBody.items.findIndex((item) => item.id === itemId);
+    if (index === -1) return { status: 404, body: { errorCode: 'CART_ITEM_NOT_FOUND' } };
+    mockCartBody.items.splice(index, 1);
+    refreshMockCart(true);
+    return { status: 204 };
+  },
 };
 
 export { cartItemDelete };

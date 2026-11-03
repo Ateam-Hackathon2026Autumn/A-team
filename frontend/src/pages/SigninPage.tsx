@@ -32,11 +32,11 @@ export default function SigninPage() {
 
   return (
     <>
-      <p className="text-xs font-bold tracking-widest text-marche-green">
+      <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
         SIGN IN
       </p>
-      <h1 className="mt-2 text-3xl font-bold">ログイン</h1>
-      <p className="mt-3 text-sm text-marche-muted">
+      <h1 className="m-0 font-serif mt-2 text-3xl font-bold">ログイン</h1>
+      <p className="m-0 mt-3 text-sm text-marche-muted">
         つながるマルシェへようこそ。
       </p>
 
@@ -44,7 +44,7 @@ export default function SigninPage() {
         {(errors.email || errors.password) && (
           <p
             role="alert"
-            className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-800"
+            className="m-0 mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-800"
           >
             入力内容をご確認ください。
           </p>
@@ -53,7 +53,7 @@ export default function SigninPage() {
         {message && (
           <p
             role="status"
-            className="mt-5 rounded-xl bg-marche-sage p-4 text-sm"
+            className="m-0 mt-5 rounded-xl bg-marche-sage p-4 text-sm"
           >
             {message}
           </p>
@@ -95,13 +95,13 @@ export default function SigninPage() {
       </form>
 
       <div className="my-6 border-t border-marche-line" />
-      <p className="text-center text-sm text-marche-muted">
+      <p className="m-0 text-center text-sm text-marche-muted">
         アカウントをお持ちでない方
       </p>
 
       <Link
         to="/signup"
-        className="mt-4 flex min-h-12 items-center justify-center rounded-full border border-marche-green px-6 py-3 text-sm font-bold text-marche-green hover:bg-marche-sage"
+        className="no-underline mt-4 flex min-h-12 items-center justify-center rounded-full border border-marche-green px-6 py-3 text-sm font-bold text-marche-green hover:bg-marche-sage"
       >
         新規登録
       </Link>

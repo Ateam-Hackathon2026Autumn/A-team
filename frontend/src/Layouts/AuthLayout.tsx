@@ -6,17 +6,17 @@ export default function AuthLayout() {
       <div className="mx-auto grid max-w-[1060px] overflow-hidden rounded-3xl border border-marche-line bg-white md:grid-cols-[0.8fr_1.2fr]">
         <aside className="hidden flex-col justify-between bg-marche-sage px-9 py-12 md:flex">
           <div>
-            <p className="text-xs font-bold tracking-[0.18em] text-marche-green">
+            <p className="m-0 text-xs font-bold tracking-[0.18em] text-marche-green">
               A NEW CONNECTION
             </p>
 
-            <h2 className="mt-6 text-3xl font-bold leading-relaxed">
+            <h2 className="m-0 font-serif mt-6 text-3xl font-bold leading-relaxed">
               つくる人を知る。
               <br />
               暮らしが、変わる。
             </h2>
 
-            <p className="mt-5 text-sm leading-8">
+            <p className="m-0 mt-5 text-sm leading-8">
               おいしい出会いも、新しい挑戦も。
               <br />
               あなたと産地をつなぐ場所へ。
@@ -27,7 +27,7 @@ export default function AuthLayout() {
             🌿
           </div>
 
-          <p className="text-sm text-marche-muted">
+          <p className="m-0 text-sm text-marche-muted">
             買う ・ 体験する ・ 働く ・ 学ぶ
           </p>
         </aside>
@@ -40,7 +40,7 @@ export default function AuthLayout() {
         </section>
       </div>
 
-      <p className="mx-auto mt-5 max-w-3xl text-center text-xs leading-6 text-marche-muted">
+      <p className="m-0 mx-auto mt-5 max-w-3xl text-center text-xs leading-6 text-marche-muted">
         画面確認用デモです。APIは未接続です。
         実際の個人情報や普段使うパスワードは入力しないでください。
       </p>

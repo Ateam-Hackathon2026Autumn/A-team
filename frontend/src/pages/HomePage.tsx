@@ -76,26 +76,26 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-marche-green text-white">
         <div className={`${pageWidth} relative grid gap-8 py-14 lg:grid-cols-2 lg:items-center lg:py-20`}>
           <div>
-            <p className="text-xs font-bold tracking-[0.18em] text-white/80">FROM THE FIELD TO YOUR LIFE</p>
+            <p className="m-0 text-xs font-bold tracking-[0.18em] text-white/80">FROM THE FIELD TO YOUR LIFE</p>
 
-            <h1 className="mt-5 text-4xl font-bold leading-snug sm:text-5xl">
+            <h1 className="m-0 font-serif mt-5 text-4xl font-bold leading-snug sm:text-5xl">
               つくる人と、
               <br />
               つながる暮らし。
             </h1>
 
-            <p className="mt-6 text-sm leading-8 text-white/90">
+            <p className="m-0 mt-6 text-sm leading-8 text-white/90">
               おいしい出会い。新しい体験。未来につながる仕事。
               <br />
               生産者と、あなたの「やってみたい」を結ぶ場所。
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#products" className="inline-flex min-h-12 items-center rounded-full bg-marche-ivory px-6 py-3 text-sm font-bold text-marche-green">
+              <a href="#products" className="no-underline inline-flex min-h-12 items-center rounded-full bg-marche-ivory px-6 py-3 text-sm font-bold text-marche-green">
                 旬の食材を探す →
               </a>
               {isGuest && (
-                <Link to="/signup" className="inline-flex min-h-12 items-center rounded-full border border-white px-6 py-3 text-sm font-bold text-white">
+                <Link to="/signup" className="no-underline inline-flex min-h-12 items-center rounded-full border border-white px-6 py-3 text-sm font-bold text-white">
                   はじめての方はこちら
                 </Link>
               )}
@@ -110,14 +110,14 @@ export default function HomePage() {
             <span>🍃</span>
           </div>
 
-          <p className="text-xs text-white/80 lg:col-span-2">写真・商品情報はサンプルです</p>
+          <p className="m-0 text-xs text-white/80 lg:col-span-2">写真・商品情報はサンプルです</p>
         </div>
       </section>
 
       <div className={pageWidth}>
         <section className={sectionClass}>
-          <p className={eyebrowClass}>FIND YOUR WAY</p>
-          <h2 className={headingClass}>つながり方を見つける</h2>
+          <p className={["m-0", eyebrowClass].join(" ")}>FIND YOUR WAY</p>
+          <h2 className={["m-0 font-serif", headingClass].join(" ")}>つながり方を見つける</h2>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -126,27 +126,27 @@ export default function HomePage() {
               ["#jobs", "🤝", "働く", "地域とつながる、一日からのお仕事"],
               ["#learn", "📖", "学ぶ", "生産者のこだわりや想いを知る"],
             ].map(([href, icon, title, description]) => (
-              <a key={href} href={href} className="rounded-2xl border border-marche-line bg-white p-6 transition-colors hover:bg-marche-sage">
+              <a key={href} href={href} className="no-underline text-inherit rounded-2xl border border-marche-line bg-white p-6 transition-colors hover:bg-marche-sage">
                 <span aria-hidden="true" className="text-4xl">
                   {icon}
                 </span>
-                <h3 className="mt-3 text-lg font-bold">{title}</h3>
-                <p className="mt-2 text-sm text-marche-muted">{description}</p>
+                <h3 className="m-0 mt-3 text-lg font-bold">{title}</h3>
+                <p className="m-0 mt-2 text-sm text-marche-muted">{description}</p>
               </a>
             ))}
           </div>
         </section>
 
         <section id="producers" className={sectionClass}>
-          <p className={eyebrowClass}>MEET THE PRODUCERS</p>
-          <h2 className={headingClass}>つくる人を知る</h2>
-          <p className="mt-2 text-sm text-marche-muted">サンプルの生産者をご紹介</p>
+          <p className={["m-0", eyebrowClass].join(" ")}>MEET THE PRODUCERS</p>
+          <h2 className={["m-0 font-serif", headingClass].join(" ")}>つくる人を知る</h2>
+          <p className="m-0 mt-2 text-sm text-marche-muted">サンプルの生産者をご紹介</p>
 
           <div role="group" aria-label="生産者の表示切り替え" className="mt-5 flex flex-wrap gap-2">
-            <button type="button" aria-pressed={producerTab === "featured"} className={pillClass} onClick={() => setProducerTab("featured")}>
+            <button type="button" aria-pressed={producerTab === "featured"} className={["font-sans cursor-pointer disabled:cursor-not-allowed", pillClass].join(" ")} onClick={() => setProducerTab("featured")}>
               注目の生産者
             </button>
-            <button type="button" aria-pressed={producerTab === "newcomer"} className={pillClass} onClick={() => setProducerTab("newcomer")}>
+            <button type="button" aria-pressed={producerTab === "newcomer"} className={["font-sans cursor-pointer disabled:cursor-not-allowed", pillClass].join(" ")} onClick={() => setProducerTab("newcomer")}>
               新規就農者
             </button>
           </div>
@@ -159,9 +159,9 @@ export default function HomePage() {
                 </div>
                 <div className="p-5">
                   <span className={badgeClass}>{person.tag}</span>
-                  <h3 className="mt-3 text-lg font-bold">{person.name}</h3>
-                  <p className="text-xs text-marche-muted">{person.region}</p>
-                  <p className="mt-3 text-sm text-marche-muted">{person.info}</p>
+                  <h3 className="m-0 mt-3 text-lg font-bold">{person.name}</h3>
+                  <p className="m-0 text-xs text-marche-muted">{person.region}</p>
+                  <p className="m-0 mt-3 text-sm text-marche-muted">{person.info}</p>
                 </div>
               </article>
             ))}
@@ -169,14 +169,15 @@ export default function HomePage() {
         </section>
 
         <section id="products" className={sectionClass}>
-          <p className={eyebrowClass}>FRESH FROM THE PRODUCERS</p>
-          <h2 className={headingClass}>旬のおすすめ商品</h2>
-          <p className="mt-2 text-sm text-marche-muted">商品ページは今後の実装予定です</p>
+          <p className={["m-0", eyebrowClass].join(" ")}>FRESH FROM THE PRODUCERS</p>
+          <h2 className={["m-0 font-serif", headingClass].join(" ")}>旬のおすすめ商品</h2>
+          <p className="m-0 mt-2 text-sm text-marche-muted">産地から届く商品を探してみませんか。</p>
+          <Link to="/products" className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-marche-green no-underline hover:underline">商品一覧を見る →</Link>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
             <div role="group" aria-label="商品カテゴリー" className="flex flex-wrap gap-2">
               {(["すべて", "野菜", "果物", "米", "魚介"] as Category[]).map((value) => (
-                <button key={value} type="button" className={pillClass} aria-pressed={value === category} onClick={() => setCategory(value)}>
+                <button key={value} type="button" className={["font-sans cursor-pointer disabled:cursor-not-allowed", pillClass].join(" ")} aria-pressed={value === category} onClick={() => setCategory(value)}>
                   {value}
                 </button>
               ))}
@@ -184,7 +185,7 @@ export default function HomePage() {
 
             <label className="flex items-center gap-2 text-sm">
               並び替え
-              <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-lg border border-marche-line bg-white px-3">
+              <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="font-sans text-sm min-h-11 rounded-lg border border-marche-line bg-white px-3">
                 <option value="recommended">おすすめ順</option>
                 <option value="low">価格が安い順</option>
                 <option value="high">価格が高い順</option>
@@ -204,16 +205,16 @@ export default function HomePage() {
                   aria-pressed={favorites.includes(product.id)}
                   aria-label={`${product.name}を${favorites.includes(product.id) ? "お気に入りから解除" : "お気に入りに追加"}（デモのみ）`}
                   onClick={() => toggleFavorite(product.id)}
-                  className="absolute top-3 right-3 grid size-11 place-items-center rounded-full border-0 bg-white text-2xl text-marche-green shadow-sm"
+                  className="font-sans cursor-pointer disabled:cursor-not-allowed absolute top-3 right-3 grid size-11 place-items-center rounded-full border-0 bg-white text-2xl text-marche-green shadow-sm"
                 >
                   {favorites.includes(product.id) ? "♥" : "♡"}
                 </button>
 
                 <div className="p-5">
                   <span className={badgeClass}>{product.label}</span>
-                  <h3 className="mt-3 text-lg font-bold">{product.name}</h3>
-                  <p className="text-xs text-marche-muted">{product.producer}</p>
-                  <p className="mt-3 text-xl font-bold text-marche-green">
+                  <h3 className="m-0 mt-3 text-lg font-bold">{product.name}</h3>
+                  <p className="m-0 text-xs text-marche-muted">{product.producer}</p>
+                  <p className="m-0 mt-3 text-xl font-bold text-marche-green">
                     ¥{product.price.toLocaleString("ja-JP")}
                     <span className="ml-2 text-xs font-normal text-marche-muted">税込・参考価格</span>
                   </p>
@@ -222,7 +223,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <p className="mt-4 text-xs text-marche-muted">※ 商品データ・価格・お気に入りの状態は画面確認用です。 お気に入りは再読み込みで消えます。</p>
+          <p className="m-0 mt-4 text-xs text-marche-muted">※ 商品データ・価格・お気に入りの状態は画面確認用です。 お気に入りは再読み込みで消えます。</p>
         </section>
 
         {[
@@ -246,8 +247,8 @@ export default function HomePage() {
           },
         ].map(({ id, eyebrow, title, items }) => (
           <section key={id} id={id} className={sectionClass}>
-            <p className={eyebrowClass}>{eyebrow}</p>
-            <h2 className={headingClass}>{title}</h2>
+            <p className={["m-0", eyebrowClass].join(" ")}>{eyebrow}</p>
+            <h2 className={["m-0 font-serif", headingClass].join(" ")}>{title}</h2>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {items.map(([icon, tag, name, description]) => (
@@ -257,8 +258,8 @@ export default function HomePage() {
                   </span>
                   <div>
                     <span className={badgeClass}>{tag}</span>
-                    <h3 className="mt-2 text-lg font-bold">{name}</h3>
-                    <p className="mt-2 text-sm text-marche-muted">{description}</p>
+                    <h3 className="m-0 mt-2 text-lg font-bold">{name}</h3>
+                    <p className="m-0 mt-2 text-sm text-marche-muted">{description}</p>
                   </div>
                 </article>
               ))}
@@ -268,14 +269,14 @@ export default function HomePage() {
 
         <section id="learn" className="my-10 grid gap-6 rounded-3xl bg-marche-sage p-6 sm:p-10 md:grid-cols-[1.5fr_1fr]">
           <div>
-            <p className={eyebrowClass}>THE STORY BEHIND FOOD</p>
-            <h2 className={headingClass}>
+            <p className={["m-0", eyebrowClass].join(" ")}>THE STORY BEHIND FOOD</p>
+            <h2 className={["m-0 font-serif", headingClass].join(" ")}>
               食べものの向こうに、
               <br />
               つくる人の物語。
             </h2>
-            <p className="mt-5 text-sm leading-8 text-marche-muted">どんな場所で、どんな思いで育てているのか。 産地の景色を知ると、いつもの食卓が少し豊かになる。</p>
-            <a href="#producers" className="mt-5 inline-flex min-h-12 items-center rounded-full bg-marche-green px-6 py-3 text-sm font-bold text-white">
+            <p className="m-0 mt-5 text-sm leading-8 text-marche-muted">どんな場所で、どんな思いで育てているのか。 産地の景色を知ると、いつもの食卓が少し豊かになる。</p>
+            <a href="#producers" className="no-underline mt-5 inline-flex min-h-12 items-center rounded-full bg-marche-green px-6 py-3 text-sm font-bold text-white">
               生産者に出会う →
             </a>
           </div>
@@ -286,11 +287,11 @@ export default function HomePage() {
         {isGuest && (
           <section aria-label="生産者の方へ" className="my-10 flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-marche-line p-6 sm:p-10">
             <div>
-              <p className={eyebrowClass}>FOR PRODUCERS</p>
-              <h2 className={headingClass}>あなたの産地の魅力を届けませんか？</h2>
-              <p className="mt-3 text-sm text-marche-muted">商品・体験・お仕事。届け方を広げる第一歩はこちらから。</p>
+              <p className={["m-0", eyebrowClass].join(" ")}>FOR PRODUCERS</p>
+              <h2 className={["m-0 font-serif", headingClass].join(" ")}>あなたの産地の魅力を届けませんか？</h2>
+              <p className="m-0 mt-3 text-sm text-marche-muted">商品・体験・お仕事。届け方を広げる第一歩はこちらから。</p>
             </div>
-            <Link to="/signup?purpose=producer" className="inline-flex min-h-12 items-center rounded-full bg-marche-green px-6 py-3 text-sm font-bold text-white">
+            <Link to="/signup?purpose=producer" className="no-underline inline-flex min-h-12 items-center rounded-full bg-marche-green px-6 py-3 text-sm font-bold text-white">
               生産者としてはじめる →
             </Link>
           </section>

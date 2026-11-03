@@ -32,17 +32,17 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#f4f5f0] px-5">
         <div className="w-full max-w-[440px] text-center">
-          <h2 className="text-xl font-bold text-[#26332b]">
+          <h2 className="m-0 font-serif text-xl font-bold text-[#26332b]">
             予期せぬエラーが発生しました
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-[#5b675f]">
+          <p className="m-0 mt-2 text-sm leading-relaxed text-[#5b675f]">
             画面を表示できませんでした。
             <br />
             お手数ですが、はじめからやり直してください。
           </p>
           <button
             type="button"
-            className="mt-5 w-full rounded-full bg-[#2f6b4f] px-6 py-3 font-bold text-white"
+            className="font-sans cursor-pointer disabled:cursor-not-allowed mt-5 w-full rounded-full bg-[#2f6b4f] px-6 py-3 font-bold text-white"
             onClick={this.handleGoToHome}
           >
             ホームへ

@@ -15,6 +15,8 @@ type RestMock = {
   status: number;
   // 返す JSON。204 など本文を持たない応答では書かない
   body?: unknown;
+  // URLやリクエスト本文に応じて返す必要があるモックで使用する。
+  handler?: (url: URL, init?: RequestInit) => { status: number; body?: unknown };
   // このエンドポイントだけ遅らせたいときのミリ秒。
   // 未指定なら mocks/rest/settings.tsx の delayMs が使われる。
   delayMs?: number;

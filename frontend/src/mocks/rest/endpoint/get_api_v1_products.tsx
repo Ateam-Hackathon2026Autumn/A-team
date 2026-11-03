@@ -10,7 +10,7 @@ import type { RestMock } from '../../types';
 //
 // パラメーター不正（400）:
 //   { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。', details: { sort: ['指定できない値です。'] } }
-const productsList: RestMock = {
+const productsList = {
   method: 'GET',
   path: '/api/v1/products',
   status: 200,
@@ -160,6 +160,8 @@ const productsList: RestMock = {
     pageSize: 20,
     totalPages: 1,
   },
-};
+} satisfies RestMock;
+
+export const productSamples = productsList.body.items;
 
 export { productsList };

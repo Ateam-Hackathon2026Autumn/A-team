@@ -1,58 +1,45 @@
 import type { RestMock } from '../../types';
+import { mockCartBody, refreshMockCart } from './get_api_v1_cart';
+import { productSamples } from './get_api_v1_products';
 
-// カート商品追加API POST /api/v1/cart/items
-//
-// GET /api/v1/cart の状態に、商品2「シャインマスカット」を1つ追加した後のカートを返す。
-// 同じ商品を追加した場合は既存の数量に加算される（新規追加・加算どちらも 200）
-//
-// 商品が存在しない・公開対象外（404）:
-//   { errorCode: 'PRODUCT_NOT_FOUND', errorMsg: '商品が見つかりません。' }
-//
-// 在庫不足など購入できない（409）:
-//   { errorCode: 'CONFLICT', errorMsg: '在庫が不足しているため、カートに追加できません。' }
-//
-// カートが他で更新されていた（412）:
-//   { errorCode: 'CART_CHANGED', errorMsg: 'カートの内容が変更されました。もう一度ご確認ください。' }
+// 同じタブのセッションに保存するデモカート。実際の購入・在庫更新は行わない。
 const cartItemAdd: RestMock = {
   method: 'POST',
   path: '/api/v1/cart/items',
   status: 200,
-  body: {
-    items: [
-      {
-        id: 1,
-        productId: 1,
-        productName: '安曇野ふじ 家庭用 5kg',
-        quantity: 1,
-        unitPrice: 4800,
-        subtotal: 4800,
+  handler(_url, init) {
+    let input: unknown;
+    try { input = JSON.parse(String(init?.body ?? '')); }
+    catch { return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } }; }
+    if (typeof input !== 'object' || input === null || !('productId' in input) || !('quantity' in input)) {
+      return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
+    }
+    const { productId, quantity } = input;
+    if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+      return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
+    }
+    const product = productSamples.find((p) => p.id === productId);
+    if (!product) return { status: 404, body: { errorCode: 'PRODUCT_NOT_FOUND' } };
+    const existing = mockCartBody.items.find((item) => item.productId === productId);
+    const totalQuantity = (existing?.quantity ?? 0) + quantity;
+    if (totalQuantity > 10) return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
+    if (totalQuantity > product.stock) return { status: 409, body: { errorCode: 'CONFLICT' } };
+    if (existing) {
+      existing.quantity = totalQuantity;
+      existing.subtotal = product.salePrice * totalQuantity;
+    } else {
+      mockCartBody.items.push({
+        id: Math.max(0, ...mockCartBody.items.map((item) => item.id)) + 1,
+        productId: product.id,
+        productName: product.name,
+        quantity,
+        unitPrice: product.salePrice,
+        subtotal: product.salePrice * quantity,
         purchasable: true,
         unavailableReason: null,
-      },
-      {
-        id: 2,
-        productId: 6,
-        productName: '沼津 あじの開き干し 10枚',
-        quantity: 2,
-        unitPrice: 3200,
-        subtotal: 6400,
-        purchasable: true,
-        unavailableReason: null,
-      },
-      {
-        id: 3,
-        productId: 2,
-        productName: 'シャインマスカット 2房',
-        quantity: 1,
-        unitPrice: 5400,
-        subtotal: 5400,
-        purchasable: true,
-        unavailableReason: null,
-      },
-    ],
-    itemsTotal: 16600,
-    canCheckout: true,
-    quoteToken: 'mock-quote-token-cart-v2',
+      });
+    }
+    return { status: 200, body: refreshMockCart(true) };
   },
 };
 

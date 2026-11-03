@@ -12,6 +12,7 @@ type Props = {
   autoComplete?: string;
   maxLength?: number;
   max?: string;
+  min?: string;
   required?: boolean;
 };
 
@@ -53,6 +54,7 @@ export default function FormField({
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${name}-error` : undefined}
           className={[
+            "font-sans",
             "block h-12 w-full min-w-0 rounded-lg border bg-white px-3",
             "text-base text-marche-ink",
             error ? "border-red-700" : "border-[#b8c3b5]",
@@ -66,7 +68,7 @@ export default function FormField({
             aria-label={visible ? "パスワードを隠す" : "パスワードを表示"}
             aria-pressed={visible}
             onClick={() => setVisible((current) => !current)}
-            className="absolute inset-y-0 right-1 my-auto min-h-10 border-0 bg-transparent px-3 text-xs font-bold text-marche-green"
+            className="font-sans cursor-pointer disabled:cursor-not-allowed absolute inset-y-0 right-1 my-auto min-h-10 border-0 bg-transparent px-3 text-xs font-bold text-marche-green"
           >
             {visible ? "隠す" : "表示"}
           </button>
@@ -77,7 +79,7 @@ export default function FormField({
         <p
           id={`${name}-error`}
           role="alert"
-          className="mt-1 text-xs text-red-800"
+          className="m-0 mt-1 text-xs text-red-800"
         >
           {error}
         </p>
