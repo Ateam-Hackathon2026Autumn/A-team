@@ -20,6 +20,14 @@ urlpatterns = [
     path("experiences/<int:experience_id>/slots/<int:slot_id>", experiences.SlotDetailView.as_view(),
           name="dashboard-experience-slot-detail"),
 
+    # 求人管理・採用
+
+    path("jobs", jobs.JobListCreateView.as_view(), name="dashboard-jobs"),
+    path("jobs/<int:job_id>", jobs.JobDetailView.as_view(), name="dashboard-job-detail"),
+    path("jobs/<int:job_id>/applications", jobs.JobApplicationListView.as_view(), name="dashboard-job-applications"),
+    path("jobs/<int:job_id>/applications/<int:application_id>", jobs.JobApplicationDetailView.as_view(), 
+         name="dashboard-job-application-detail"),      
+
     # 分析
     path("analytics", AnalyticsView.as_view(), name="dashboard-analytics"),
 ]
