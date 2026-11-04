@@ -6,6 +6,7 @@ api/urls/__init__.py から /api/v1/dashboard/ に include する。
 from django.urls import path
 
 from ..views.dashboard import experiences
+from ..views.dashboard.analytics import AnalyticsView
 
 urlpatterns = [
     # 体験管理・予約枠・申込者
@@ -18,4 +19,7 @@ urlpatterns = [
           name="dashboard-experience-slots"),
     path("experiences/<int:experience_id>/slots/<int:slot_id>", experiences.SlotDetailView.as_view(),
           name="dashboard-experience-slot-detail"),
+
+    # 分析
+    path("analytics", AnalyticsView.as_view(), name="dashboard-analytics"),
 ]
