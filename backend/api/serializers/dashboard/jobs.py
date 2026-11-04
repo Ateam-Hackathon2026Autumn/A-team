@@ -1,5 +1,6 @@
 """生産者ダッシュボードの求人管理・採用のシリアライザー"""
 
+from django.utils import timezone
 
 from rest_framework import serializers
 
@@ -46,6 +47,15 @@ APPLICATION_STATUSES = [
 class JobWorkDateSerializer(StrictSerializer):
     """求人の勤務日を検証する"""
 
+    id = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        error_messages={
+            "invalid": "勤務日IDは整数で指定してください。",
+            "min_value": "勤務日IDが正しくありません。",
+        },
+    )
+
     work_date = serializers.DateField(
         required=True,
         error_messages={
@@ -76,6 +86,12 @@ class DashboardPaginationQuerySerializer(StrictSerializer):
         required=False,
         default=1,
         min_value=1,
+        max_value=1000000,
+        error_messages={
+            "invalid": "ページ番号は整数で指定してください。",
+            "min_value": "ページ番号は1以上にしてください。",
+            "max_value": "ページ番号が大きすぎます。",
+        },
     )
 
     page_size = serializers.IntegerField(
@@ -83,6 +99,11 @@ class DashboardPaginationQuerySerializer(StrictSerializer):
         default=20,
         min_value=1,
         max_value=100,
+        error_messages={
+            "invalid": "1ページあたりの件数は整数で指定してください。",
+            "min_value": "1ページあたりの件数は1以上にしてください。",
+            "max_value": "1ページあたりの件数は100以下にしてください。",
+        },
     )
 
 
@@ -98,11 +119,17 @@ class JobListQuerySerializer(DashboardPaginationQuerySerializer):
         required=False,
         allow_blank=True,
         max_length=100,
+        error_messages={
+            "max_length": "検索キーワードは100文字以内で入力してください。",
+        },
     )
 
     publish_status = serializers.ChoiceField(
         required=False,
         choices=JOB_PUBLISH_STATUSES + ["suspended"],
+        error_messages={
+            "invalid_choice": "指定された掲載状態は正しくありません。",
+        },
     )
 
 
@@ -157,59 +184,106 @@ class JobCreateSerializer(StrictSerializer):
     prefecture_id = serializers.IntegerField(
         required=False,
         min_value=1,
+        error_messages={
+            "invalid": "都道府県IDは整数で指定してください。",
+            "min_value": "都道府県IDが正しくありません。",
+        },
     )
 
     title = serializers.CharField(
         required=True,
         max_length=100,
         allow_blank=False,
+        error_messages={
+            "required": "求人タイトルは必須です。",
+            "blank": "求人タイトルを入力してください。",
+            "max_length": "求人タイトルは100文字以内で入力してください。",
+        },
     )
 
     term_type = serializers.ChoiceField(
         required=True,
         choices=JOB_TERM_TYPES,
+        error_messages={
+            "required": "雇用期間の種類は必須です。",
+            "invalid_choice": "雇用期間の種類が正しくありません。",
+        },
     )
 
     pay_unit = serializers.ChoiceField(
         required=True,
         choices=JOB_PAY_UNITS,
+        error_messages={
+            "required": "給与単位は必須です。",
+            "invalid_choice": "給与単位が正しくありません。",
+        },
     )
 
     pay_amount = serializers.IntegerField(
         required=True,
         min_value=1,
+        error_messages={
+            "required": "給与金額は必須です。",
+            "min_value": "給与金額は1以上にしてください。",
+            "invalid": "給与金額は整数で入力してください。",
+        },
     )
 
     period_start = serializers.DateField(
         required=False,
         allow_null=True,
+        error_messages={
+            "invalid": "募集開始日の形式が正しくありません。",
+        },
     )
 
     period_end = serializers.DateField(
         required=False,
         allow_null=True,
+        error_messages={
+            "invalid": "募集終了日の形式が正しくありません。",
+        },
     )
 
     work_hours = serializers.CharField(
         required=True,
         max_length=50,
         allow_blank=False,
+        error_messages={
+            "required": "勤務時間は必須です。",
+            "blank": "勤務時間を入力してください。",
+            "max_length": "勤務時間は50文字以内で入力してください。",
+        },
     )
 
     work_place = serializers.CharField(
         required=True,
         max_length=200,
         allow_blank=False,
+        error_messages={
+            "required": "勤務地は必須です。",
+            "blank": "勤務地を入力してください。",
+            "max_length": "勤務地は200文字以内で入力してください。",
+        },
     )
 
     slots = serializers.IntegerField(
         required=True,
         min_value=1,
+        error_messages={
+            "required": "募集人数は必須です。",
+            "min_value": "募集人数は1人以上にしてください。",
+            "invalid": "募集人数は整数で入力してください。",
+        },
     )
 
     description = serializers.CharField(
         required=True,
         allow_blank=False,
+        error_messages={
+            "required": "求人詳細は必須です。",
+            "blank": "求人詳細を入力してください。",
+        },
     )
 
     requirements = serializers.JSONField(
@@ -229,18 +303,29 @@ class JobCreateSerializer(StrictSerializer):
 
     inexperienced_ok = serializers.BooleanField(
         required=True,
+        error_messages={
+            "required": "未経験者の応募可否は必須です。",
+            "invalid": "未経験者の応募可否は真偽値で指定してください。",
+        },
     )
 
+    # S3などにアップロード済みの画像キーを受け取る
     cover_image = serializers.CharField(
         required=False,
         allow_null=True,
         max_length=500,
+        error_messages={
+            "max_length": "画像のキーは500文字以内で指定してください。",
+        },
     )
 
     publish_status = serializers.ChoiceField(
         required=False,
         choices=JOB_PUBLISH_STATUSES,
         default="draft",
+        error_messages={
+            "invalid_choice": "掲載状態が正しくありません。",
+        },
     )
 
     work_dates = JobWorkDateSerializer(
@@ -252,8 +337,28 @@ class JobCreateSerializer(StrictSerializer):
     def validate(self, attrs):
         """求人全体の入力を検証する"""
 
-        period_start = attrs.get("period_start")
-        period_end = attrs.get("period_end")
+        instance = self.instance
+
+        # 更新時は入力値がなければ既存値を使用する
+        term_type = attrs.get(
+            "term_type",
+            instance.term_type if instance else None,
+        )
+
+        publish_status = attrs.get(
+            "publish_status",
+            instance.publish_status if instance else "draft",
+        )
+
+        period_start = attrs.get(
+            "period_start",
+            instance.period_start if instance else None,
+        )
+
+        period_end = attrs.get(
+            "period_end",
+            instance.period_end if instance else None,
+        )
 
         # 募集開始日と終了日の前後関係
         if (
@@ -267,11 +372,68 @@ class JobCreateSerializer(StrictSerializer):
                 ]
             })
 
-        # 勤務日の重複チェック
-        work_dates = attrs.get("work_dates", [])
+        # 勤務日の取得
+        if "work_dates" in attrs:
+            work_dates = attrs["work_dates"]
+        elif instance:
+            work_dates = list(
+                instance.job_work_dates.all()
+            )
+        else:
+            work_dates = []
 
+        # 新規登録時は勤務日IDを指定できない
+        if not instance and any(
+            isinstance(item, dict) and "id" in item
+            for item in work_dates
+        ):
+            raise serializers.ValidationError({
+                "work_dates": [
+                    "新規登録時に勤務日IDは指定できません。"
+                ]
+            })
+
+        # 更新時の勤務日IDを検証
+        if instance and "work_dates" in attrs:
+            work_date_ids = [
+                item["id"]
+                for item in work_dates
+                if "id" in item
+            ]
+
+            # 同じIDの重複指定を禁止
+            if len(work_date_ids) != len(set(work_date_ids)):
+                raise serializers.ValidationError({
+                    "work_dates": [
+                        "同じ勤務日IDを複数指定することはできません。"
+                    ]
+                })
+
+            # 指定された勤務日IDがこの求人に属しているか確認
+            existing_count = instance.job_work_dates.filter(
+                id__in=work_date_ids
+            ).count()
+
+            if existing_count != len(work_date_ids):
+                raise serializers.ValidationError({
+                    "work_dates": [
+                        "指定された勤務日がこの求人に存在しません。"
+                    ]
+                })
+
+        # 長期求人には勤務日を登録できない
+        if term_type == "long" and work_dates:
+            raise serializers.ValidationError({
+                "work_dates": [
+                    "長期求人には勤務日を登録できません。"
+                ]
+            })
+
+        # 勤務日の重複チェック
         dates = [
             item["work_date"]
+            if isinstance(item, dict)
+            else item.work_date
             for item in work_dates
         ]
 
@@ -282,9 +444,33 @@ class JobCreateSerializer(StrictSerializer):
                 ]
             })
 
+        # 単発・短期の公開求人には今日以降の勤務日が必要
+        if (
+            term_type in ["one_day", "short"]
+            and publish_status == "public"
+        ):
+            today = timezone.localdate()
+
+            future_dates = [
+                work_date
+                for work_date in dates
+                if work_date >= today
+            ]
+
+            if not future_dates:
+                raise serializers.ValidationError({
+                    "work_dates": [
+                        "公開する単発・短期求人には今日以降の勤務日を1日以上登録してください。"
+                    ]
+                })
+
         # 勤務日が募集期間内か確認
         for index, item in enumerate(work_dates):
-            work_date = item["work_date"]
+            work_date = (
+                item["work_date"]
+                if isinstance(item, dict)
+                else item.work_date
+            )
 
             if period_start and work_date < period_start:
                 raise serializers.ValidationError({
@@ -337,6 +523,7 @@ class JobDetailSerializer(JobListSerializer):
 
     work_dates = JobWorkDateSerializer(
         many=True,
+        source="job_work_dates",
     )
 
 
@@ -351,12 +538,20 @@ class JobUpdateSerializer(JobCreateSerializer):
     prefecture_id = serializers.IntegerField(
         required=False,
         min_value=1,
+        error_messages={
+            "invalid": "都道府県IDは整数で指定してください。",
+            "min_value": "都道府県IDが正しくありません。",
+        },
     )
 
     title = serializers.CharField(
         required=False,
         max_length=100,
         allow_blank=False,
+        error_messages={
+            "blank": "求人タイトルを入力してください。",
+            "max_length": "求人タイトルは100文字以内で入力してください。",
+        },
     )
 
     term_type = serializers.ChoiceField(
@@ -405,38 +600,6 @@ class JobUpdateSerializer(JobCreateSerializer):
         choices=JOB_PUBLISH_STATUSES,
     )
 
-    def validate(self, attrs):
-        """更新時の入力を検証する"""
-
-        attrs = super().validate(attrs)
-
-        instance = self.instance
-
-        # 更新時は既存値と合わせて募集期間を検証
-        if instance:
-            period_start = attrs.get(
-                "period_start",
-                instance.period_start,
-            )
-
-            period_end = attrs.get(
-                "period_end",
-                instance.period_end,
-            )
-
-            if (
-                period_start
-                and period_end
-                and period_start > period_end
-            ):
-                raise serializers.ValidationError({
-                    "period_end": [
-                        "募集終了日は募集開始日以降にしてください。"
-                    ]
-                })
-
-        return attrs
-
 
 # ============================================================
 # 求人削除
@@ -449,6 +612,11 @@ class JobDeleteSerializer(StrictSerializer):
     job_id = serializers.IntegerField(
         required=True,
         min_value=1,
+        error_messages={
+            "required": "求人IDは必須です。",
+            "invalid": "求人IDは整数で指定してください。",
+            "min_value": "求人IDが正しくありません。",
+        },
     )
 
 
@@ -465,6 +633,9 @@ class JobApplicationListQuerySerializer(
     status = serializers.ChoiceField(
         required=False,
         choices=APPLICATION_STATUSES,
+        error_messages={
+            "invalid_choice": "応募状態が正しくありません。",
+        },
     )
 
 
@@ -475,9 +646,21 @@ class JobApplicationSerializer(serializers.Serializer):
 
     user_id = serializers.IntegerField()
 
-    last_name = serializers.CharField()
+    last_name = serializers.CharField(
+        source="user.last_name",
+    )
 
-    first_name = serializers.CharField()
+    first_name = serializers.CharField(
+        source="user.first_name",
+    )
+
+    phone = serializers.CharField(
+        source="user.phone",
+        allow_null=True,
+        allow_blank=True,
+    )
+
+    age = serializers.SerializerMethodField()
 
     message = serializers.CharField(
         allow_null=True,
@@ -486,6 +669,8 @@ class JobApplicationSerializer(serializers.Serializer):
     answers = serializers.JSONField(
         allow_null=True,
     )
+
+    work_dates = serializers.SerializerMethodField()
 
     status = serializers.ChoiceField(
         choices=APPLICATION_STATUSES,
@@ -499,6 +684,42 @@ class JobApplicationSerializer(serializers.Serializer):
 
     updated_at = serializers.DateTimeField()
 
+    def get_age(self, obj):
+        """生年月日から現在の年齢を計算する"""
+
+        birth_date = obj.user.birth_date
+
+        if not birth_date:
+            return None
+
+        today = timezone.localdate()
+
+        age = today.year - birth_date.year
+
+        if (
+            today.month,
+            today.day
+        ) < (
+            birth_date.month,
+            birth_date.day
+        ):
+            age -= 1
+
+        return age
+
+    def get_work_dates(self, obj):
+        """応募者が希望した勤務日を返す"""
+
+        return [
+            {
+                "id": item.work_date_id,
+                "work_date": item.work_date.work_date,
+            }
+            for item in obj.application_work_dates.select_related(
+                "work_date"
+            ).all()
+        ]
+
 
 # ============================================================
 # 採用・不採用
@@ -506,34 +727,18 @@ class JobApplicationSerializer(serializers.Serializer):
 # ============================================================
 
 class JobApplicationStatusUpdateSerializer(StrictSerializer):
-    """応募者の採用・不採用を検証する"""
+    """応募者の状態変更を検証する"""
 
     status = serializers.ChoiceField(
         required=True,
         choices=[
+            "screening",
             "hired",
             "rejected",
+            "completed",
         ],
         error_messages={
-            "required": "採用・不採用の状態を指定してください。",
-            "invalid_choice": "採用または不採用を指定してください。",
+            "required": "応募状態を指定してください。",
+            "invalid_choice": "指定された応募状態は正しくありません。",
         },
     )
-
-
-
-# """求人管理・採用 のシリアライザー
-
-# 使う view: api/views/dashboard/jobs.py
-
-# このファイルに書くもの（リクエストの検証用・レスポンスの形用）:
-#   - 求人一覧（生産者）（GET /api/v1/dashboard/jobs）: クエリ・入力の検証とレスポンス
-#   - 求人登録（POST /api/v1/dashboard/jobs）: 入力の検証とレスポンス
-#   - 求人詳細（生産者）（GET /api/v1/dashboard/jobs/:jobId）: クエリ・入力の検証とレスポンス
-#   - 求人更新（PATCH /api/v1/dashboard/jobs/:jobId）: 入力の検証とレスポンス
-#   - 求人削除（DELETE /api/v1/dashboard/jobs/:jobId）: 入力の検証とレスポンス
-#   - 求人応募者一覧（GET /api/v1/dashboard/jobs/:jobId/applications）: クエリ・入力の検証とレスポンス
-#   - 採用・不採用（PATCH /api/v1/dashboard/jobs/:jobId/applications/:applicationId）: 入力の検証とレスポンス
-
-# 入力エラーは 400（項目ごとのメッセージ）。カラム名は claude/er-diagram.md に合わせる
-# """

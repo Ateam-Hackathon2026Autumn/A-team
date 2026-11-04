@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from api.common.permissions import IsApprovedProducer
-from api.models import OrderShipment, OrderItem, FavoriteProduct
+from marche.models import OrderShipment, OrderItem, FavoriteProduct
 from api.serializers.dashboard.analytics import (
     AnalyticsQuerySerializer,
     AnalyticsResponseSerializer,
