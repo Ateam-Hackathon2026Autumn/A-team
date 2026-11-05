@@ -41,3 +41,28 @@ def ensure_producer_not_suspended(producer):
     if producer.publish_status == PublishStatus.SUSPENDED:
         raise Conflict("PRODUCER_SUSPENDED",
                         "掲載停止中のため、この操作はできません。運営にお問い合わせください。")
+
+
+class IsAdminCSOrAdmin(BasePermission):
+    """CS または管理者グループに所属する運営スタッフだけ通す。
+
+    条件:
+      - ログイン済み
+      - is_staff=True
+      - CS または 管理者グループに所属
+    """
+
+    allowed_groups = ["CS", "管理者"]
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not (user and user.is_authenticated):
+            return False
+
+        if not user.is_staff:
+            return False
+
+        return user.groups.filter(
+            name__in=self.allowed_groups
+        ).exists()
