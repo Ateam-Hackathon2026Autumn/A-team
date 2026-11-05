@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
 
 function navLinkClassName({ isActive }: { isActive: boolean }) {
   const base =
-    'flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors';
+    'flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold no-underline transition-colors';
 
   return isActive
     ? `${base} bg-marche-sage text-marche-green hover:text-marche-green`
@@ -72,11 +72,11 @@ function DashboardLayout() {
           </Link>
           <Link
             to="/"
-            className="shrink-0 rounded-full border border-solid border-marche-line px-3 py-1.5 text-xs font-bold text-marche-green no-underline hover:bg-marche-canvas hover:text-marche-green md:hidden">
+            className="shrink-0 rounded-full border border-solid border-marche-line px-3 py-1.5 text-xs font-bold text-marche-green no-underline hover:bg-marche-canvas hover:text-marche-green md:hidden"
+          >
             サイトを見る
           </Link>
         </div>
-
 
         <nav
           aria-label="生産者メニュー"
@@ -93,16 +93,16 @@ function DashboardLayout() {
         {userInfo !== null && (
           <div className="mt-auto hidden p-3 md:block">
             <div className="rounded-xl bg-marche-canvas px-4 py-3">
-              <p className="text-sm font-bold">
+              <p className="m-0 text-sm font-bold">
                 {userInfo.lastName} {userInfo.firstName}
               </p>
-              <p className="truncate text-xs text-marche-muted">
+              <p className="m-0 truncate text-xs text-marche-muted">
                 {userInfo.email}
               </p>
             </div>
             <Link
               to="/"
-              className="mt-2 block rounded-xl px-4 py-2 text-center text-xs font-bold text-marche-green hover:bg-marche-canvas hover:text-marche-green"
+              className="mt-2 block rounded-xl px-4 py-2 text-center no-underline text-xs font-bold text-marche-green hover:bg-marche-canvas hover:text-marche-green"
             >
               サイトを見る
             </Link>
@@ -114,7 +114,7 @@ function DashboardLayout() {
         {isUnderReview && (
           <div
             role="status"
-            className="border-b border-marche-orange/40 bg-marche-orange/15 px-4 py-3 text-sm md:px-10"
+            className="border-0 border-b border-solid border-marche-orange/40 bg-marche-orange/15 px-4 py-3 text-sm md:px-10"
           >
             生産者登録の審査中です。承認されるまで、一部の機能は使えません。
             <Link
@@ -126,7 +126,7 @@ function DashboardLayout() {
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-10 md:py-8">
+        <main className="mx-auto box-border w-full max-w-6xl px-4 py-6 md:px-10 md:py-8">
           <Outlet />
         </main>
       </div>
