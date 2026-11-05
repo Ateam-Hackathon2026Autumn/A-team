@@ -5,7 +5,7 @@ api/urls/__init__.py から /api/v1/dashboard/ に include する。
 """
 from django.urls import path
 
-from ..views.dashboard import experiences
+from ..views.dashboard import experiences, jobs
 from ..views.dashboard.analytics import AnalyticsView
 
 urlpatterns = [

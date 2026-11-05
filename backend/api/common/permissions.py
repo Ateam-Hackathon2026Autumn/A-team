@@ -16,7 +16,9 @@
             producer = request.user.producer
             ensure_producer_not_suspended(producer)
 
-管理者の権限（is_staff かつ権限グループ）は管理者APIのステップで追加する。
+管理者の権限:
+  - is_staff=True かつ CS または 管理者グループに所属していること
+  - 管理者向け注文APIでは IsAdminCSOrAdmin を使用する
 """
 from rest_framework.permissions import BasePermission
 
