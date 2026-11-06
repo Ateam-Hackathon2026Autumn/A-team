@@ -81,7 +81,7 @@ def make_producer(user=None, approval=Producer.ApprovalStatus.APPROVED, publish=
 
 def make_product(producer=None, name="にんじん", **kw):
     producer = producer or make_producer()
-    category, _ = Category.objects.get_or_create(name="野菜", defaults={"sort_order": 1})
+    category = kw.pop("category", None) or Category.objects.get_or_create(name="野菜", defaults={"sort_order": 1})[0]
     fields = dict(volume="1kg", description="説明", price=1000, publish_status=PublishStatus.PUBLIC)
     fields.update(kw)
     return Product.objects.create(producer=producer, category=category,

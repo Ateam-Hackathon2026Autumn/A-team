@@ -12,6 +12,7 @@ from rest_framework import serializers
 
 from marche.models import Experience, ExperienceSlot, Prefecture, PublishStatus, Reservation
 
+from ...common.images import ImageUrlField
 from ...common.pagination import PageQuerySerializer
 from ...common.serializers import AwareDateTimeField, StrictSerializer
 
@@ -40,7 +41,7 @@ class ExperienceSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Experience
         fields = ["id", "title", "publish_status", "prefecture_id", "price_adult", "price_child",
-                  "slot_count", "application_count", "next_start_at", "created_at", "updated_at"]
+                    "slot_count", "application_count", "next_start_at", "created_at", "updated_at"]
 
 
 class FlowItemSerializer(StrictSerializer):
@@ -71,9 +72,9 @@ class ExperienceWriteSerializer(StrictSerializer):
     beginner_ok = serializers.BooleanField(required=False)
     flow = serializers.ListField(child=FlowItemSerializer(), max_length=50, required=False, allow_null=True)
     belongings = serializers.ListField(child=serializers.CharField(max_length=500), max_length=50,
-                                       required=False, allow_null=True)
+                                        required=False, allow_null=True)
     notes = serializers.ListField(child=serializers.CharField(max_length=500), max_length=50,
-                                  required=False, allow_null=True)
+                                    required=False, allow_null=True)
     cancel_policy = serializers.CharField(max_length=10000)
     publish_status = serializers.ChoiceField(choices=PRODUCER_PUBLISH_CHOICES, required=False)
     images = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
@@ -98,7 +99,7 @@ class ExperienceImageSerializer(serializers.Serializer):
 
     id = serializers.IntegerField()
     image_key = serializers.CharField(source="image.name")
-    url = serializers.CharField(source="image.url")
+    url = ImageUrlField(source="image")
     sort_order = serializers.IntegerField()
 
 
@@ -110,8 +111,8 @@ class ExperienceDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Experience
         fields = ["id", "producer_id", "title", "prefecture_id", "description", "place", "price_adult",
-                  "price_child", "age_condition", "family_ok", "beginner_ok", "flow", "belongings", "notes",
-                  "cancel_policy", "publish_status", "images", "created_at", "updated_at"]
+                    "price_child", "age_condition", "family_ok", "beginner_ok", "flow", "belongings", "notes",
+                    "cancel_policy", "publish_status", "images", "created_at", "updated_at"]
 
 
 class ExperienceWriteResponseSerializer(serializers.ModelSerializer):
@@ -189,7 +190,7 @@ class SlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExperienceSlot
         fields = ["id", "experience_id", "start_at", "duration_min", "capacity", "status", "reserved_count",
-                  "remaining_capacity", "created_at", "updated_at"]
+                    "remaining_capacity", "created_at", "updated_at"]
 
     def get_remaining_capacity(self, obj):
         return max(obj.capacity - obj.reserved_count, 0)
