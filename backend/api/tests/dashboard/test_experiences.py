@@ -96,7 +96,8 @@ class ExperienceListTests(ProducerTestCase):
         make_reservation(soon)
         make_reservation(soon, status=Reservation.Status.CANCELED)
 
-        with self.assertNumQueries(5):  # セッション・ユーザー・生産者・件数・一覧
+        # セッション・ユーザー・生産者・件数・一覧＋SAVEPOINT・RELEASE（件数と一覧を同じ時点で読むため）
+        with self.assertNumQueries(7):
             res = self.client.get(BASE)
         self.assertEqual(res.status_code, 200)
         body = res.json()
@@ -185,7 +186,7 @@ class ExperienceDetailTests(ProducerTestCase):
         body = res.json()
         self.assertEqual(body["flow"], [{"time": "10:00", "text": "集合"}])
         self.assertEqual([i["imageKey"] for i in body["images"]],
-                         ["experience_images/a.jpg", "experience_images/b.jpg"])  # sort_order 順
+                            ["experience_images/a.jpg", "experience_images/b.jpg"])  # sort_order 順
         self.assertTrue(body["images"][0]["url"].endswith("experience_images/a.jpg"))
         self.assertNotIn("slots", body)
 
@@ -297,7 +298,8 @@ class ApplicationListTests(ProducerTestCase):
     def test_query_count(self):
         for _ in range(3):
             make_reservation(make_slot(self.experience, days=len(Reservation.objects.all()) + 1))
-        with self.assertNumQueries(6):  # セッション・ユーザー・生産者・体験・件数・一覧（予約枠と会員は JOIN）
+        # セッション・ユーザー・生産者・体験・件数・一覧（予約枠と会員は JOIN）＋SAVEPOINT・RELEASE
+        with self.assertNumQueries(8):
             self.client.get(self.url)
 
 

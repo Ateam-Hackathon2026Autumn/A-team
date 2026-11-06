@@ -5,6 +5,9 @@ Notion の一覧APIの形にそろえる:
     レスポンス: {"items": [...], "total": 45, "page": 1, "pageSize": 20, "totalPages": 3}
 
 - 範囲外のページ（total を超える page）は 400 にせず、items を空配列で返す
+- total と items は同じ時点のデータで数える・取る（transaction.atomic の中で読む。MySQL の初期設定
+    REPEATABLE READ では、トランザクション内の読み取りは最初に読んだ時点のスナップショットを見るため。
+    読むだけなのでロックはかからない。テストの assertNumQueries では SAVEPOINT と RELEASE の2本が増える）
 - 使い方:
     class XxxQuerySerializer(PageQuerySerializer):   # 絞り込みの項目を足す
         status = serializers.ChoiceField(...)
@@ -13,6 +16,8 @@ Notion の一覧APIの形にそろえる:
     return Response(paginate(queryset, query, XxxSerializer))
 """
 import math
+
+from django.db import transaction
 
 from rest_framework import serializers
 
@@ -25,7 +30,7 @@ DEFAULT_PAGE_SIZE = 20
 class PageQuerySerializer(QuerySerializer):
     page = serializers.IntegerField(required=False, default=1, min_value=1, max_value=1_000_000)
     page_size = serializers.IntegerField(required=False, default=DEFAULT_PAGE_SIZE, min_value=1,
-                                          max_value=MAX_PAGE_SIZE)
+                                            max_value=MAX_PAGE_SIZE)
 
 
 def validate_query(serializer_class, request):
@@ -40,12 +45,13 @@ def paginate(queryset, query, item_serializer_class, context=None, count_queryse
 
     - queryset は並び順（order_by）を決めてから渡す。件数は count() で1回、中身は1回の SQL で取る
     - queryset に集計（Count など）を付けているときは、集計を付ける前の queryset を count_queryset に渡す
-      （件数を数えるだけなのに JOIN と集計をしないようにするため）
+        （件数を数えるだけなのに JOIN と集計をしないようにするため）
     """
     page, page_size = query["page"], query["page_size"]
-    total = (count_queryset if count_queryset is not None else queryset).count()
-    start = (page - 1) * page_size
-    rows = queryset[start:start + page_size] if start < total else []
+    with transaction.atomic():
+        total = (count_queryset if count_queryset is not None else queryset).count()
+        start = (page - 1) * page_size
+        rows = list(queryset[start:start + page_size]) if start < total else []
     return {
         "items": item_serializer_class(rows, many=True, context=context or {}).data,
         "total": total,
