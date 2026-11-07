@@ -14,3 +14,8 @@ backend/.pytest_cache/
 .DS_Store
 .idea/
 .vscode/
+
+/infra/architecture
+/infra/bootstrap/*.example
+/infra/docs
+

@@ -1,0 +1,49 @@
+# Terraform のローカルキャッシュ・state・ロック情報
+.terraform/
+terraform.tfstate.d/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# plan 本体・JSON 出力・バックアップ（保存時は .tfplan 拡張子を使用）
+*.tfplan
+*.tfplan.*
+tfplan
+tfplan.*
+
+# Terraform の診断ログ
+crash.log
+crash.*.log
+terraform.log
+terraform.*.log
+
+# ローカルで保持するテスト用フォルダ（infra 配下の全階層）
+test/
+tests/
+
+# Lambda のビルド成果物・ローカル Python 環境
+dist/
+.venv/
+__pycache__/
+*.py[cod]
+
+# 環境固有の設定値とそのバックアップ
+*.tfvars
+*.tfvars.*
+*.tfbackend
+*.tfbackend.*
+
+# 個人用の上書き設定・認証を含み得る CLI 設定
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+/bootstrap/backend.tf
+
+# Terraform / provider の固定バージョンは共有する
+!.terraform-version
+!.terraform.lock.hcl
+
+README.md

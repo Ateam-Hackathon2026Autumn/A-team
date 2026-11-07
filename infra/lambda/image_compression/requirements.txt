@@ -1,0 +1,10 @@
+Pillow==13.0.0
+boto3==1.43.126
+
+# AWS SDK の間接依存も固定し、ビルド結果の差分を抑える。
+botocore==1.43.126
+jmespath==1.1.0
+s3transfer==0.19.3
+python-dateutil==2.9.0.post0
+six==1.17.0
+urllib3==2.8.0
