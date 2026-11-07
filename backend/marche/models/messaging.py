@@ -92,6 +92,7 @@ class Notification(TimeStampedModel):
         SHIPPED = "shipped", "発送"
         CANCEL_REQUESTED = "cancel_requested", "キャンセル申請"
         CANCELED = "canceled", "キャンセル確定・返金"
+        CANCEL_REJECTED = "cancel_rejected", "キャンセル申請の不承認"
         APPLICATION_RESULT = "application_result", "応募結果"
         RESERVATION = "reservation", "体験予約"
 
@@ -103,7 +104,8 @@ class Notification(TimeStampedModel):
         verbose_name="通知を受け取る会員",
     )
 
-    # new_order（新規注文）/ shipped（発送）/ cancel_requested（キャンセル申請）/ canceled（キャンセル確定・返金）/ application_result（応募結果）/ reservation（体験予約）
+    # new_order（新規注文）/ shipped（発送）/ cancel_requested（キャンセル申請）/ canceled（キャンセル確定・返金）
+    # / cancel_rejected（キャンセル申請の不承認）/ application_result（応募結果）/ reservation（体験予約）
     notification_type = models.CharField(
         max_length=30,
         choices=NotificationType.choices,
