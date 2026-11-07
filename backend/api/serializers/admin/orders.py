@@ -1,57 +1,70 @@
-"""管理者向け注文管理APIのシリアライザー
+"""注文・返金管理（管理者） のシリアライザー
 
-対象API:
-    GET  /api/v1/admin/orders
-    GET  /api/v1/admin/orders/:orderId
-    POST /api/v1/admin/orders/:orderId/cancel
-    POST /api/v1/admin/orders/:orderId/refund
+使う view: api/views/admin/orders.py
+Notion には名前だけで定義（OpenAPI）がないので、形は api-spec.md と「7. 実装で決めたこと」で決めた。
 
-注文一覧・詳細・キャンセル・返金処理で使用する。
-
-注意:
-    - 既存のDBモデル・テーブル定義は変更しない。
-    - フロント側のcamelCaseは共通設定でsnake_caseに変換する。
-    - 注文のキャンセル・返金などの業務処理はView側で実装する。
+- 購入者は buyer: {type: member|guest, userId, name, email}（詳細だけ phone も）にまとめる。
+  会員は users から、ゲストは orders.guest_* から取る
+- 金額はすべて数値（円）
 """
-
 from rest_framework import serializers
 
-from api.common.serializers import StrictSerializer
+from marche.models import AuditLog, Inquiry, Order, OrderItem, OrderShipment
+
+from ...common.pagination import PageQuerySerializer
+from ...common.serializers import StrictSerializer
+
+# BIGINT の上限。これより大きい ID は DB に渡さない
+MAX_ID = 2 ** 63 - 1
 
 
+# =========================================================
+# リクエスト
+# =========================================================
 
-# 注文キャンセル
-# POST /api/v1/admin/orders/:orderId/cancel
-class AdminOrderCancelSerializer(StrictSerializer):
-    """管理者による注文キャンセルのリクエストを検証する。
+class AdminOrderListQuerySerializer(PageQuerySerializer):
+    """GET /admin/orders の ?keyword=&paymentStatus=&shipmentStatus=&refundPending=&startDate=&endDate=&page=&pageSize=
 
-    リクエスト:
-        {
-            "shipmentIds": [2012, 2013],
-            "reason": "購入者からキャンセル依頼があったため"
-        }
+    keyword: 注文番号・メールアドレス（会員・ゲスト）の部分一致
+    shipmentStatus: その状態の箱が1つでもある注文 / refundPending=true: 返金待ちの箱がある注文だけ
+    startDate・endDate: 注文日（YYYY-MM-DD、日本時間の日付）の範囲。両端を含む
     """
+
+    keyword = serializers.CharField(required=False, max_length=254)
+    payment_status = serializers.ChoiceField(choices=Order.PaymentStatus.choices, required=False)
+    shipment_status = serializers.ChoiceField(choices=OrderShipment.Status.choices, required=False)
+    refund_pending = serializers.BooleanField(required=False)
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False)
+
+    def validate(self, attrs):
+        start, end = attrs.get("start_date"), attrs.get("end_date")
+        if start and end and start > end:
+            raise serializers.ValidationError({"end_date": ["終了日は開始日以降の日付を指定してください。"]})
+        return attrs
+
+
+class AdminOrderCancelSerializer(StrictSerializer):
+    """POST /admin/orders/:orderId/cancel の本文 {shipmentIds, reason}"""
 
     shipment_ids = serializers.ListField(
         child=serializers.IntegerField(
-            min_value=1,
+            min_value=1, max_value=MAX_ID,
             error_messages={
                 "invalid": "配送箱IDは整数で指定してください。",
                 "min_value": "配送箱IDは1以上で指定してください。",
             },
         ),
         allow_empty=False,
+        max_length=50,
         error_messages={
             "required": "キャンセル対象の配送箱IDを指定してください。",
             "not_a_list": "配送箱IDはリストで指定してください。",
             "empty": "キャンセル対象の配送箱を1件以上指定してください。",
         },
     )
-
     reason = serializers.CharField(
         max_length=500,
-        allow_blank=False,
-        trim_whitespace=True,
         error_messages={
             "required": "キャンセル理由を入力してください。",
             "blank": "キャンセル理由を入力してください。",
@@ -60,316 +73,124 @@ class AdminOrderCancelSerializer(StrictSerializer):
     )
 
     def validate_shipment_ids(self, value):
-        """配送箱IDの重複を確認する。"""
-
         if len(value) != len(set(value)):
-            raise serializers.ValidationError(
-                "同じ配送箱IDを複数指定することはできません。"
-            )
-
+            raise serializers.ValidationError("同じ配送箱IDを複数指定することはできません。")
         return value
 
 
-# 返金処理
-# POST /api/v1/admin/orders/:orderId/refund
 class AdminOrderRefundSerializer(StrictSerializer):
-    """管理者による返金処理のリクエストを検証する。
+    """POST /admin/orders/:orderId/refund の本文 {shipmentId, method}
 
-    リクエスト:
-        {
-            "shipmentId": 2012,
-            "method": "stripe"
-        }
-
-    method:
-        stripe: Stripeによる返金
-        manual: 手動による返金記録
+    method: stripe（カードのみ Stripe で再返金。準備中）／ manual（銀行振込などで返金したことを記録）
     """
 
     shipment_id = serializers.IntegerField(
-        min_value=1,
+        min_value=1, max_value=MAX_ID,
         error_messages={
             "required": "返金対象の配送箱IDを指定してください。",
             "invalid": "配送箱IDは整数で指定してください。",
             "min_value": "配送箱IDは1以上で指定してください。",
         },
     )
-
     method = serializers.ChoiceField(
-        choices=[
-            ("stripe", "Stripeによる返金"),
-            ("manual", "手動による返金"),
-        ],
+        choices=[("stripe", "Stripeによる返金"), ("manual", "手動による返金")],
         error_messages={
             "required": "返金方法を指定してください。",
-            "invalid_choice": (
-                "返金方法はstripeまたはmanualを指定してください。"
-            ),
+            "invalid_choice": "返金方法はstripeまたはmanualを指定してください。",
         },
     )
 
 
+# =========================================================
+# レスポンス
+# =========================================================
 
-# 商品明細
-class AdminOrderItemSerializer(serializers.Serializer):
-    """管理者向け注文の商品明細"""
+def buyer_of(order, with_phone=False):
+    """購入者の連絡先。会員は users、ゲストは orders.guest_*"""
+    if order.user_id:
+        user = order.user
+        buyer = {"type": "member", "user_id": user.id, "name": f"{user.last_name} {user.first_name}",
+                 "email": user.email}
+        phone = user.phone
+    else:
+        buyer = {"type": "guest", "user_id": None, "name": order.guest_name, "email": order.guest_email}
+        phone = order.guest_phone
+    if with_phone:
+        buyer["phone"] = phone
+    return buyer
 
-    id = serializers.IntegerField()
 
-    product_id = serializers.IntegerField()
+class AdminOrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ["id", "product_id", "product_name", "unit_price", "discount_rate", "paid_unit_price", "quantity",
+                  "tax_rate", "subtotal"]
 
-    product_name = serializers.CharField()
 
-    unit_price = serializers.IntegerField()
+class AdminShipmentSerializer(serializers.ModelSerializer):
+    """箱。生産者名は producer を select_related、明細は order_items を prefetch しておく"""
 
-    discount_rate = serializers.IntegerField(
-        allow_null=True,
-    )
+    producer_name = serializers.CharField(source="producer.business_name")
+    items = AdminOrderItemSerializer(source="order_items", many=True)
 
-    paid_unit_price = serializers.IntegerField()
+    class Meta:
+        model = OrderShipment
+        fields = ["id", "producer_id", "producer_name", "temperature_zone", "status", "shipping_fee", "desired_date",
+                  "desired_time", "tracking_no", "shipped_at", "cancel_reason", "canceled_at", "refunded_amount",
+                  "stripe_refund_id", "updated_at", "items"]
 
-    quantity = serializers.IntegerField()
 
-    tax_rate = serializers.IntegerField()
+class AdminOrderListItemSerializer(serializers.ModelSerializer):
+    """注文一覧の1件"""
 
-    subtotal = serializers.IntegerField()
+    order_id = serializers.IntegerField(source="id")
+    buyer = serializers.SerializerMethodField()
+    shipments = AdminShipmentSerializer(source="order_shipments", many=True)
 
+    class Meta:
+        model = Order
+        fields = ["order_id", "order_no", "ordered_at", "payment_method", "payment_status", "items_total",
+                  "shipping_total", "grand_total", "buyer", "shipments"]
 
+    def get_buyer(self, order):
+        return buyer_of(order)
 
-# 配送箱
-class AdminOrderShipmentSerializer(serializers.Serializer):
-    """管理者向け注文の配送箱情報"""
 
-    id = serializers.IntegerField()
+class AdminOrderInquirySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Inquiry
+        fields = ["id", "email", "category", "subject", "status", "priority", "created_at"]
 
-    producer_id = serializers.IntegerField()
 
-    temperature_zone = serializers.CharField()
+class AdminAuditLogSerializer(serializers.ModelSerializer):
+    admin_name = serializers.SerializerMethodField()
 
-    status = serializers.CharField()
+    class Meta:
+        model = AuditLog
+        fields = ["id", "admin_id", "admin_name", "action", "detail", "created_at"]
 
-    shipping_fee = serializers.IntegerField()
+    def get_admin_name(self, log):
+        return f"{log.admin.last_name} {log.admin.first_name}"
 
-    desired_date = serializers.DateField(
-        allow_null=True,
-    )
 
-    desired_time = serializers.CharField(
-        allow_null=True,
-    )
+class AdminOrderDetailSerializer(AdminOrderListItemSerializer):
+    """注文詳細 = 一覧の項目＋税額・決済ID・お届け先・関係する問い合わせ・操作履歴（view が operation_history を付ける）"""
 
-    tracking_no = serializers.CharField(
-        allow_null=True,
-    )
+    inquiries = AdminOrderInquirySerializer(many=True)
+    operation_history = AdminAuditLogSerializer(many=True)
 
-    shipped_at = serializers.DateTimeField(
-        allow_null=True,
-    )
+    class Meta(AdminOrderListItemSerializer.Meta):
+        fields = AdminOrderListItemSerializer.Meta.fields + [
+            "tax_8_amount", "tax_10_amount", "stripe_payment_intent_id",
+            "ship_name", "ship_postal_code", "ship_prefecture", "ship_city", "ship_address_line1",
+            "ship_address_line2", "ship_phone", "inquiries", "operation_history",
+        ]
 
-    cancel_reason = serializers.CharField(
-        allow_null=True,
-    )
+    def get_buyer(self, order):
+        return buyer_of(order, with_phone=True)
 
-    canceled_at = serializers.DateTimeField(
-        allow_null=True,
-    )
 
-    refunded_amount = serializers.IntegerField(
-        allow_null=True,
-    )
+class AdminShipmentListResponseSerializer(serializers.Serializer):
+    """管理者キャンセルのレスポンス {shipments: [...]}（キャンセルした箱）"""
 
-    stripe_refund_id = serializers.CharField(
-        allow_null=True,
-    )
-
-    items = AdminOrderItemSerializer(
-        source="order_items",
-        many=True,
-    )
-
-
-
-# 関連問い合わせ
-class AdminOrderInquirySerializer(serializers.Serializer):
-    """注文に関連する問い合わせ情報"""
-
-    id = serializers.IntegerField()
-
-    email = serializers.EmailField()
-
-    category = serializers.CharField()
-
-    subject = serializers.CharField()
-
-    status = serializers.CharField()
-
-    priority = serializers.CharField()
-
-
-
-# 操作履歴
-class AdminOrderAuditLogSerializer(serializers.Serializer):
-    """管理者による注文関連の操作履歴"""
-
-    id = serializers.IntegerField()
-
-    admin_id = serializers.IntegerField()
-
-    action = serializers.CharField()
-
-    target_type = serializers.CharField()
-
-    target_id = serializers.IntegerField()
-
-    detail = serializers.JSONField(
-        allow_null=True,
-    )
-
-    created_at = serializers.DateTimeField()
-
-
-# 注文一覧
-# GET /api/v1/admin/orders
-class AdminOrderListItemSerializer(serializers.Serializer):
-    """管理者向け注文一覧の1件分のレスポンス"""
-
-    order_id = serializers.IntegerField(
-        source="id",
-    )
-
-    order_no = serializers.CharField()
-
-    ordered_at = serializers.DateTimeField()
-
-    payment_method = serializers.CharField()
-
-    payment_status = serializers.CharField()
-
-    items_total = serializers.IntegerField()
-
-    shipping_total = serializers.IntegerField()
-
-    grand_total = serializers.IntegerField()
-
-    guest_name = serializers.CharField(
-        allow_null=True,
-    )
-
-    guest_email = serializers.EmailField(
-        allow_null=True,
-    )
-
-    guest_phone = serializers.CharField(
-        allow_null=True,
-    )
-
-    shipments = AdminOrderShipmentSerializer(
-        source="order_shipments",
-        many=True,
-    )
-
-
-class AdminOrderListResponseSerializer(serializers.Serializer):
-    """管理者向け注文一覧のレスポンス"""
-
-    items = AdminOrderListItemSerializer(
-        many=True,
-    )
-
-    total = serializers.IntegerField()
-
-    page = serializers.IntegerField()
-
-    page_size = serializers.IntegerField()
-
-    total_pages = serializers.IntegerField()
-
-
-# 注文詳細
-# GET /api/v1/admin/orders/:orderId
-class AdminOrderDetailSerializer(serializers.Serializer):
-    """管理者向け注文詳細のレスポンス"""
-
-    order_id = serializers.IntegerField(
-        source="id",
-    )
-
-    order_no = serializers.CharField()
-
-    ordered_at = serializers.DateTimeField()
-
-    payment_method = serializers.CharField()
-
-    payment_status = serializers.CharField()
-
-    stripe_payment_intent_id = serializers.CharField(
-        allow_null=True,
-    )
-
-    items_total = serializers.IntegerField()
-
-    shipping_total = serializers.IntegerField()
-
-    grand_total = serializers.IntegerField()
-
-    tax_8_amount = serializers.IntegerField()
-
-    tax_10_amount = serializers.IntegerField()
-
-    guest_name = serializers.CharField(
-        allow_null=True,
-    )
-
-    guest_email = serializers.EmailField(
-        allow_null=True,
-    )
-
-    guest_phone = serializers.CharField(
-        allow_null=True,
-    )
-
-    ship_name = serializers.CharField()
-
-    ship_postal_code = serializers.CharField()
-
-    ship_prefecture = serializers.CharField()
-
-    ship_city = serializers.CharField()
-
-    ship_address_line1 = serializers.CharField()
-
-    ship_address_line2 = serializers.CharField(
-        allow_blank=True,
-    )
-
-    ship_phone = serializers.CharField()
-
-    shipments = AdminOrderShipmentSerializer(
-        source="order_shipments",
-        many=True,
-    )
-
-    inquiries = AdminOrderInquirySerializer(
-        many=True,
-        read_only=True,
-    )
-
-    operation_history = serializers.SerializerMethodField()
-
-    def get_operation_history(self, obj):
-        """Viewから渡された注文の操作履歴を取得する。
-
-        AuditLogにはOrderとの直接のForeignKeyがないため、
-        View側でtarget_typeとtarget_idを使って取得し、
-        serializer contextに渡す。
-        """
-
-        operation_history = self.context.get(
-            "operation_history",
-            [],
-        )
-
-        return AdminOrderAuditLogSerializer(
-            operation_history,
-            many=True,
-        ).data
+    shipments = AdminShipmentSerializer(many=True)

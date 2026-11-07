@@ -1,7 +1,8 @@
 """テストの共通部品
 
 - ApiTestCase: 実際のブラウザと同じく CSRF を確認するクライアントを使うテストの基底クラス
-- make_user / make_producer / make_product / make_experience / make_slot / make_reservation: テストデータを作る
+- make_user / make_producer / make_product / make_experience / make_slot / make_reservation / make_order /
+  add_shipment: テストデータを作る
 """
 from datetime import timedelta
 
@@ -10,8 +11,8 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from marche.models import (Area, Category, Experience, ExperienceSlot, Prefecture, Producer, Product, PublishStatus,
-                            Reservation, ShippingSetting, User)
+from marche.models import (Area, Category, Experience, ExperienceSlot, Order, OrderItem, OrderShipment, Prefecture,
+                            Producer, Product, PublishStatus, Reservation, ShippingSetting, User)
 
 # テストでは S3 に接続しない
 TEST_STORAGES = {
@@ -119,3 +120,46 @@ def make_reservation(slot, user=None, adult_count=2, status=Reservation.Status.C
         slot.reserved_count += adult_count + reservation.child_count + reservation.infant_count
         slot.save(update_fields=["reserved_count"])
     return reservation
+
+
+def make_order(user=None, guest_email=None, payment_status=Order.PaymentStatus.PAID, payment_method="card", **kw):
+    """注文だけを作る（箱と明細は add_shipment で足す）。user も guest_email もなければゲスト（guest@example.com）"""
+    if user is None and guest_email is None:
+        guest_email = "guest@example.com"
+    number = Order.objects.count() + 1
+    fields = dict(
+        ship_name="佐藤 花子", ship_postal_code="1000001", ship_prefecture="東京都", ship_city="千代田区",
+        ship_address_line1="千代田1-1", ship_phone="0312345678", items_total=0, shipping_total=0, grand_total=0,
+        tax_8_amount=0, tax_10_amount=0, ordered_at=timezone.now(),
+    )
+    if guest_email:
+        fields.update(guest_name="佐藤 花子", guest_phone="09012345678")
+    fields.update(kw)
+    return Order.objects.create(
+        order_no=f"TM-20261106-{number:04d}", user=user, guest_email=guest_email,
+        access_token_hash=f"{number:064x}", payment_status=payment_status, payment_method=payment_method, **fields)
+
+
+def add_shipment(order, producer, items=((None, 1),), status=OrderShipment.Status.UNSHIPPED, temperature_zone="normal",
+                 shipping_fee=1000, **kw):
+    """注文に箱（生産者×温度帯）と明細を足す。items は (商品, 数量) の並び。商品が None なら producer の商品を作る
+
+    明細の価格は商品の sale_price を写す。注文の合計金額も足し込む。
+    """
+    shipment = OrderShipment.objects.create(order=order, producer=producer, temperature_zone=temperature_zone,
+                                            shipping_fee=shipping_fee, status=status, **kw)
+    items_total = 0
+    for product, quantity in items:
+        product = product or make_product(producer)
+        product.refresh_from_db()
+        subtotal = product.sale_price * quantity
+        OrderItem.objects.create(shipment=shipment, product=product, product_name=product.name,
+                                 unit_price=product.price, discount_rate=product.discount_rate,
+                                 paid_unit_price=product.sale_price, quantity=quantity, tax_rate=product.tax_rate,
+                                 subtotal=subtotal)
+        items_total += subtotal
+    order.items_total += items_total
+    order.shipping_total += shipping_fee
+    order.grand_total += items_total + shipping_fee
+    order.save(update_fields=["items_total", "shipping_total", "grand_total"])
+    return shipment

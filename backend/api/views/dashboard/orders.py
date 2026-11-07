@@ -1,510 +1,225 @@
-"""注文・配送・キャンセル承認（生産者）のView
+"""注文・配送・キャンセル承認（生産者）
 
-対象API:
-  GET   /api/v1/dashboard/orders
-  GET   /api/v1/dashboard/orders/<order_id>
-  PATCH /api/v1/dashboard/orders/<order_id>/shipping
-  POST  /api/v1/dashboard/orders/<order_id>/cancel/approve
-  POST  /api/v1/dashboard/orders/<order_id>/cancel/reject
+認証: 承認済みの生産者（IsApprovedProducer。未ログイン 401、生産者でない・承認前は 403）
+      掲載停止中でも、注文の閲覧・発送・キャンセルの承認と拒否はできる（api-spec「生産者APIの共通チェック」）
+仕様: Notion の各API定義＋api-spec.md「7. 実装で決めたこと」。カラム名: claude/er-diagram.md
 
-共通ルール:
-  - ログイン中で承認済みの生産者だけ利用できる
-  - 自分の配送箱と明細だけ取得できる
-  - 注文一覧は支払い済み（paid）の注文だけ
-  - 発送登録は unshipped の場合だけ可能
-  - キャンセル承認は cancel_requested の場合だけ可能
-  - キャンセル承認時は在庫を戻す
-  - キャンセル拒否時は unshipped に戻す
-  - 掲載停止中でも注文管理は可能
+このファイルの API:
+    - 注文一覧: GET /api/v1/dashboard/orders
+        ・自分の箱がある paid の注文だけ。ordered_at・id の降順。shipmentStatus で絞り込み
+        ・返す箱は自分の箱だけ（Prefetch で my_shipments に取る）。N+1 にしない
+    - 注文詳細: GET /api/v1/dashboard/orders/:orderId
+        ・一覧の項目＋お届け先（ship_*）。他の生産者の箱・購入者のメールは返さない。対象外は 404
+    - 配送状況更新: PATCH /api/v1/dashboard/orders/:orderId/shipping
+        ・{shipmentId, status, trackingNo}。箱1つだけ。自分の箱でなければ 404
+        ・unshipped → shipped（shipped_at を入れ、購入者に通知・メール）/ shipped → delivered
+        ・注文が paid でない・状態が合わないときは 409 SHIPMENT_STATE_CONFLICT。更新した箱を返す
+    - キャンセル承認: POST /api/v1/dashboard/orders/:orderId/cancel/approve
+        ・自分の cancel_requested の箱をまとめて canceled にし、在庫を戻す。購入者に通知・メール
+        ・返金は「返金待ち」（refunded_amount が空）のまま。Stripe の返金は services/payments.py で後から付ける
+    - キャンセル拒否: POST /api/v1/dashboard/orders/:orderId/cancel/reject
+        ・自分の cancel_requested の箱をまとめて unshipped に戻す。購入者に通知・メール（cancel_rejected）
+        ・承認・拒否とも、対象の箱がなければ 409 SHIPMENT_STATE_CONFLICT。処理した箱を {shipments} で返す
+
+同時更新: 注文 → 箱の順に行をロック（select_for_update）してから状態を確かめる。ゲストの購入者にはメールだけ送る。
 """
-
-import hashlib
-
-import stripe
-
-from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Sum
-from django.shortcuts import get_object_or_404
+from django.db.models import Exists, OuterRef, Prefetch
 from django.utils import timezone
-
-from rest_framework.views import APIView
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.exceptions import APIException, NotFound
+from rest_framework.views import APIView
 
-from marche.models import Order, OrderShipment, Product
+from marche.models import Notification, Order, OrderShipment
 
-from api.common.permissions import IsApprovedProducer
-
-from api.serializers.dashboard.orders import (
-    DashboardOrderListQuerySerializer,
-    DashboardOrderListItemSerializer,
-    DashboardOrderListResponseSerializer,
+from ...common.exceptions import Conflict
+from ...common.pagination import paginate, validate_query
+from ...common.permissions import IsApprovedProducer
+from ...common.serializers import QuerySerializer, StrictSerializer
+from ...serializers.dashboard.orders import (
     DashboardOrderDetailSerializer,
-    DashboardOrderShippingSerializer,
+    DashboardOrderListQuerySerializer,
+    DashboardOrderSummarySerializer,
+    ShipmentListResponseSerializer,
+    ShipmentSerializer,
+    ShipmentUpdateSerializer,
 )
+from ...services.notifications import notify_order_buyer
+from ...services.orders import SHIPMENT_STATE_CONFLICT, restore_stock
+
+Status = OrderShipment.Status
 
 
-# 共通処理
-class OrderConflict(APIException):
-    """注文・配送の状態が不正な場合の409エラー"""
-
-    status_code = status.HTTP_409_CONFLICT
-    default_detail = "現在の状態ではこの操作を実行できません。"
-    default_code = "ORDER_STATE_CONFLICT"
-
-
-def get_producer(request):
-    """ログイン中のユーザーに紐づく生産者を取得する"""
-
-    try:
-        return request.user.producer
-    except Exception:
-        raise NotFound("生産者情報が見つかりません。")
-
-
-def get_producer_order_queryset(producer):
-    """自分の配送箱がある注文だけを取得する"""
-
+def producer_orders(producer, shipment_status=None):
+    """自分の箱がある paid の注文（新しい順）。自分の箱と明細を my_shipments に prefetch する"""
+    my_boxes = OrderShipment.objects.filter(order=OuterRef("pk"), producer=producer)
+    if shipment_status:
+        my_boxes = my_boxes.filter(status=shipment_status)
     return (
         Order.objects
-        .filter(
-            payment_status="paid",
-            order_shipments__producer=producer,
-        )
-        .distinct()
-        .prefetch_related(
-            "order_shipments__order_items",
-        )
+        .filter(Exists(my_boxes), payment_status=Order.PaymentStatus.PAID)
+        .prefetch_related(Prefetch(
+            "order_shipments",
+            queryset=OrderShipment.objects.filter(producer=producer).order_by("id").prefetch_related("order_items"),
+            to_attr="my_shipments",
+        ))
         .order_by("-ordered_at", "-id")
     )
 
 
-def get_shipment_etags(shipments):
-    """配送箱の更新日時からETagを生成する"""
-
-    etags = {}
-
-    for shipment in shipments:
-        updated_at = shipment.updated_at.isoformat()
-
-        digest = hashlib.sha256(
-            f"{shipment.id}:{updated_at}".encode()
-        ).hexdigest()
-
-        etags[shipment.id] = f'"{digest}"'
-
-    return etags
-
-
-def get_order_serializer_context(request, producer, order):
-    """注文シリアライザーに渡す共通情報"""
-
+def lock_my_shipments(order_id, producer):
+    """注文と自分の箱をロックして返す。paid の注文で自分の箱がなければ 404"""
+    order = Order.objects.select_for_update().filter(pk=order_id, payment_status=Order.PaymentStatus.PAID).first()
+    if order is None:
+        raise NotFound()
     shipments = list(
-        order.order_shipments.filter(
-            producer=producer
-        ).prefetch_related(
-            "order_items"
-        )
+        OrderShipment.objects.select_for_update().filter(order=order, producer=producer)
+        .order_by("id").prefetch_related("order_items")
     )
-
-    return {
-        "request": request,
-        "producer": producer,
-        "shipment_etags": get_shipment_etags(shipments),
-    }
+    if not shipments:
+        raise NotFound()
+    return order, shipments
 
 
-# 注文一覧
-# GET /api/v1/dashboard/orders
+def cancel_requested_only(shipments, action):
+    targets = [shipment for shipment in shipments if shipment.status == Status.CANCEL_REQUESTED]
+    if not targets:
+        raise Conflict(SHIPMENT_STATE_CONFLICT, f"{action}できるキャンセル申請がありません。")
+    return targets
+
+
 class DashboardOrderListView(APIView):
-    """生産者向け注文一覧"""
+    """GET /api/v1/dashboard/orders"""
 
     permission_classes = [IsApprovedProducer]
 
     def get(self, request):
-
-        producer = get_producer(request)
-
-        # クエリパラメータを検証
-        query_serializer = DashboardOrderListQuerySerializer(
-            data=request.query_params
-        )
-
-        query_serializer.is_valid(raise_exception=True)
-
-        page = query_serializer.validated_data["page"]
-        page_size = query_serializer.validated_data["page_size"]
-
-        # 自分の配送箱がある支払い済み注文だけ取得
-        queryset = get_producer_order_queryset(producer)
-
-        total = queryset.count()
-
-        total_pages = (
-            (total + page_size - 1) // page_size
-        )
-
-        start = (page - 1) * page_size
-        end = start + page_size
-
-        orders = list(queryset[start:end])
-
-        # 配送箱のETagを作成
-        shipment_etags = {}
-
-        for order in orders:
-            shipments = order.order_shipments.filter(
-                producer=producer
-            )
-
-            shipment_etags.update(
-                get_shipment_etags(shipments)
-            )
-
-        # 注文一覧をシリアライズ
-        context = {
-            "request": request,
-            "producer": producer,
-            "shipment_etags": shipment_etags,
-        }
-
-        items = DashboardOrderListItemSerializer(
-            orders,
-            many=True,
-            context=context,
-        ).data
-
-        response_data = {
-            "items": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-        }
-
-        response_serializer = DashboardOrderListResponseSerializer(
-            response_data
-        )
-
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        query = validate_query(DashboardOrderListQuerySerializer, request)
+        orders = producer_orders(request.user.producer, query.get("shipment_status"))
+        return Response(paginate(orders, query, DashboardOrderSummarySerializer))
 
 
-# 注文詳細
-# GET /api/v1/dashboard/orders/<order_id>
 class DashboardOrderDetailView(APIView):
-    """生産者向け注文詳細"""
+    """GET /api/v1/dashboard/orders/:orderId"""
 
     permission_classes = [IsApprovedProducer]
 
     def get(self, request, order_id):
-
-        producer = get_producer(request)
-
-        # 自分の配送箱が存在する支払い済み注文だけ取得
-        order = get_object_or_404(
-            get_producer_order_queryset(producer),
-            pk=order_id,
-        )
-
-        context = get_order_serializer_context(
-            request,
-            producer,
-            order,
-        )
-
-        serializer = DashboardOrderDetailSerializer(
-            order,
-            context=context,
-        )
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
+        validate_query(QuerySerializer, request)  # クエリパラメーターは受け付けない
+        with transaction.atomic():  # 注文・箱・明細を同じ時点で読む
+            order = producer_orders(request.user.producer).filter(pk=order_id).first()
+            if order is None:
+                raise NotFound()
+            data = DashboardOrderDetailSerializer(order).data
+        return Response(data)
 
 
-# 発送登録
-# PATCH /api/v1/dashboard/orders/<order_id>/shipping
 class DashboardOrderShippingView(APIView):
-    """生産者による発送登録"""
+    """PATCH /api/v1/dashboard/orders/:orderId/shipping"""
 
     permission_classes = [IsApprovedProducer]
 
     def patch(self, request, order_id):
-
-        producer = get_producer(request)
-
-        # 入力値の検証
-        serializer = DashboardOrderShippingSerializer(
-            data=request.data
-        )
-
+        serializer = ShipmentUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        shipment_id = serializer.validated_data["shipment_id"]
-
-        tracking_no = serializer.validated_data.get("tracking_no")
+        data = serializer.validated_data
+        producer = request.user.producer
 
         with transaction.atomic():
+            order = Order.objects.select_for_update().filter(pk=order_id).first()
+            shipment = None
+            if order is not None:
+                shipment = OrderShipment.objects.select_for_update().filter(
+                    pk=data["shipment_id"], order=order, producer=producer).first()
+            if shipment is None:
+                raise NotFound()
+            if order.payment_status != Order.PaymentStatus.PAID:
+                raise Conflict(SHIPMENT_STATE_CONFLICT, "支払いが完了していない注文は発送できません。")
 
-            # 自分の配送箱だけ取得してロック
-            shipment = get_object_or_404(
-                OrderShipment.objects
-                .select_for_update()
-                .filter(
-                    order_id=order_id,
-                    producer=producer,
-                ),
-                pk=shipment_id,
-            )
-
-            # 未発送の箱だけ発送できる
-            if shipment.status != "unshipped":
-                raise OrderConflict(
-                    "この配送箱は発送登録できる状態ではありません。"
-                )
-
-            # 発送情報を更新
-            shipment.status = "shipped"
-            shipment.tracking_no = tracking_no
-            shipment.shipped_at = timezone.now()
-
-            shipment.save(
-                update_fields=[
-                    "status",
-                    "tracking_no",
-                    "shipped_at",
-                    "updated_at",
-                ]
-            )
-
-        return Response(
-            {
-                "message": "発送登録が完了しました。",
-                "order_id": order_id,
-                "shipment_id": shipment.id,
-                "status": shipment.status,
-            },
-            status=status.HTTP_200_OK,
-        )
+            if data["status"] == Status.SHIPPED:
+                if shipment.status != Status.UNSHIPPED:
+                    raise Conflict(SHIPMENT_STATE_CONFLICT, "未発送の箱だけ発送済みにできます。")
+                shipment.status = Status.SHIPPED
+                shipment.tracking_no = data.get("tracking_no")
+                shipment.shipped_at = timezone.now()
+                shipment.save(update_fields=["status", "tracking_no", "shipped_at", "updated_at"])
+                notify_shipped(order, shipment, producer)
+            else:
+                if shipment.status != Status.SHIPPED:
+                    raise Conflict(SHIPMENT_STATE_CONFLICT, "発送済みの箱だけ配達完了にできます。")
+                shipment.status = Status.DELIVERED
+                shipment.save(update_fields=["status", "updated_at"])
+            body = ShipmentSerializer(shipment).data
+        return Response(body)
 
 
-# キャンセル承認
-# POST /api/v1/dashboard/orders/<order_id>/cancel/approve
 class DashboardOrderCancelApproveView(APIView):
-    """生産者によるキャンセル承認"""
+    """POST /api/v1/dashboard/orders/:orderId/cancel/approve"""
 
     permission_classes = [IsApprovedProducer]
 
     def post(self, request, order_id):
-
-        producer = get_producer(request)
-
+        validate_body_empty(request)
+        producer = request.user.producer
         with transaction.atomic():
-
-            # 対象注文に属する自分のキャンセル申請箱をロック
-            shipments = list(
-                OrderShipment.objects
-                .select_for_update()
-                .filter(
-                    order_id=order_id,
-                    producer=producer,
-                    status="cancel_requested",
-                )
+            order, shipments = lock_my_shipments(order_id, producer)
+            targets = cancel_requested_only(shipments, "承認")
+            now = timezone.now()
+            for shipment in targets:
+                restore_stock(shipment)
+                shipment.status = Status.CANCELED
+                shipment.canceled_at = now
+                shipment.save(update_fields=["status", "canceled_at", "updated_at"])
+            notify_order_buyer(
+                order, Notification.NotificationType.CANCELED,
+                title="キャンセルが確定しました",
+                body=(
+                    f"ご注文（注文番号 {order.order_no}）のうち、{producer.business_name}の商品のキャンセルが確定しました。\n"
+                    "返金の手続きが完了しましたら、あらためてお知らせします。\n"
+                ),
             )
-
-            if not shipments:
-                raise OrderConflict(
-                    "承認できるキャンセル申請がありません。"
-                )
-
-            # 注文を取得
-            order = get_object_or_404(
-                Order,
-                pk=order_id,
-                payment_status="paid",
-            )
-
-            canceled_shipment_ids = []
-
-            for shipment in shipments:
-
-                # 明細を取得
-                order_items = shipment.order_items.select_related(
-                    "product"
-                )
-
-                # 在庫を復元
-                for item in order_items:
-
-                    product = Product.objects.select_for_update().get(
-                        pk=item.product_id
-                    )
-
-                    # stock が NULL の商品は在庫管理対象外
-                    if product.stock is not None:
-
-                        product.stock += item.quantity
-
-                        product.save(
-                            update_fields=[
-                                "stock",
-                                "updated_at",
-                            ]
-                        )
-
-                # キャンセル確定
-                shipment.status = "canceled"
-                shipment.canceled_at = timezone.now()
-
-                shipment.save(
-                    update_fields=[
-                        "status",
-                        "canceled_at",
-                        "updated_at",
-                    ]
-                )
-
-                canceled_shipment_ids.append(shipment.id)
-
-            # カード決済の場合は箱ごとに部分返金を試みる
-            if order.payment_method == "card":
-
-                stripe_key = getattr(
-                    settings,
-                    "STRIPE_SECRET_KEY",
-                    None,
-                )
-
-                if stripe_key and order.stripe_payment_intent_id:
-
-                    stripe.api_key = stripe_key
-
-                    for shipment in shipments:
-
-                        refund_amount = (
-                            shipment.order_items.aggregate(
-                                total=Sum("subtotal")
-                            )["total"] or 0
-                        ) + shipment.shipping_fee
-
-                        if refund_amount <= 0:
-                            continue
-
-                        try:
-                            refund = stripe.Refund.create(
-                                payment_intent=order.stripe_payment_intent_id,
-                                amount=refund_amount,
-                                idempotency_key=(
-                                    f"producer-cancel-shipment-{shipment.id}"
-                                ),
-                            )
-
-                            shipment.stripe_refund_id = refund.id
-                            shipment.refunded_amount = refund_amount
-
-                            shipment.save(
-                                update_fields=[
-                                    "stripe_refund_id",
-                                    "refunded_amount",
-                                    "updated_at",
-                                ]
-                            )
-
-                        except stripe.StripeError:
-                            # Stripe返金に失敗した場合は返金待ちにする
-                            # refunded_amount は NULL のまま
-                            continue
-
-        return Response(
-            {
-                "message": "キャンセルを承認しました。",
-                "order_id": order_id,
-                "shipment_ids": canceled_shipment_ids,
-                "status": "canceled",
-            },
-            status=status.HTTP_200_OK,
-        )
+            body = ShipmentListResponseSerializer({"shipments": targets}).data
+        return Response(body)
 
 
-# キャンセル拒否
-# POST /api/v1/dashboard/orders/<order_id>/cancel/reject
 class DashboardOrderCancelRejectView(APIView):
-    """生産者によるキャンセル拒否"""
+    """POST /api/v1/dashboard/orders/:orderId/cancel/reject"""
 
     permission_classes = [IsApprovedProducer]
 
     def post(self, request, order_id):
-
-        producer = get_producer(request)
-
+        validate_body_empty(request)
+        producer = request.user.producer
         with transaction.atomic():
-
-            # 自分のキャンセル申請箱だけロック
-            shipments = list(
-                OrderShipment.objects
-                .select_for_update()
-                .filter(
-                    order_id=order_id,
-                    producer=producer,
-                    status="cancel_requested",
-                )
+            order, shipments = lock_my_shipments(order_id, producer)
+            targets = cancel_requested_only(shipments, "拒否")
+            for shipment in targets:
+                shipment.status = Status.UNSHIPPED
+                shipment.save(update_fields=["status", "updated_at"])
+            notify_order_buyer(
+                order, Notification.NotificationType.CANCEL_REJECTED,
+                title="キャンセル申請が承認されませんでした",
+                body=(
+                    f"ご注文（注文番号 {order.order_no}）のうち、{producer.business_name}の商品のキャンセル申請は"
+                    "承認されませんでした。商品は通常どおり発送されます。\n"
+                    "ご不明な点は、生産者へのメッセージまたはお問い合わせからご連絡ください。\n"
+                ),
             )
-
-            if not shipments:
-                raise OrderConflict(
-                    "拒否できるキャンセル申請がありません。"
-                )
-
-            rejected_shipment_ids = []
-
-            for shipment in shipments:
-
-                # キャンセル申請を拒否して未発送に戻す
-                shipment.status = "unshipped"
-
-                shipment.save(
-                    update_fields=[
-                        "status",
-                        "updated_at",
-                    ]
-                )
-
-                rejected_shipment_ids.append(shipment.id)
-
-        return Response(
-            {
-                "message": "キャンセル申請を拒否しました。",
-                "order_id": order_id,
-                "shipment_ids": rejected_shipment_ids,
-                "status": "unshipped",
-            },
-            status=status.HTTP_200_OK,
-        )
+            body = ShipmentListResponseSerializer({"shipments": targets}).data
+        return Response(body)
 
 
-# """注文・配送・キャンセル承認（生産者）
+def validate_body_empty(request):
+    """本文を受け付けない API。項目が送られてきたら 400（StrictSerializer）"""
+    serializer = StrictSerializer(data=request.data or {})
+    serializer.is_valid(raise_exception=True)
 
-# 認証: 生産者
-# 共通: 生産者APIの共通チェック（approved でなければ 403、掲載停止中にできない操作は 409）は common/permissions.py
 
-# このファイルに書くもの（APIView / generics のクラス）。シーケンス図は Notion の同名の図:
-#   - 注文一覧（生産者）: GET /api/v1/dashboard/orders
-#       ・自分の箱がある paid の注文だけ
-#   - 注文詳細（生産者）: GET /api/v1/dashboard/orders/:orderId
-#       ・自分の箱と明細、お届け先（ship_*）だけ。他の生産者の箱と購入者のメールは返さない
-#   - 発送登録: PATCH /api/v1/dashboard/orders/:orderId/shipping
-#       ・shipment_id・tracking_no（任意）。unshipped のときだけ shipped にして shipped_at を入れる。購入者に通知・メール
-#   - キャンセル承認: POST /api/v1/dashboard/orders/:orderId/cancel/approve
-#       ・自分の箱が cancel_requested のとき。canceled にして在庫を戻す
-#       ・カードは Stripe で箱ごとに部分返金 → services/payments.py。コンビニ払い・返金エラーは refunded_amount を空のまま（返金待ち）
-#   - キャンセル拒否: POST /api/v1/dashboard/orders/:orderId/cancel/reject
-#       ・unshipped に戻す
+def notify_shipped(order, shipment, producer):
+    tracking = f"送り状番号: {shipment.tracking_no}\n" if shipment.tracking_no else ""
+    notify_order_buyer(
+        order, Notification.NotificationType.SHIPPED,
+        title="商品を発送しました",
+        body=f"ご注文（注文番号 {order.order_no}）の{producer.business_name}の商品を発送しました。\n{tracking}",
+    )
 
-# 仕様: claude/api-spec.md / カラム名: claude/er-diagram.md
-# """
