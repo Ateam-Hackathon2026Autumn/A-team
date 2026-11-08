@@ -7,7 +7,7 @@ import ProductCard, { ProductImage, yen } from "../components/products/ProductCa
 import Button from "../components/ui/Button";
 import { USE_MOCK } from "../config/env";
 import { loginStatusAtom } from "../stores/userAtom";
-import type { Product, ProductDetail } from "../types/product";
+import type { Product, ProductDetail } from "../types/publicProduct";
 
 // IDが変わった際に画像・数量・メッセージをリセットする。
 export default function ProductDetailPage() {

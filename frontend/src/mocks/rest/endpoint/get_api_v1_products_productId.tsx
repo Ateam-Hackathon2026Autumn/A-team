@@ -1,6 +1,6 @@
 import type { RestMock } from '../../types';
 import { productSamples } from './get_api_v1_products';
-import type { ProductDetail } from '../../../types/product';
+import type { ProductDetail } from '../../../types/publicProduct';
 
 // 商品詳細取得API GET /api/v1/products/:productId
 //

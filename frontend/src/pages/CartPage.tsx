@@ -10,7 +10,7 @@ import Button from "../components/ui/Button";
 import { USE_MOCK } from "../config/env";
 import { loginStatusAtom } from "../stores/userAtom";
 import type { Cart, CartItem } from "../types/cart";
-import type { ProductDetail } from "../types/product";
+import type { ProductDetail } from "../types/publicProduct";
 
 type CartGroup = {
   key: string;

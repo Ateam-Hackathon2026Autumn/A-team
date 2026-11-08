@@ -1,6 +1,6 @@
 import ApiError from "./apiError";
 import { apiFetch } from "./client";
-import type { Category, ProductDetail, ProductListResponse } from "../types/product";
+import type { Category, ProductDetail, ProductListResponse } from "../types/publicProduct";
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await apiFetch(path, { signal });

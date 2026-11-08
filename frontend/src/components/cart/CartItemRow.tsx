@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { ProductImage, yen } from "../products/ProductCard";
 import { USE_MOCK } from "../../config/env";
 import type { CartItem } from "../../types/cart";
-import type { ProductDetail } from "../../types/product";
+import type { ProductDetail } from "../../types/publicProduct";
 
 type Props = {
   item: CartItem;

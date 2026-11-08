@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { getCategories, getProducts } from "../api/productApi";
 import ProductCard from "../components/products/ProductCard";
 import Button from "../components/ui/Button";
-import type { Category, Product } from "../types/product";
+import type { Category, Product } from "../types/publicProduct";
 
 const fieldClass = "min-h-11 w-full rounded-lg border border-marche-line bg-white px-3 py-2 font-sans text-sm text-marche-ink";
 const pageSize = 9;

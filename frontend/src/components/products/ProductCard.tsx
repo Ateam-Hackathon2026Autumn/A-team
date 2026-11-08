@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { Product } from "../../types/product";
+import type { Product } from "../../types/publicProduct";
 
 export const yen = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
 
