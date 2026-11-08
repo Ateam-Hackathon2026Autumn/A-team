@@ -10,7 +10,7 @@ import type { RestMock } from '../../types';
 //
 // パラメーター不正（400）:
 //   { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。', details: { sort: ['指定できない値です。'] } }
-const productsList = {
+const productsSnapshot = {
   method: 'GET',
   path: '/api/v1/products',
   status: 200,
@@ -162,6 +162,79 @@ const productsList = {
   },
 } satisfies RestMock;
 
-export const productSamples = productsList.body.items;
 
+
+export const productSamples = productsSnapshot.body.items;
+
+const productsList: RestMock = {
+  ...productsSnapshot,
+  handler(url) {
+    const params = url.searchParams;
+    const page = Number(params.get("page") ?? 1);
+    const pageSize = Number(params.get("pageSize") ?? 20);
+    const categoryId = params.get("categoryId");
+    const producerId = params.get("producerId");
+    const sort = params.get("sort") ?? "popular";
+    const price = params.get("price") ?? "all";
+    const keyword = (params.get("q") ?? "").trim().toLocaleLowerCase("ja-JP");
+    const validId = (value: string | null) =>
+      value === null || (/^[1-9][0-9]*$/.test(value) && Number.isSafeInteger(Number(value)));
+
+    if (!Number.isSafeInteger(page) || page < 1
+      || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50
+      || !validId(categoryId) || !validId(producerId)
+      || !["popular", "price_asc", "price_desc", "rating"].includes(sort)
+      || !["all", "under2000", "2000to4000", "over4000"].includes(price)
+      || ["subscription", "preorder"].some((key) =>
+        params.has(key) && !["0", "1"].includes(params.get(key) ?? ""))) {
+      return {
+        status: 400,
+        body: {
+          errorCode: "VALIDATION_ERROR",
+          errorMsg: "検索条件を確認してください。",
+        },
+      };
+    }
+
+    const items = productSamples.filter((product) => {
+      const text = [
+        product.name,
+        product.producer.businessName,
+        product.producer.prefectureName,
+        product.producer.city,
+      ].join(" ").toLocaleLowerCase("ja-JP");
+      return (!keyword || text.includes(keyword))
+        && (categoryId === null || product.category.id === Number(categoryId))
+        && (producerId === null || product.producer.id === Number(producerId))
+        && (price === "all"
+          || (price === "under2000" && product.salePrice < 2000)
+          || (price === "2000to4000" && product.salePrice >= 2000 && product.salePrice < 4000)
+          || (price === "over4000" && product.salePrice >= 4000))
+        && (params.get("subscription") !== "1" || product.isSubscription)
+        && (params.get("preorder") !== "1" || product.isPreorder);
+    });
+
+    if (sort === "price_asc") {
+      items.sort((a, b) => a.salePrice - b.salePrice || b.id - a.id);
+    } else if (sort === "price_desc") {
+      items.sort((a, b) => b.salePrice - a.salePrice || b.id - a.id);
+    } else if (sort === "rating") {
+      items.sort((a, b) =>
+        Number(b.reviewCount >= 3) - Number(a.reviewCount >= 3)
+        || (b.ratingAvg ?? -1) - (a.ratingAvg ?? -1)
+        || b.id - a.id);
+    }
+    // popularは画面確認用fixtureの既定順。人気スコアの計算は実APIで行う。
+    return {
+      status: 200,
+      body: {
+        items: items.slice((page - 1) * pageSize, page * pageSize),
+        total: items.length,
+        page,
+        pageSize,
+        totalPages: Math.ceil(items.length / pageSize),
+      },
+    };
+  },
+};
 export { productsList };

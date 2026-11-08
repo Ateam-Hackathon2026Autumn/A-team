@@ -18,7 +18,13 @@ import { dashboardJobApplicationsList } from './endpoint/get_api_v1_dashboard_jo
 import { dashboardOrdersList } from './endpoint/get_api_v1_dashboard_orders';
 import { dashboardOrderDetail } from './endpoint/get_api_v1_dashboard_orders_orderId';
 import { dashboardProductsList } from './endpoint/get_api_v1_dashboard_products';
-import { dashboardProductDetail } from './endpoint/get_api_v1_dashboard_products_productId';
+import { dashboardShippingSettings } from './endpoint/get_api_v1_dashboard_shipping-settings';
+import {
+  dashboardProductDetail,
+  dashboardProductDetail1,
+  dashboardProductDetail2,
+  dashboardProductDetail3,
+} from './endpoint/get_api_v1_dashboard_products_productId';
 import { dashboardProfile } from './endpoint/get_api_v1_dashboard_profile';
 import { dashboardStory } from './endpoint/get_api_v1_dashboard_story';
 import { dashboardSummary } from './endpoint/get_api_v1_dashboard_summary';
@@ -114,7 +120,11 @@ const restMocks: RestMock[] = [
   dashboardPayoutAccountLink,
   dashboardProductsList,
   dashboardProductCreate,
+  dashboardShippingSettings,
   dashboardProductDetail,
+  dashboardProductDetail1,
+  dashboardProductDetail2,
+  dashboardProductDetail3,
   dashboardProductUpdate,
   dashboardProductDelete,
   dashboardProductStockUpdate,

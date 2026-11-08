@@ -44,3 +44,18 @@ export type ProductListResponse = {
   pageSize: number;
   totalPages: number;
 };
+
+export type ProductSort = "popular" | "price_asc" | "price_desc" | "rating";
+export type ProductPriceBand = "all" | "under2000" | "2000to4000" | "over4000";
+
+export type ProductQuery = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  categoryId?: number;
+  producerId?: number;
+  price?: ProductPriceBand;
+  sort?: ProductSort;
+  subscription?: boolean;
+  preorder?: boolean;
+};

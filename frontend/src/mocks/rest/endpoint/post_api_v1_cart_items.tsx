@@ -1,5 +1,5 @@
 import type { RestMock } from '../../types';
-import { mockCartBody, refreshMockCart } from './get_api_v1_cart';
+import { initializeMockCart, mockCartBody, refreshMockCart } from './get_api_v1_cart';
 import { productSamples } from './get_api_v1_products';
 
 // 同じタブのセッションに保存するデモカート。実際の購入・在庫更新は行わない。
@@ -8,6 +8,7 @@ const cartItemAdd: RestMock = {
   path: '/api/v1/cart/items',
   status: 200,
   handler(_url, init) {
+    initializeMockCart();
     let input: unknown;
     try { input = JSON.parse(String(init?.body ?? '')); }
     catch { return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } }; }

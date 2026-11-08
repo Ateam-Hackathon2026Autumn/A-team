@@ -77,10 +77,20 @@ function restoreCart(): Cart | null {
   }
 }
 
-export const mockCartBody: Cart = restoreCart() ?? structuredClone(cartSnapshot.body);
+export const mockCartBody: Cart = structuredClone(cartSnapshot.body);
+let initialized = false;
+
+// 最初のモック操作時だけ保存内容を復元する。
+export function initializeMockCart(): void {
+  if (initialized) return;
+  initialized = true;
+  const restored = restoreCart();
+  if (restored) Object.assign(mockCartBody, restored);
+}
 
 // GET・追加・数量変更・削除で、同じカートと最新の商品情報を使用する。
 export function refreshMockCart(changed = false): Cart {
+  initializeMockCart();
   for (const item of mockCartBody.items) {
     const product = productSamples.find((p) => p.id === item.productId);
     item.productName = product?.name ?? null;
@@ -106,6 +116,7 @@ export function refreshMockCart(changed = false): Cart {
 }
 
 export function resetMockCart(): Cart {
+  initializeMockCart();
   Object.assign(mockCartBody, structuredClone(cartSnapshot.body));
   return refreshMockCart(true);
 }

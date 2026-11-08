@@ -1,5 +1,5 @@
 import type { RestMock } from '../../types';
-import { mockCartBody, refreshMockCart } from './get_api_v1_cart';
+import { initializeMockCart, mockCartBody, refreshMockCart } from './get_api_v1_cart';
 import { productSamples } from './get_api_v1_products';
 
 // カート商品数量変更API PATCH /api/v1/cart/items/:itemId
@@ -20,6 +20,7 @@ const cartItemUpdate: RestMock = {
   path: '/api/v1/cart/items/:itemId',
   status: 200,
   handler(url, init) {
+    initializeMockCart();
     const itemId = Number(url.pathname.split('/').at(-1));
     const item = mockCartBody.items.find((line) => line.id === itemId);
     if (!item) return { status: 404, body: { errorCode: 'CART_ITEM_NOT_FOUND' } };
