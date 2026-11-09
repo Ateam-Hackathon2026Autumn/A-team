@@ -38,6 +38,19 @@ class QuerySerializer(StrictSerializer):
         return super().to_internal_value(data)
 
 
+class QueryBooleanField(serializers.BooleanField):
+    """クエリパラメーターの真偽値。"true" と "false" だけ受け付ける（大文字・0/1・yes などは 400）"""
+
+    default_error_messages = {"invalid": "true または false を指定してください。"}
+
+    def to_internal_value(self, data):
+        if data in ("true", True):
+            return True
+        if data in ("false", False):
+            return False
+        self.fail("invalid")
+
+
 class AwareDateTimeField(serializers.DateTimeField):
     """タイムゾーン付きの日時（例: 2026-12-01T10:00:00+09:00）だけを受け付ける
 
