@@ -1,11 +1,20 @@
 """管理者ログイン のシリアライザー
 
 使う view: api/views/admin/auth.py
-
-このファイルに書くもの（リクエストの検証用・レスポンスの形用）:
-  - 管理者ログインチェック（GET /api/v1/admin/auth/session）: クエリ・入力の検証とレスポンス
-  - 管理者ログイン（POST /api/v1/admin/auth/signin）: 入力の検証とレスポンス
-  - 管理者ログアウト（POST /api/v1/admin/auth/signout）: 入力の検証とレスポンス
-
-入力エラーは 400（項目ごとのメッセージ）。カラム名は claude/er-diagram.md に合わせる
+- ログインの本文は会員側と同じ（SigninSerializer を使う）
+- 管理者の user: {id, email, lastName, firstName, groups}（groups は権限グループ名の配列。審査担当・CS・管理者）
 """
+from rest_framework import serializers
+
+from marche.models import User
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    groups = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "email", "last_name", "first_name", "groups"]
+
+    def get_groups(self, user):
+        return sorted(group.name for group in user.groups.all())
