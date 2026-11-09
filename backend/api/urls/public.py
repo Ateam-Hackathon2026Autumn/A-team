@@ -5,7 +5,7 @@ api/urls/__init__.py から /api/v1/ に include する。
 """
 from django.urls import path
 
-from ..views.public import auth, catalog, producers, users
+from ..views.public import auth, catalog, producers, uploads, users
 
 urlpatterns = [
     # 認証・ユーザー
@@ -28,4 +28,7 @@ urlpatterns = [
     path("producers", producers.ProducerListView.as_view(), name="producers-list"),
     path("producers/<int:producer_id>", producers.ProducerProfileView.as_view(), name="producers-profile"),
     path("producers/<int:producer_id>/story", producers.ProducerStoryView.as_view(), name="producers-story"),
+
+    # 画像アップロード
+    path("uploads/images", uploads.ImageUploadView.as_view(), name="uploads-images"),
 ]
