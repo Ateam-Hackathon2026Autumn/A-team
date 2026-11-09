@@ -1,9 +1,13 @@
 """テストの共通部品
 
 - ApiTestCase: 実際のブラウザと同じく CSRF を確認するクライアントを使うテストの基底クラス
+  （post_json / patch_json / put_json / delete_json / post_multipart）
 - make_user / make_producer / make_product / make_experience / make_slot / make_reservation / make_order /
   add_shipment: テストデータを作る
 """
+import atexit
+import shutil
+import tempfile
 from datetime import timedelta
 
 from django.core.cache import cache
@@ -14,7 +18,9 @@ from rest_framework.test import APIClient
 from marche.models import (Area, Category, Experience, ExperienceSlot, Order, OrderItem, OrderShipment, Prefecture,
                             Producer, Product, PublishStatus, Reservation, ShippingSetting, User)
 
-# テストでは S3 に接続しない
+# テストでは S3 に接続しない。アップロードしたファイルは一時フォルダーに置き、テストが終わったら消す
+TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="marche-test-media-")
+atexit.register(shutil.rmtree, TEST_MEDIA_ROOT, ignore_errors=True)
 TEST_STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
@@ -22,7 +28,7 @@ TEST_STORAGES = {
 PASSWORD = "ExamplePass123!"
 
 
-@override_settings(STORAGES=TEST_STORAGES, MEDIA_URL="/media/")
+@override_settings(STORAGES=TEST_STORAGES, MEDIA_URL="/media/", MEDIA_ROOT=TEST_MEDIA_ROOT)
 class ApiTestCase(TestCase):
     def setUp(self):
         cache.clear()  # 回数制限のカウントをテストごとに消す
@@ -39,6 +45,14 @@ class ApiTestCase(TestCase):
     def patch_json(self, url, data=None, csrf=True):
         headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
         return self.client.patch(url, data or {}, format="json", **headers)
+
+    def put_json(self, url, data=None, csrf=True):
+        headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
+        return self.client.put(url, data or {}, format="json", **headers)
+
+    def post_multipart(self, url, data, csrf=True):
+        headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
+        return self.client.post(url, data, format="multipart", **headers)
 
     def delete_json(self, url, csrf=True):
         headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
