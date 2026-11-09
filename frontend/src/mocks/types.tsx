@@ -4,7 +4,8 @@
 
 // エンドポイント1つ分のモック定義。mocks/rest/endpoint/ の各ファイルがこの形を1つ export する。
 //
-// 処理は書かず、返したい内容をそのまま書くだけ。
+// 基本は返したい内容をそのまま書くだけ。
+// 登録・更新を一覧に反映するなど、リクエストに応じて変える場合だけ handler を書く。
 type RestMock = {
   // 'GET' / 'POST' など
   method: string;
@@ -16,10 +17,18 @@ type RestMock = {
   // 返す JSON。204 など本文を持たない応答では書かない
   body?: unknown;
   // URLやリクエスト本文に応じて返す必要があるモックで使用する。
-  handler?: (url: URL, init?: RequestInit) => { status: number; body?: unknown };
+  // headers はレスポンスヘッダー（体験の ETag など）を返す場合だけ書く
+  handler?: (url: URL, init?: RequestInit) => MockResult;
   // このエンドポイントだけ遅らせたいときのミリ秒。
   // 未指定なら mocks/rest/settings.tsx の delayMs が使われる。
   delayMs?: number;
 };
 
-export type { RestMock };
+// handler が返す内容
+type MockResult = {
+  status: number;
+  body?: unknown;
+  headers?: Record<string, string>;
+};
+
+export type { MockResult, RestMock };
