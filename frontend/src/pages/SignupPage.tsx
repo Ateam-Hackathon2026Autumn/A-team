@@ -112,9 +112,9 @@ export default function SignupPage() {
       {step === 3 && purpose && <CompleteStep purpose={purpose} />}
 
       {step !== 3 && (
-        <p className="mt-6 text-center text-sm">
+        <p className="m-0 mt-6 text-center text-sm">
           アカウントをお持ちの方は{" "}
-          <Link to="/signin" className="text-marche-green underline">
+          <Link to="/signin" className="no-underline text-marche-green underline">
             ログイン
           </Link>
         </p>

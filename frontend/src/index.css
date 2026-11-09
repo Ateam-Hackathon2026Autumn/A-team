@@ -41,38 +41,6 @@
     line-height: 1.8;
   }
 
-  h1,
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
-
-  h1,
-  h2 {
-    font-family: var(--font-serif);
-  }
-
-  button,
-  input,
-  select,
-  textarea {
-    font: inherit;
-  }
-
-  button {
-    cursor: pointer;
-  }
-
-  button:disabled {
-    cursor: not-allowed;
-  }
-
-  a {
-    color: inherit;
-    text-decoration: none;
-  }
-
   :focus-visible {
     outline: 3px solid #c9843c;
     outline-offset: 4px;

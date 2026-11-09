@@ -29,15 +29,15 @@ export default function PurposeStep({
 }: Props) {
   return (
     <>
-      <p className="text-xs font-bold tracking-widest text-marche-green">
+      <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
         CREATE YOUR ACCOUNT
       </p>
-      <h1 className="mt-2 text-3xl font-bold leading-relaxed">
+      <h1 className="m-0 font-serif mt-2 text-3xl font-bold leading-relaxed">
         どのように
         <br />
         利用しますか？
       </h1>
-      <p className="mt-3 text-sm text-marche-muted">
+      <p className="m-0 mt-3 text-sm text-marche-muted">
         はじめに、利用目的を教えてください。
       </p>
 
@@ -62,7 +62,7 @@ export default function PurposeStep({
               value={value}
               checked={purpose === value}
               onChange={() => onChange(value)}
-              className="size-4 shrink-0 accent-marche-green"
+              className="font-sans size-4 shrink-0 accent-marche-green"
             />
 
             <span aria-hidden="true" className="text-3xl">
@@ -78,7 +78,7 @@ export default function PurposeStep({
           </label>
         ))}
 
-        <p className="mt-4 text-xs text-marche-muted">
+        <p className="m-0 mt-4 text-xs text-marche-muted">
           生産者の方も、共通アカウントの作成後に登録申請へ進みます。
         </p>
 

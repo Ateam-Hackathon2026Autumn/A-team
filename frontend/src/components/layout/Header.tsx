@@ -23,7 +23,7 @@ export default function Header() {
     <>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3"
+        className="no-underline text-inherit sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3"
       >
         本文へ
       </a>
@@ -68,7 +68,7 @@ export default function Header() {
             {isLoggedIn ? (
               <Link
                 to="/mypage"
-                className={`${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`}
+                className={["no-underline", `${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`].join(" ")}
               >
                 マイページ
               </Link>
@@ -76,14 +76,14 @@ export default function Header() {
               <>
                 <Link
                   to="/signin"
-                  className={`${actionClass} bg-transparent text-marche-green hover:bg-marche-sage`}
+                  className={["no-underline", `${actionClass} bg-transparent text-marche-green hover:bg-marche-sage`].join(" ")}
                 >
                   ログイン
                 </Link>
 
                 <Link
                   to="/signup"
-                  className={`${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`}
+                  className={["no-underline", `${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`].join(" ")}
                 >
                   新規登録
                 </Link>

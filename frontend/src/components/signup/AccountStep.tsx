@@ -8,7 +8,7 @@ import type {
   SignupErrors,
   SignupFormValues,
 } from "../../types/authForm";
-import { todayJst } from "../../utils/authValidation";
+import { MIN_BIRTH_DATE, todayJst } from "../../utils/authValidation";
 
 const PREFECTURES =
   "北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県".split(
@@ -53,11 +53,11 @@ export default function AccountStep({
 
   return (
     <>
-      <p className="text-xs font-bold tracking-widest text-marche-green">
+      <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
         YOUR INFORMATION
       </p>
-      <h1 className="mt-2 text-3xl font-bold">アカウント情報</h1>
-      <p className="mt-3 text-sm text-marche-muted">
+      <h1 className="m-0 font-serif mt-2 text-3xl font-bold">アカウント情報</h1>
+      <p className="m-0 mt-3 text-sm text-marche-muted">
         {purpose === "producer"
           ? "生産者申請の前に、共通アカウントを作成します。"
           : "あなたと産地の、新しいつながりを。"}
@@ -66,7 +66,7 @@ export default function AccountStep({
       <button
         type="button"
         onClick={onBack}
-        className="mt-3 border-0 bg-transparent p-0 py-2 text-sm text-marche-green hover:underline"
+        className="font-sans cursor-pointer disabled:cursor-not-allowed mt-3 border-0 bg-transparent p-0 py-2 text-sm text-marche-green hover:underline"
       >
         ← 利用目的を選び直す
       </button>
@@ -75,7 +75,7 @@ export default function AccountStep({
         {Object.values(errors).some(Boolean) && (
           <p
             role="alert"
-            className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
+            className="m-0 mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
           >
             入力内容をご確認ください。
           </p>
@@ -139,7 +139,7 @@ export default function AccountStep({
           autoComplete="tel"
           placeholder="09012345678"
         />
-        <p className="mt-1 text-xs text-marche-muted">
+        <p className="m-0 mt-1 text-xs text-marche-muted">
           ハイフン付きでも入力できます。
         </p>
 
@@ -151,6 +151,7 @@ export default function AccountStep({
           onChange={(value) => onChange("birthDate", value)}
           error={errors.birthDate}
           max={todayJst()}
+          min={MIN_BIRTH_DATE}
           autoComplete="bday"
         />
 
@@ -167,7 +168,7 @@ export default function AccountStep({
             name="prefectureId"
             value={values.prefectureId}
             onChange={(event) => onChange("prefectureId", event.target.value)}
-            className="mt-2 block h-12 w-full rounded-lg border border-[#b8c3b5] bg-white px-3 text-base"
+            className="font-sans mt-2 block h-12 w-full rounded-lg border border-[#b8c3b5] bg-white px-3 text-base"
           >
             <option value="">選択してください</option>
             {PREFECTURES.map((prefecture, index) => (
@@ -203,7 +204,7 @@ export default function AccountStep({
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleInterest(value)}
-                    className="accent-marche-green"
+                    className="font-sans accent-marche-green"
                   />
                   {label}
                 </label>
@@ -222,7 +223,7 @@ export default function AccountStep({
                 onChange={(event) => onChange(key, event.target.checked)}
                 aria-invalid={Boolean(errors[key])}
                 aria-describedby={errors[key] ? `${key}-error` : undefined}
-                className="mt-1.5 size-4 shrink-0 accent-marche-green"
+                className="font-sans mt-1.5 size-4 shrink-0 accent-marche-green"
               />
               <span>
                 {label}
@@ -234,7 +235,7 @@ export default function AccountStep({
               <p
                 id={`${key}-error`}
                 role="alert"
-                className="mt-1 text-xs text-red-800"
+                className="m-0 mt-1 text-xs text-red-800"
               >
                 {errors[key]}
               </p>
@@ -242,7 +243,7 @@ export default function AccountStep({
           </div>
         ))}
 
-        <p className="mt-3 text-xs leading-6 text-marche-muted">
+        <p className="m-0 mt-3 text-xs leading-6 text-marche-muted">
           ※ 規約本文・正式な版番号の取得は今後の実装です。
           現在は画面動作のデモです。
         </p>
