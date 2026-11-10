@@ -47,3 +47,26 @@ def send_email_verification(user, token):
         "このメールに心当たりがない場合は、破棄してください。\n"
     )
     return send(user.email, "メールアドレスの確認", body)
+
+
+def send_email_change_verification(user, token):
+    """メールアドレスを変えたときの確認メール（新しいアドレスへ）"""
+    url = frontend_url("/verify-email", token=token)
+    body = (
+        f"{user.last_name} {user.first_name} 様\n\n"
+        f"{SITE_NAME}のメールアドレスを変更しました。\n"
+        "下のリンクを開いて、新しいメールアドレスの確認を完了してください。\n\n"
+        f"{url}\n\n"
+        "このリンクの有効期限は24時間です。期限が切れた場合は、マイページから確認メールを再送してください。\n"
+        "このメールに心当たりがない場合は、破棄してください。\n"
+    )
+    return send(user.email, "メールアドレスの確認", body)
+
+
+def send_account_notice(to, name, subject, message):
+    """アカウントの変更のお知らせ（メールアドレス変更・パスワード変更・退会）。本人が操作していないときに気づけるように送る"""
+    body = (
+        f"{name} 様\n\n{message}\n\n"
+        "この操作に心当たりがない場合は、お問い合わせフォームからすぐにご連絡ください。\n"
+    )
+    return send(to, subject, body)

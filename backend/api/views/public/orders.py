@@ -11,6 +11,7 @@
       ・ログイン中は 409 ALREADY_AUTHENTICATED。guestContact（姓・名・メール・電話）が必須
   - 2本とも同じ流れ（services/orders.py・services/payments.py）:
       1. 本文 {shippingAddress, paymentMethod（card・konbini）, expectedGrandTotal}（ゲストは guestContact も）を検証
+         会員は shippingAddress の代わりに addressId（住所録）も使える（どちらか一方。他人の住所は 400）
       2. トランザクションの中で、カートの中身から注文を作り、在庫を減らし、カートを空にする（create_order）
          409: CART_EMPTY / QUOTE_CHANGED / CANNOT_PURCHASE_OWN / PAYMENT_METHOD_NOT_AVAILABLE
       3. トランザクションの外で Stripe Checkout（支払いページ）を作り、セッションIDを保存する
@@ -87,7 +88,7 @@ class BaseOrderCreateView(APIView):
     serializer_class = None
 
     def place_order(self, request, user, guest_key=None):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={"user": user})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         guest = data.get(guest_key) if guest_key else None

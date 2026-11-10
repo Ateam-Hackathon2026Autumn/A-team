@@ -95,7 +95,8 @@ def check_payment_amount(payment_method, grand_total):
 def create_order(owner, user, guest, address, payment_method, expected_grand_total):
     """注文を作って返す。owner はカートの持ち主（cart_owner() の戻り値）。会員は user、ゲストは guest（連絡先）を渡す
 
-    address・guest はシリアライザーの validated_data（スネークケース）。合計がサーバーの計算と違えば 409 QUOTE_CHANGED。
+    address・guest はシリアライザーの validated_data（スネークケース。address の name は「姓 名」・住所録の受取人名）。
+    合計がサーバーの計算と違えば 409 QUOTE_CHANGED。
     """
     if owner is None:
         raise Conflict("CART_EMPTY", "カートに商品がありません。")
@@ -138,7 +139,7 @@ def create_order(owner, user, guest, address, payment_method, expected_grand_tot
             guest_name=f"{guest['last_name']} {guest['first_name']}" if guest else None,
             guest_phone=guest["phone"] if guest else None,
             access_token_hash=new_access_token()[1],  # 会員の注文もランダムな値（ゲストは支払い確定時に作り直す）
-            ship_name=f"{address['last_name']} {address['first_name']}",
+            ship_name=address["name"],
             ship_postal_code=address["postal_code"],
             ship_prefecture=address["prefecture"],
             ship_city=address["city"],

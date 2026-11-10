@@ -3,8 +3,11 @@
 使う view: api/views/public/orders.py
 
 実装済み:
-  - OrderCreateSerializer: POST /api/v1/orders の本文 {shippingAddress, paymentMethod, expectedGrandTotal}
-  - GuestOrderCreateSerializer: POST /api/v1/guest/orders の本文（上に guestContact を足したもの）
+  - OrderCreateSerializer: POST /api/v1/orders の本文 {shippingAddress または addressId, paymentMethod,
+    expectedGrandTotal}。addressId は自分の住所録の ID（context["user"] を渡す）。validated_data["shipping_address"]
+    には、どちらで送られても注文に写す形（name・postal_code・prefecture（名前）・city・address_line1・address_line2・phone）
+    が入る
+  - GuestOrderCreateSerializer: POST /api/v1/guest/orders の本文（shippingAddress と guestContact。addressId はない）
   - レスポンス（201）は view が組み立てる: {id, orderNo, paymentStatus, itemsTotal, shippingTotal, grandTotal,
     checkoutUrl, expiresAt}
   - MyOrderListQuerySerializer / MyOrderSummarySerializer: 注文履歴一覧（GET /api/v1/users/me/orders）
@@ -22,7 +25,7 @@ import re
 
 from rest_framework import serializers
 
-from marche.models import Order, OrderItem, OrderShipment, Prefecture, User
+from marche.models import Address, Order, OrderItem, OrderShipment, Prefecture, User
 
 from ...common.pagination import PageQuerySerializer
 from ...common.serializers import StrictSerializer
@@ -77,6 +80,7 @@ class ShippingAddressSerializer(StrictSerializer):
 
     def validate(self, data):
         check_name_length(data)
+        data["name"] = f"{data.pop('last_name')} {data.pop('first_name')}"
         return data
 
 
@@ -100,16 +104,40 @@ class GuestContactSerializer(StrictSerializer):
 
 
 class OrderCreateSerializer(StrictSerializer):
-    """POST /api/v1/orders（会員）の本文。expectedGrandTotal は確認画面で見せた合計（違えば 409 QUOTE_CHANGED）"""
+    """POST /api/v1/orders（会員）の本文。expectedGrandTotal は確認画面で見せた合計（違えば 409 QUOTE_CHANGED）
 
-    shipping_address = ShippingAddressSerializer()
+    お届け先は shippingAddress（入力）か addressId（住所録）のどちらか一方
+    """
+
+    shipping_address = ShippingAddressSerializer(required=False)
+    address_id = serializers.IntegerField(min_value=1, max_value=2 ** 63 - 1, required=False)
     payment_method = serializers.ChoiceField(choices=["card", "konbini"])
     expected_grand_total = serializers.IntegerField(min_value=0, max_value=MAX_AMOUNT)
 
+    def validate(self, data):
+        has_address = "shipping_address" in data
+        if has_address == ("address_id" in data):
+            raise serializers.ValidationError(
+                {"shipping_address": ["お届け先を入力するか、登録済みのお届け先を選んでください（どちらか一方）。"]})
+        if not has_address:
+            address = (Address.objects.select_related("prefecture")
+                       .filter(pk=data.pop("address_id"), user=self.context["user"]).first())
+            if address is None:
+                raise serializers.ValidationError({"address_id": ["お届け先が見つかりません。"]})
+            data["shipping_address"] = {
+                "name": address.recipient_name, "postal_code": address.postal_code,
+                "prefecture": address.prefecture.name, "city": address.city,
+                "address_line1": address.address_line1, "address_line2": address.address_line2,
+                "phone": address.phone,
+            }
+        return data
+
 
 class GuestOrderCreateSerializer(OrderCreateSerializer):
-    """POST /api/v1/guest/orders（ゲスト）の本文"""
+    """POST /api/v1/guest/orders（ゲスト）の本文。住所録はないので shippingAddress が必須"""
 
+    shipping_address = ShippingAddressSerializer()
+    address_id = None
     guest_contact = GuestContactSerializer()
 
 
