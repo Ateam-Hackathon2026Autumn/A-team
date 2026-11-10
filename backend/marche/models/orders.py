@@ -48,6 +48,10 @@ class CartItem(TimeStampedModel):
         verbose_name_plural = "カート"
         constraints = [
             models.CheckConstraint(condition=Q(user__isnull=False) | Q(session_key__isnull=False), name="chk_cart_items_user_or_session"),
+            # 同じ持ち主の同じ商品は1行（連打で重複しないように）。NULL どうしは重複にならないので、
+            # 会員の行（session_key が空）とゲストの行（user が空）でそれぞれ効く
+            models.UniqueConstraint(fields=["user", "product"], name="uniq_cart_items_user_product"),
+            models.UniqueConstraint(fields=["session_key", "product"], name="uniq_cart_items_session_product"),
         ]
 
 
