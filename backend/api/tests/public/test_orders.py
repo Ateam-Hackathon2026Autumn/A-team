@@ -4,16 +4,22 @@
   - 注文・決済（会員）: POST /api/v1/orders
   - 注文・決済（ゲスト）: POST /api/v1/guest/orders
 Stripe は呼ばない（services/payments.py の create_checkout_session を差し替える）。
-注文履歴・詳細・キャンセル申請はステップ6bで追加する。
+  - 注文履歴一覧: GET /api/v1/users/me/orders
+  - 注文詳細・キャンセル申請（会員）: GET /api/v1/users/me/orders/:orderId・POST .../cancel
+  - 注文詳細・キャンセル申請（ゲスト）: GET /api/v1/orders/:orderId・POST .../cancel（X-Order-Token）
 """
+from datetime import timedelta
 from unittest.mock import patch
 
+from django.core import mail
 from django.test import override_settings
+from django.utils import timezone
 
-from marche.models import CartItem, Order, OrderItem, OrderShipment, PublishStatus, ShippingSetting
+from marche.models import CartItem, Notification, Order, OrderItem, OrderShipment, PublishStatus, ShippingSetting
+from api.services.orders import new_access_token
 from api.services.payments import PaymentError
 
-from ..utils import ApiTestCase, make_prefecture, make_producer, make_product, make_user
+from ..utils import ApiTestCase, add_shipment, make_order, make_prefecture, make_producer, make_product, make_user
 
 ORDERS_URL = "/api/v1/orders"
 GUEST_ORDERS_URL = "/api/v1/guest/orders"
@@ -303,3 +309,201 @@ class GuestOrderTests(OrderTestCase):
         self.assertEqual(self.error(res), (503, "PAYMENT_UNAVAILABLE"))
         self.assertEqual(list(CartItem.objects.values_list("session_key", "quantity")), [(session_key, 2)])
         self.assertEqual(self.client.get("/api/v1/cart").json()["items"][0]["quantity"], 2)
+
+
+# =========================================================
+# 注文履歴・詳細・キャンセル申請
+# =========================================================
+
+class OrderHistoryTestCase(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.yamada = make_producer(business_name="山田農園")
+        self.kaze = make_producer(business_name="海風水産")
+        self.buyer = make_user(email="buyer@example.com")
+        self.carrot = make_product(self.yamada, name="にんじん", price=1000)
+
+    def paid_order(self, **kw):
+        """山田農園の箱2つ（常温・冷凍）と海風水産の箱1つの注文"""
+        order = make_order(user=self.buyer, **kw)
+        add_shipment(order, self.yamada, items=((self.carrot, 2),))
+        add_shipment(order, self.yamada, temperature_zone="frozen", shipping_fee=1500)
+        add_shipment(order, self.kaze, shipping_fee=800)
+        return order
+
+
+class MyOrderListTests(OrderHistoryTestCase):
+    URL = "/api/v1/users/me/orders"
+
+    def test_list(self):
+        self.signin(self.buyer.email)
+        old = self.paid_order(ordered_at=timezone.now() - timedelta(days=3))
+        new = make_order(user=self.buyer, payment_status="pending", payment_method="konbini")
+        add_shipment(new, self.kaze)
+        make_order(user=make_user(email="other@example.com"))                 # 他人の注文
+        make_order(guest_email="buyer@example.com")                           # 同じメールのゲスト注文は含めない
+        with self.assertNumQueries(7):  # セッション・ユーザー・件数・一覧・箱＋SAVEPOINT・RELEASE（箱が増えても変わらない）
+            res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual((data["total"], [item["id"] for item in data["items"]]), (2, [new.id, old.id]))
+        self.assertEqual(data["items"][0]["paymentMethod"], "konbini")
+        first = data["items"][1]
+        self.assertEqual(set(first), {"id", "orderNo", "paymentStatus", "paymentMethod", "itemsTotal",
+                                      "shippingTotal", "grandTotal", "orderedAt", "shipments"})
+        self.assertEqual(first["shipments"][0], {
+            "id": first["shipments"][0]["id"], "producerId": self.yamada.id, "producerName": "山田農園",
+            "temperatureZone": "normal", "status": "unshipped", "shippingFee": 1000})
+        self.assertEqual(len(first["shipments"]), 3)
+
+    def test_filter_and_paging(self):
+        self.signin(self.buyer.email)
+        self.paid_order()
+        make_order(user=self.buyer, payment_status="failed")
+        res = self.client.get(self.URL, {"paymentStatus": "failed", "pageSize": 1})
+        self.assertEqual((res.json()["total"], res.json()["items"][0]["paymentStatus"]), (1, "failed"))
+        self.assertEqual(self.client.get(self.URL, {"paymentStatus": "refunded"}).status_code, 400)
+        self.assertEqual(self.client.get(self.URL, {"page": 9}).json()["items"], [])
+
+    def test_requires_login(self):
+        self.assertEqual(self.client.get(self.URL).status_code, 401)
+
+
+class MyOrderDetailTests(OrderHistoryTestCase):
+    def url(self, order_id):
+        return f"/api/v1/users/me/orders/{order_id}"
+
+    def test_detail(self):
+        self.signin(self.buyer.email)
+        order = self.paid_order()
+        OrderShipment.objects.filter(order=order, producer=self.kaze).update(status="shipped", tracking_no="1234")
+        with self.assertNumQueries(5):  # セッション・ユーザー・注文・箱（生産者つき）・明細
+            res = self.client.get(self.url(order.id))
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual((data["orderNo"], data["tax8Amount"], data["tax10Amount"]),
+                         (order.order_no, order.tax_8_amount, order.tax_10_amount))
+        self.assertEqual(data["shippingAddress"]["name"], order.ship_name)
+        self.assertNotIn("buyer", data)
+        box = data["shipments"][0]
+        self.assertEqual(box["producer"], {"id": self.yamada.id, "businessName": "山田農園"})
+        self.assertEqual(box["items"][0]["productName"], "にんじん")
+        self.assertEqual([s["cancellable"] for s in data["shipments"]], [True, True, False])  # 海風水産は発送済み
+        self.assertEqual(data["shipments"][2]["trackingNo"], "1234")
+
+    def test_not_cancellable_before_payment(self):
+        self.signin(self.buyer.email)
+        order = self.paid_order(payment_status="pending")
+        self.assertFalse(any(s["cancellable"] for s in self.client.get(self.url(order.id)).json()["shipments"]))
+
+    def test_others_order_is_404(self):
+        order = self.paid_order()
+        self.signin(make_user(email="other@example.com").email)
+        for order_id in [order.id, 999999, 2 ** 63]:
+            res = self.client.get(self.url(order_id))
+            self.assertEqual((res.status_code, res.json()["errorCode"]), (404, "ORDER_NOT_FOUND"))
+
+
+class MyOrderCancelTests(OrderHistoryTestCase):
+    def url(self, order_id):
+        return f"/api/v1/users/me/orders/{order_id}/cancel"
+
+    def setUp(self):
+        super().setUp()
+        self.signin(self.buyer.email)
+        self.order = self.paid_order()
+
+    def test_cancel_request(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            res = self.post_json(self.url(self.order.id), {"producerId": self.yamada.id,
+                                                            "cancelReason": "  注文を間違えました  "})
+        self.assertEqual(res.status_code, 200)
+        statuses = {(s["producer"]["id"], s["status"], s["cancellable"]) for s in res.json()["shipments"]}
+        self.assertEqual(statuses, {(self.yamada.id, "cancel_requested", False),
+                                    (self.kaze.id, "unshipped", True)})
+        boxes = OrderShipment.objects.filter(order=self.order, producer=self.yamada)
+        self.assertEqual(set(boxes.values_list("cancel_reason", flat=True)), {"注文を間違えました"})
+        notice = Notification.objects.get(user=self.yamada.user)
+        self.assertEqual(notice.notification_type, "cancel_requested")
+        self.assertIn("注文を間違えました", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].to, [self.yamada.user.email])
+
+    def test_not_allowed(self):
+        OrderShipment.objects.filter(order=self.order, producer=self.yamada, temperature_zone="frozen") \
+            .update(status="shipped")
+        cases = [self.order]
+        pending = self.paid_order(payment_status="pending")
+        cases.append(pending)
+        for order in cases:
+            res = self.post_json(self.url(order.id), {"producerId": self.yamada.id, "cancelReason": "理由"})
+            self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "CANCEL_NOT_ALLOWED"))
+        self.post_json(self.url(self.order.id), {"producerId": self.kaze.id, "cancelReason": "理由"})
+        res = self.post_json(self.url(self.order.id), {"producerId": self.kaze.id, "cancelReason": "理由"})
+        self.assertEqual(res.status_code, 409)  # 申請済み
+        self.assertEqual(OrderShipment.objects.filter(status="cancel_requested").count(), 1)
+
+    def test_validation(self):
+        other = make_producer(business_name="別の農園")
+        res = self.post_json(self.url(self.order.id), {"producerId": other.id, "cancelReason": "理由"})
+        self.assertEqual((res.status_code, set(res.json()["details"])), (400, {"producerId"}))
+        res = self.post_json(self.url(self.order.id), {"producerId": self.yamada.id, "cancelReason": "あ" * 501})
+        self.assertEqual(set(res.json()["details"]), {"cancelReason"})
+        res = self.post_json(self.url(self.order.id), {"producerId": self.yamada.id, "cancelReason": "   "})
+        self.assertEqual(set(res.json()["details"]), {"cancelReason"})
+        self.assertFalse(OrderShipment.objects.filter(status="cancel_requested").exists())
+
+    def test_suspended_producer_can_receive_request(self):
+        self.yamada.publish_status = PublishStatus.SUSPENDED
+        self.yamada.save()
+        res = self.post_json(self.url(self.order.id), {"producerId": self.yamada.id, "cancelReason": "理由"})
+        self.assertEqual(res.status_code, 200)
+
+    def test_others_order_is_404(self):
+        other_order = make_order(user=make_user(email="other@example.com"))
+        add_shipment(other_order, self.yamada)
+        res = self.post_json(self.url(other_order.id), {"producerId": self.yamada.id, "cancelReason": "理由"})
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (404, "ORDER_NOT_FOUND"))
+
+
+class GuestOrderTokenTests(OrderHistoryTestCase):
+    def setUp(self):
+        super().setUp()
+        self.token, token_hash = new_access_token()
+        self.order = make_order(guest_email="guest@example.com")
+        Order.objects.filter(pk=self.order.pk).update(access_token_hash=token_hash, guest_name="鈴木 一郎",
+                                                      guest_phone="09012345678")
+        add_shipment(self.order, self.yamada)
+
+    def get(self, order_id, token):
+        headers = {"HTTP_X_ORDER_TOKEN": token} if token is not None else {}
+        return self.client.get(f"/api/v1/orders/{order_id}", **headers)
+
+    def test_detail(self):
+        res = self.get(self.order.id, self.token)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["buyer"], {"name": "鈴木 一郎", "email": "guest@example.com",
+                                               "phone": "09012345678"})
+        self.assertTrue(res.json()["shipments"][0]["cancellable"])
+
+    def test_wrong_token_is_404(self):
+        member_token, member_hash = new_access_token()
+        member_order = make_order(user=self.buyer)
+        Order.objects.filter(pk=member_order.pk).update(access_token_hash=member_hash)
+        cases = [(self.order.id, None), (self.order.id, ""), (self.order.id, "x" * 43), (self.order.id, "a" * 201),
+                 (member_order.id, member_token), (2 ** 63, self.token)]
+        for order_id, token in cases:
+            res = self.get(order_id, token)
+            self.assertEqual((res.status_code, res.json()["errorCode"]), (404, "ORDER_NOT_FOUND"), token)
+
+    def test_works_while_signed_in(self):
+        self.signin(self.buyer.email)
+        self.assertEqual(self.get(self.order.id, self.token).status_code, 200)
+
+    def test_cancel(self):
+        url = f"/api/v1/orders/{self.order.id}/cancel"
+        body = {"producerId": self.yamada.id, "cancelReason": "届け先を間違えました"}
+        self.assertEqual(self.post_json(url, body, HTTP_X_ORDER_TOKEN="wrong").status_code, 404)
+        res = self.post_json(url, body, HTTP_X_ORDER_TOKEN=self.token)
+        self.assertEqual((res.status_code, res.json()["shipments"][0]["status"]), (200, "cancel_requested"))
+        self.assertIn("buyer", res.json())
+        self.assertEqual(self.post_json(url, body, HTTP_X_ORDER_TOKEN=self.token, csrf=False).status_code, 403)

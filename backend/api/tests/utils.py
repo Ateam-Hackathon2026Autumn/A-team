@@ -38,9 +38,10 @@ class ApiTestCase(TestCase):
         """GET /api/v1/auth/csrf でトークンを取る（Cookie も同時に受け取る）"""
         return self.client.get("/api/v1/auth/csrf").json()["csrfToken"]
 
-    def post_json(self, url, data=None, csrf=True):
+    def post_json(self, url, data=None, csrf=True, **extra):
+        """extra: 追加のヘッダー（例: HTTP_X_ORDER_TOKEN="..."）"""
         headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
-        return self.client.post(url, data or {}, format="json", **headers)
+        return self.client.post(url, data or {}, format="json", **headers, **extra)
     
     def patch_json(self, url, data=None, csrf=True):
         headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}

@@ -2,7 +2,7 @@
 
   - 未決済注文の自動キャンセル: python manage.py cancel_unpaid_orders（marche/management/commands）
   - 開発用：支払い済みにする: python manage.py mark_order_paid
-  - services/payments.py の create_checkout_session が Stripe に渡す内容
+  - services/payments.py の create_checkout_session が Stripe に渡す内容、refund_shipment（二重返金の防止）
   - services/orders.py の注文番号
 Stripe は呼ばない（payments の関数、または stripe.checkout.Session を差し替える）。
 """
@@ -165,3 +165,41 @@ class OrderNoTests(TestCase):
         Order.objects.filter(pk=make_order(user=make_user()).pk).update(order_no=f"TM-{today}-000001")
         with patch("secrets.randbelow", side_effect=[1, 2]):
             self.assertEqual(orders.generate_order_no(), f"TM-{today}-000002")
+
+
+@override_settings(STRIPE_SECRET_KEY="sk_test_dummy")
+class RefundShipmentTests(TestCase):
+    """payments.refund_shipment：同じ箱の返金がすでにあれば、新しく作らない"""
+
+    def refund_list(self, *refunds):
+        import stripe
+        objects = [stripe.Refund.construct_from(r, "sk_test_dummy") for r in refunds]
+        listing = patch("stripe.Refund.list").start()
+        listing.return_value.auto_paging_iter.return_value = iter(objects)
+        self.addCleanup(patch.stopall)
+        return listing
+
+    def test_creates_refund(self):
+        import stripe
+        self.refund_list({"id": "re_other", "status": "succeeded", "amount": 500, "metadata": {"shipment_id": "9"}},
+                         {"id": "re_failed", "status": "failed", "amount": 2800, "metadata": {"shipment_id": "7"}})
+        created = stripe.Refund.construct_from({"id": "re_new", "status": "succeeded", "amount": 2800}, "k")
+        with patch("stripe.Refund.create", return_value=created) as create:
+            result = payments.refund_shipment("pi_1", 7, 2800)
+        self.assertEqual(result, {"id": "re_new", "status": "succeeded", "amount": 2800})
+        kwargs = create.call_args.kwargs
+        self.assertEqual((kwargs["payment_intent"], kwargs["amount"], kwargs["metadata"], kwargs["idempotency_key"]),
+                         ("pi_1", 2800, {"shipment_id": "7"}, "refund-shipment-7"))
+
+    def test_reuses_existing_refund(self):
+        self.refund_list({"id": "re_done", "status": "pending", "amount": 2800, "metadata": {"shipment_id": "7"}})
+        with patch("stripe.Refund.create") as create:
+            result = payments.refund_shipment("pi_1", 7, 2800)
+        create.assert_not_called()
+        self.assertEqual(result["id"], "re_done")
+
+    def test_error(self):
+        import stripe
+        with patch("stripe.Refund.list", side_effect=stripe.APIConnectionError("down")), \
+                self.assertLogs("api.services.payments", "ERROR"), self.assertRaises(payments.PaymentError):
+            payments.refund_shipment("pi_1", 7, 2800)

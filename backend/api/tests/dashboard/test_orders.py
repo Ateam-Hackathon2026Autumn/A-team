@@ -8,12 +8,15 @@
 S3 には接続しない（ApiTestCase）。メールは locmem（django.core.mail.outbox）で確認する。
 """
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core import mail
+from django.test import override_settings
 from django.utils import timezone
 
 from marche.models import Notification, Order, OrderShipment, Producer, Product, PublishStatus
 
+from ...services.payments import PaymentError
 from ..utils import ApiTestCase, add_shipment, make_order, make_producer, make_product, make_user
 
 Status = OrderShipment.Status
@@ -286,3 +289,60 @@ class CancelApproveRejectTests(DashboardOrderTestCase):
         order, _ = self.order_with_boxes(status=Status.CANCEL_REQUESTED)
         res = self.post_json(approve_url(order.id), csrf=False)
         self.assertEqual((res.status_code, res.json()["errorCode"]), (403, "CSRF_FAILED"))
+
+
+@override_settings(STRIPE_SECRET_KEY="sk_test_dummy")
+class ApproveStripeRefundTests(DashboardOrderTestCase):
+    """キャンセル承認のあと、カード払いの箱を Stripe で返金する"""
+
+    def setUp(self):
+        super().setUp()
+        self.order = make_order(user=self.buyer, stripe_payment_intent_id="pi_1")
+        self.box = add_shipment(self.order, self.producer, items=((None, 2),), shipping_fee=800,
+                                status=Status.CANCEL_REQUESTED)
+        self.refund = patch("api.services.payments.refund_shipment").start()
+        self.addCleanup(patch.stopall)
+
+    def test_card_is_refunded(self):
+        self.refund.return_value = {"id": "re_1", "status": "succeeded", "amount": 2800}
+        with self.captureOnCommitCallbacks(execute=True):
+            res = self.post_json(approve_url(self.order.id))
+        self.assertEqual((res.status_code, res.json()["shipments"][0]["refundedAmount"]), (200, 2800))
+        self.refund.assert_called_once_with("pi_1", self.box.id, 2800)  # 1,000円×2＋送料800円
+        self.box.refresh_from_db()
+        self.assertEqual((self.box.refunded_amount, self.box.stripe_refund_id), (2800, "re_1"))
+        self.assertEqual([n.title for n in Notification.objects.filter(user=self.buyer).order_by("id")],
+                         ["キャンセルが確定しました", "返金が完了しました"])
+        self.assertIn("2,800円を返金しました", mail.outbox[-1].body)
+
+    def test_stripe_error_keeps_waiting(self):
+        self.refund.side_effect = PaymentError("down")
+        with self.assertLogs("api.services.orders", "ERROR"):
+            res = self.post_json(approve_url(self.order.id))
+        self.assertEqual(res.status_code, 200)
+        self.assertIsNone(res.json()["shipments"][0]["refundedAmount"])
+        self.box.refresh_from_db()
+        self.assertEqual((self.box.status, self.box.refunded_amount), (Status.CANCELED, None))
+
+    def test_pending_refund_is_recorded(self):
+        self.refund.return_value = {"id": "re_1", "status": "pending", "amount": 2800}
+        self.post_json(approve_url(self.order.id))
+        self.box.refresh_from_db()
+        self.assertEqual(self.box.refunded_amount, 2800)
+
+    def test_failed_refund_is_not_recorded(self):
+        self.refund.return_value = {"id": "re_1", "status": "failed", "amount": 2800}
+        with self.assertLogs("api.services.orders", "ERROR"):
+            self.post_json(approve_url(self.order.id))
+        self.box.refresh_from_db()
+        self.assertIsNone(self.box.refunded_amount)
+
+    def test_konbini_and_no_key_are_not_sent_to_stripe(self):
+        Order.objects.filter(pk=self.order.pk).update(payment_method="konbini")
+        self.post_json(approve_url(self.order.id))
+        konbini_order = make_order(user=self.buyer, stripe_payment_intent_id="pi_2")
+        add_shipment(konbini_order, self.producer, status=Status.CANCEL_REQUESTED)
+        with override_settings(STRIPE_SECRET_KEY=""):
+            self.post_json(approve_url(konbini_order.id))
+        self.refund.assert_not_called()
+        self.assertFalse(OrderShipment.objects.filter(refunded_amount__isnull=False).exists())

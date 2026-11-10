@@ -38,6 +38,11 @@ urlpatterns = [
     # 注文・決済
     path("orders", orders.OrderCreateView.as_view(), name="orders-create"),
     path("guest/orders", orders.GuestOrderCreateView.as_view(), name="guest-orders-create"),
+    path("orders/<int:order_id>", orders.GuestOrderDetailView.as_view(), name="guest-order-detail"),
+    path("orders/<int:order_id>/cancel", orders.GuestOrderCancelView.as_view(), name="guest-order-cancel"),
+    path("users/me/orders", orders.MyOrderListView.as_view(), name="my-orders"),
+    path("users/me/orders/<int:order_id>", orders.MyOrderDetailView.as_view(), name="my-order-detail"),
+    path("users/me/orders/<int:order_id>/cancel", orders.MyOrderCancelView.as_view(), name="my-order-cancel"),
     path("webhooks/stripe", webhooks.StripeWebhookView.as_view(), name="webhooks-stripe"),
 
     # お気に入り

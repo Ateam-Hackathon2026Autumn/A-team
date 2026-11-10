@@ -16,12 +16,19 @@ view・バッチから呼ぶ業務ロジック。複数のAPI・バッチで同�
   - fail_order(order_id, reason): pending → failed。在庫を戻し、購入者にメール。pending でなければ何もしない
   - restore_stock(shipment): 箱の明細の数量を在庫に戻す（stock が空＝在庫管理しない商品は何もしない）
   - SHIPMENT_STATE_CONFLICT: 箱の状態が想定と違うときの 409 の errorCode
-
-これから追加するもの（ステップ6b）:
-  - キャンセル申請（会員・ゲスト）、ゲスト用トークンの照合
+  - cancellable_producer_ids(order, shipments): 購入者がキャンセルを申請できる生産者の ID
+      （注文が paid で、その生産者の箱がすべて unshipped）
+  - request_cancel(order_id, producer_id, reason): キャンセル申請。その生産者の箱をまとめて cancel_requested にし、
+      生産者に通知・メール。できなければ 409 CANCEL_NOT_ALLOWED、注文にない生産者は 400
+  - refund_canceled_shipments(shipment_ids): キャンセルが確定した箱のうち、カード払いの箱を Stripe で返金する
+      （キャンセル承認・管理者キャンセルのトランザクションが終わってから呼ぶ。失敗しても返金待ちのまま。ログに残す）
+  - refund_by_stripe(shipment_id): 箱1つを Stripe で返金して記録する（管理者返金 method=stripe）
+      Stripe で返金できない（コンビニ払い・キーなし）は RefundNotAvailable、Stripe のエラーは payments.PaymentError
+  - record_refund(shipment_id, amount, stripe_refund_id): 返金待ちのときだけ refunded_amount・stripe_refund_id を
+      書き込み（条件付き更新）、購入者に「返金が完了しました」と通知・メール
 
 使う場所: POST /orders・POST /guest/orders、Webhook、未決済注文の自動キャンセル（バッチ）、mark_order_paid（開発用）、
-         キャンセル承認・拒否、管理者キャンセル
+         注文履歴・詳細・キャンセル申請（会員・ゲスト）、キャンセル承認・拒否、管理者キャンセル・返金
 """
 import hashlib
 import logging
@@ -33,11 +40,13 @@ from django.utils import timezone
 
 from marche.models import CartItem, Notification, Order, OrderItem, OrderShipment, Product
 
+from rest_framework.exceptions import ValidationError
+
 from ..common.exceptions import Conflict
-from . import mail
+from . import mail, payments
 from .cart import MAX_QUANTITY, unavailable_reason
 from .notifications import notify, notify_order_buyer
-from .pricing import group_into_boxes, tax_amounts
+from .pricing import group_into_boxes, refund_amount, tax_amounts
 from .visibility import public_products
 
 logger = logging.getLogger(__name__)
@@ -305,3 +314,101 @@ def restore_stock(shipment):
     for item in shipment.order_items.all():
         Product.objects.filter(pk=item.product_id, stock__isnull=False).update(
             stock=F("stock") + item.quantity, updated_at=now)
+
+
+# =========================================================
+# キャンセル申請（購入者）
+# =========================================================
+
+CANCEL_NOT_ALLOWED = "CANCEL_NOT_ALLOWED"
+
+
+def cancellable_producer_ids(order, shipments):
+    """キャンセルを申請できる生産者の ID の集合。注文が paid で、その生産者の箱がすべて unshipped"""
+    if order.payment_status != Order.PaymentStatus.PAID:
+        return set()
+    statuses = {}
+    for shipment in shipments:
+        statuses.setdefault(shipment.producer_id, []).append(shipment.status)
+    return {producer_id for producer_id, values in statuses.items()
+            if all(value == OrderShipment.Status.UNSHIPPED for value in values)}
+
+
+def request_cancel(order_id, producer_id, reason):
+    """その生産者の箱をまとめて cancel_requested にする。注文 → 箱の順にロックしてから状態を確かめる"""
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order_id)
+        shipments = list(OrderShipment.objects.select_for_update().filter(order=order, producer_id=producer_id)
+                         .select_related("producer__user").order_by("id"))
+        if not shipments:
+            raise ValidationError({"producer_id": ["この生産者の商品はご注文に含まれていません。"]})
+        if order.payment_status != Order.PaymentStatus.PAID:
+            raise Conflict(CANCEL_NOT_ALLOWED, "お支払いが完了していない注文はキャンセルできません。")
+        if any(shipment.status != OrderShipment.Status.UNSHIPPED for shipment in shipments):
+            raise Conflict(CANCEL_NOT_ALLOWED,
+                           "発送済み・キャンセル申請中・キャンセル済みの商品があるため、キャンセルを申請できません。")
+        for shipment in shipments:
+            shipment.status = OrderShipment.Status.CANCEL_REQUESTED
+            shipment.cancel_reason = reason
+            shipment.save(update_fields=["status", "cancel_reason", "updated_at"])
+        producer = shipments[0].producer
+        notify(producer.user, Notification.NotificationType.CANCEL_REQUESTED,
+               f"キャンセル申請が届きました（注文番号 {order.order_no}）",
+               f"注文番号 {order.order_no} のあなたの商品について、購入者からキャンセルの申請がありました。\n"
+               f"理由: {reason}\n\n"
+               "注文管理画面で、承認または拒否をしてください。承認するまでは発送しないでください。\n")
+
+
+# =========================================================
+# 返金
+# =========================================================
+
+class RefundNotAvailable(Exception):
+    """この箱は Stripe で返金できない（コンビニ払い・Stripe のキーがない など）"""
+
+
+def record_refund(shipment_id, amount, stripe_refund_id=None):
+    """返金待ち（canceled かつ refunded_amount が空）のときだけ返金を記録し、購入者に知らせる。記録したら True"""
+    with transaction.atomic():
+        updated = OrderShipment.objects.filter(
+            pk=shipment_id, status=OrderShipment.Status.CANCELED, refunded_amount__isnull=True,
+        ).update(refunded_amount=amount, stripe_refund_id=stripe_refund_id, updated_at=timezone.now())
+        if updated:
+            shipment = OrderShipment.objects.select_related("order__user", "producer").get(pk=shipment_id)
+            card_note = "カードへの返金は、ご利用明細に反映されるまで数日かかることがあります。\n" if stripe_refund_id else ""
+            notify_order_buyer(
+                shipment.order, Notification.NotificationType.CANCELED, "返金が完了しました",
+                f"ご注文（注文番号 {shipment.order.order_no}）のうち、{shipment.producer.business_name}の商品について、"
+                f"{amount:,}円を返金しました。\n{card_note}")
+    return bool(updated)
+
+
+def refund_by_stripe(shipment_id):
+    """箱1つを Stripe で返金して記録する。返金待ちでなければ何もせず False"""
+    shipment = (OrderShipment.objects.select_related("order").prefetch_related("order_items")
+                .get(pk=shipment_id))
+    if shipment.status != OrderShipment.Status.CANCELED or shipment.refunded_amount is not None:
+        return False
+    order = shipment.order
+    if order.payment_method != "card":
+        raise RefundNotAvailable("コンビニ払いは Stripe で返金できません。")
+    if not order.stripe_payment_intent_id:
+        raise RefundNotAvailable("Stripe の決済IDがないため返金できません。manual で記録してください。")
+    if not payments.is_enabled():
+        raise RefundNotAvailable("Stripe が設定されていないため返金できません。manual で記録してください。")
+    amount = refund_amount(shipment)
+    refund = payments.refund_shipment(order.stripe_payment_intent_id, shipment.id, amount)
+    if refund["status"] not in payments.REFUND_OK_STATUSES:
+        raise payments.PaymentError(f"返金の状態が {refund['status']} です")
+    return record_refund(shipment.id, amount, refund["id"])
+
+
+def refund_canceled_shipments(shipment_ids):
+    """キャンセルが確定した箱のうち、カード払いの箱を Stripe で返金する。できなかった箱は返金待ちのまま（ログに残す）"""
+    for shipment_id in shipment_ids:
+        try:
+            refund_by_stripe(shipment_id)
+        except RefundNotAvailable as exc:
+            logger.info("Stripe で返金しませんでした（返金待ちのまま）: shipment_id=%s %s", shipment_id, exc)
+        except payments.PaymentError:
+            logger.error("Stripe の返金に失敗しました（返金待ちのまま）: shipment_id=%s", shipment_id)
