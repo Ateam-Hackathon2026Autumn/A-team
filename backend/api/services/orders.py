@@ -45,7 +45,7 @@ from rest_framework.exceptions import ValidationError
 from ..common.exceptions import Conflict
 from . import mail, payments
 from .cart import MAX_QUANTITY, unavailable_reason
-from .notifications import notify, notify_order_buyer
+from .notifications import PRODUCER_ORDER_PATH, notify, notify_order_buyer
 from .pricing import group_into_boxes, refund_amount, tax_amounts
 from .visibility import public_products
 
@@ -302,7 +302,8 @@ def _send_paid_mails(order, shipments, guest_token):
             f"注文番号：{order.order_no}\n\n" + _box_text(producer_shipments)
         )
         notify(producer.user, Notification.NotificationType.NEW_ORDER,
-               f"新しい注文が入りました（注文番号 {order.order_no}）", producer_body)
+               f"新しい注文が入りました（注文番号 {order.order_no}）", producer_body,
+               PRODUCER_ORDER_PATH.format(order_id=order.id))
 
 
 def restore_stock(shipment):
@@ -357,7 +358,8 @@ def request_cancel(order_id, producer_id, reason):
                f"キャンセル申請が届きました（注文番号 {order.order_no}）",
                f"注文番号 {order.order_no} のあなたの商品について、購入者からキャンセルの申請がありました。\n"
                f"理由: {reason}\n\n"
-               "注文管理画面で、承認または拒否をしてください。承認するまでは発送しないでください。\n")
+               "注文管理画面で、承認または拒否をしてください。承認するまでは発送しないでください。\n",
+               PRODUCER_ORDER_PATH.format(order_id=order.id))
 
 
 # =========================================================

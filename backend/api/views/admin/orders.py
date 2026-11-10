@@ -49,7 +49,7 @@ from ...serializers.admin.orders import (
     AdminShipmentSerializer,
 )
 from ...services.audit import record_audit_log
-from ...services.notifications import notify, notify_order_buyer
+from ...services.notifications import PRODUCER_ORDER_PATH, notify, notify_order_buyer
 from ...services import payments
 from ...services.orders import (
     SHIPMENT_STATE_CONFLICT,
@@ -235,4 +235,5 @@ def notify_admin_cancel(order, shipments, reason):
                 f"理由: {reason}\n"
                 "未発送の商品は発送しないでください。\n"
             ),
+            link_path=PRODUCER_ORDER_PATH.format(order_id=order.id),
         )

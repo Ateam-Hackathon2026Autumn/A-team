@@ -37,13 +37,24 @@ def notify(user, notification_type, title, body, link_path=None):
 GUEST_ORDER_GUIDE = "ご注文の状況は、ご注文時にお送りした注文確認メールのURLからご確認いただけます。\n"
 
 
+# 通知を押したときに開く画面のパス（フロントの画面のURL）
+BUYER_ORDER_PATH = "/mypage/orders/{order_id}"
+PRODUCER_ORDER_PATH = "/dashboard/orders/{order_id}"
+PRODUCER_APPLICATION_PATH = "/producer-application"
+MY_JOB_APPLICATIONS_PATH = "/mypage/jobs"
+MY_EXPERIENCES_PATH = "/mypage/experiences"
+
+
 def notify_order_buyer(order, notification_type, title, body, link_path=None, guest_guide=True):
     """注文の購入者に知らせる。会員は通知＋メール、ゲストはメールだけ（Notification は作らないので None を返す）
+
+    link_path を省略すると、会員の注文詳細（/mypage/orders/{注文ID}）にする
 
     guest_guide=False: ゲストへの「注文確認メールのURLから」の案内を付けない（確認メール自体・支払い前に取り消した注文）
     """
     if order.user_id:
-        return notify(order.user, notification_type, title, body, link_path)
+        return notify(order.user, notification_type, title, body,
+                      link_path or BUYER_ORDER_PATH.format(order_id=order.id))
     greeting = f"{order.guest_name or 'お客'} 様\n\n"
     guide = "\n" + GUEST_ORDER_GUIDE if guest_guide else ""
     transaction.on_commit(lambda: mail.send(order.guest_email, title, greeting + body + guide))
