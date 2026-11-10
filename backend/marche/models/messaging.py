@@ -97,6 +97,8 @@ class Notification(TimeStampedModel):
         NEW_APPLICATION = "new_application", "新規応募"
         APPLICATION_WITHDRAWN = "application_withdrawn", "応募の取り下げ"
         APPLICATION_RESULT = "application_result", "応募結果"
+        NEW_REVIEW = "new_review", "新しいレビュー"
+        REVIEW_REPLY = "review_reply", "レビューへの返信"
         RESERVATION = "reservation", "体験予約"
 
     # 通知を受け取る会員（生産者も含む）。ゲストには作らない

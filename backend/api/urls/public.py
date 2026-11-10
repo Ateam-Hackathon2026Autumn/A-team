@@ -6,7 +6,8 @@ api/urls/__init__.py から /api/v1/ に include する。
 from django.urls import path
 
 from ..views.public import (addresses, announcements, auth, cart, catalog, experiences, favorites, jobs,
-                            notifications, orders, producer_applications, producers, uploads, users, webhooks)
+                            notifications, orders, producer_applications, producers, reviews, uploads, users,
+                            webhooks)
 
 urlpatterns = [
     # 認証・ユーザー
@@ -41,6 +42,8 @@ urlpatterns = [
     # 商品・カテゴリー
     path("products", catalog.ProductListView.as_view(), name="products-list"),
     path("products/<int:product_id>", catalog.ProductDetailView.as_view(), name="products-detail"),
+    path("products/<int:product_id>/reviews", reviews.ProductReviewListCreateView.as_view(), name="product-reviews"),
+    path("users/me/reviews/<int:review_id>", reviews.MyReviewDetailView.as_view(), name="my-review"),
     path("categories", catalog.CategoryListView.as_view(), name="categories-list"),
 
     # 生産者・学ぶ
