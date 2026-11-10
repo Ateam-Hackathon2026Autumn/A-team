@@ -37,7 +37,7 @@ from ...serializers.admin.producer_applications import (
     ReviewCommentSerializer,
 )
 from ...services.audit import record_audit_log
-from ...services.notifications import notify
+from ...services.notifications import PRODUCER_APPLICATION_PATH, notify
 
 Status = ProducerApplication.Status
 TARGET_TYPE = "producer_application"
@@ -122,7 +122,8 @@ class ReviewView(ReviewerView):
             record_audit_log(admin=request.user, action=self.action_name, target_type=TARGET_TYPE,
                              target_id=application.pk, detail={"producer_id": producer.pk, "review_comment": comment})
             title, body = self.notice(producer, comment)
-            notify(producer.user, Notification.NotificationType.PRODUCER_REVIEW, title=title, body=body)
+            notify(producer.user, Notification.NotificationType.PRODUCER_REVIEW, title=title, body=body,
+                   link_path=PRODUCER_APPLICATION_PATH)
             return detail_response(application.pk)
 
     @property

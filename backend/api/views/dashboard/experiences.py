@@ -56,7 +56,7 @@ from ...serializers.dashboard.experiences import (
     SlotSerializer,
     SlotUpdateSerializer,
 )
-from ...services.notifications import notify
+from ...services.notifications import MY_EXPERIENCES_PATH, notify
 
 # 予約枠の中止で取り消す予約の状態（attended・canceled は対象外）
 ACTIVE_RESERVATION_STATUSES = [Reservation.Status.APPLIED, Reservation.Status.CONFIRMED]
@@ -324,4 +324,5 @@ def cancel_slot(experience, slot):
                 f"予約番号 {reservation.reservation_no} の予約はキャンセルされました。\n"
                 "参加費は当日現地でのお支払いのため、返金の手続きはありません。\n"
             ),
+            link_path=MY_EXPERIENCES_PATH,
         )

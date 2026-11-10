@@ -38,7 +38,7 @@ from api.common.permissions import (
     ensure_producer_not_suspended,
 )
 
-from api.services.notifications import notify
+from api.services.notifications import MY_JOB_APPLICATIONS_PATH, notify
 
 
 # ============================================================
@@ -884,7 +884,7 @@ class JobApplicationDetailView(APIView):
                 ),
                 title=notification_data["title"],
                 body=notification_data["body"],
-                link_path="/mypage/applications",
+                link_path=MY_JOB_APPLICATIONS_PATH,
             )
 
         response_data = {

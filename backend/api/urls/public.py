@@ -5,8 +5,8 @@ api/urls/__init__.py から /api/v1/ に include する。
 """
 from django.urls import path
 
-from ..views.public import (addresses, auth, cart, catalog, favorites, orders, producer_applications, producers,
-                            uploads, users, webhooks)
+from ..views.public import (addresses, announcements, auth, cart, catalog, favorites, notifications, orders,
+                            producer_applications, producers, uploads, users, webhooks)
 
 urlpatterns = [
     # 認証・ユーザー
@@ -24,6 +24,19 @@ urlpatterns = [
     path("users/me/password", users.PasswordChangeView.as_view(), name="users-me-password"),
     path("users/me/addresses", addresses.AddressListView.as_view(), name="addresses"),
     path("users/me/addresses/<int:address_id>", addresses.AddressDetailView.as_view(), name="address-detail"),
+    path("users/me/notification-settings", notifications.NotificationSettingView.as_view(),
+         name="notification-settings"),
+
+    # 通知・お知らせ
+    path("notifications", notifications.NotificationListView.as_view(), name="notifications"),
+    path("notifications/unread-count", notifications.NotificationUnreadCountView.as_view(),
+         name="notifications-unread-count"),
+    path("notifications/read-all", notifications.NotificationReadAllView.as_view(), name="notifications-read-all"),
+    path("notifications/<int:notification_id>/read", notifications.NotificationReadView.as_view(),
+         name="notification-read"),
+    path("announcements", announcements.AnnouncementListView.as_view(), name="announcements"),
+    path("announcements/<int:announcement_id>", announcements.AnnouncementDetailView.as_view(),
+         name="announcement-detail"),
 
     # 商品・カテゴリー
     path("products", catalog.ProductListView.as_view(), name="products-list"),
