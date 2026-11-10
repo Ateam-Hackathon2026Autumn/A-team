@@ -55,9 +55,12 @@ class ApiTestCase(TestCase):
         headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
         return self.client.post(url, data, format="multipart", **headers)
 
-    def delete_json(self, url, csrf=True):
+    def delete_json(self, url, data=None, csrf=True):
+        """data を渡すと JSON の本文を付ける（退会の currentPassword など）"""
         headers = {"HTTP_X_CSRFTOKEN": self.csrf()} if csrf else {}
-        return self.client.delete(url, **headers)
+        if data is None:
+            return self.client.delete(url, **headers)
+        return self.client.delete(url, data, format="json", **headers)
 
     def signin(self, email, password=PASSWORD):
         return self.post_json("/api/v1/auth/signin", {"email": email, "password": password})
