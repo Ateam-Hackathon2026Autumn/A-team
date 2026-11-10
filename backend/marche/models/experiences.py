@@ -89,6 +89,12 @@ class Experience(TimeStampedModel):
         verbose_name="注意事項",
     )
 
+    # 申込・キャンセルの締め切り（開催の何時間前まで受け付けるか）。0〜168。締め切り日時＝start_at − この時間
+    booking_deadline_hours = models.IntegerField(
+        default=24,
+        verbose_name="申込の締め切り（開催の何時間前）",
+    )
+
     cancel_policy = models.TextField(
         verbose_name="キャンセルポリシー",
     )

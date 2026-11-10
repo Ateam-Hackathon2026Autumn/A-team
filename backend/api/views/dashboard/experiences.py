@@ -8,8 +8,10 @@
     - 体験一覧（生産者）: GET    /api/v1/dashboard/experiences
     - 体験登録:           POST   /api/v1/dashboard/experiences
         ・prefectureId 省略時は生産者の都道府県。公開には画像1枚以上（409 IMAGE_REQUIRED）
+        ・imageKeys（自分がアップロードした画像、最大10件・配列の順が表示順）、bookingDeadlineHours（0〜168、初期値24）
     - 体験詳細（生産者）: GET    /api/v1/dashboard/experiences/:experienceId
     - 体験更新:           PATCH  /api/v1/dashboard/experiences/:experienceId
+        ・送った項目だけ。imageKeys を送ったら画像を全部置き換える。結果が public なら画像1枚以上（409 IMAGE_REQUIRED）
         ・料金を変えても既存予約の total_amount は変えない
         ・運営に掲載停止された体験は、内容の編集は可、publishStatus の変更は 409 CONTENT_SUSPENDED
     - 体験削除:           DELETE /api/v1/dashboard/experiences/:experienceId
@@ -38,7 +40,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from marche.models import Experience, ExperienceSlot, Notification, PublishStatus, Reservation
+from marche.models import Experience, ExperienceImage, ExperienceSlot, Notification, PublishStatus, Reservation
 
 from ...common.exceptions import Conflict
 from ...common.pagination import paginate, validate_query
@@ -57,6 +59,7 @@ from ...serializers.dashboard.experiences import (
     SlotUpdateSerializer,
 )
 from ...services.notifications import MY_EXPERIENCES_PATH, notify
+from ...services.storage import validate_image_keys
 
 # 予約枠の中止で取り消す予約の状態（attended・canceled は対象外）
 ACTIVE_RESERVATION_STATUSES = [Reservation.Status.APPLIED, Reservation.Status.CONFIRMED]
@@ -86,10 +89,17 @@ class ProducerExperienceView(APIView):
         return get_object_or_404(queryset, pk=slot_id)
 
 
-def ensure_can_publish(experience, new_status):
-    """公開（public）にする条件。画像が1枚以上必要"""
-    if new_status == PublishStatus.PUBLIC and not experience.experience_images.exists():
+def ensure_can_publish(publish_status, image_count):
+    """公開（public）にする・公開のまま保存する条件。画像が1枚以上必要"""
+    if publish_status == PublishStatus.PUBLIC and image_count == 0:
         raise Conflict("IMAGE_REQUIRED", "公開するには画像を1枚以上登録してください。")
+
+
+def replace_images(experience, image_keys):
+    """画像を全部置き換える（配列の順が sort_order。0 がメイン）"""
+    ExperienceImage.objects.filter(experience=experience).delete()
+    ExperienceImage.objects.bulk_create([
+        ExperienceImage(experience=experience, image=key, sort_order=order) for order, key in enumerate(image_keys)])
 
 
 def has_reservations(**filters):
@@ -126,15 +136,16 @@ class ExperienceListCreateView(ProducerExperienceView):
         ensure_producer_not_suspended(producer)
         serializer = ExperienceWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = dict(serializer.validated_data)
+        image_keys = data.pop("image_keys", [])
+        validate_image_keys(request.user, image_keys)
 
         experience = Experience(producer=producer, **data)
         if "prefecture" not in data:
             experience.prefecture = producer.prefecture
-        # 画像はまだ登録できないので、公開を選ぶと 409 になる
-        if experience.publish_status == PublishStatus.PUBLIC:
-            raise Conflict("IMAGE_REQUIRED", "公開するには画像を1枚以上登録してください。")
+        ensure_can_publish(experience.publish_status, len(image_keys))
         experience.save()
+        replace_images(experience, image_keys)
         return Response(ExperienceWriteResponseSerializer(experience).data, status=status.HTTP_201_CREATED)
 
 
@@ -157,19 +168,25 @@ class ExperienceDetailView(ProducerExperienceView):
         experience = self.get_experience(experience_id, lock=True)
         serializer = ExperienceWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = dict(serializer.validated_data)
+        image_keys = data.pop("image_keys", None)
+        if image_keys is not None:
+            validate_image_keys(request.user, image_keys)
 
         new_status = data.get("publish_status")
-        if new_status is not None and new_status != experience.publish_status:
-            if experience.publish_status == PublishStatus.SUSPENDED:
-                raise Conflict("CONTENT_SUSPENDED",
-                                "運営により掲載停止中のため、公開状態は変更できません。")
-            ensure_can_publish(experience, new_status)
+        if new_status is not None and new_status != experience.publish_status \
+                and experience.publish_status == PublishStatus.SUSPENDED:
+            raise Conflict("CONTENT_SUSPENDED",
+                            "運営により掲載停止中のため、公開状態は変更できません。")
+        image_count = len(image_keys) if image_keys is not None else experience.experience_images.count()
+        ensure_can_publish(new_status or experience.publish_status, image_count)
 
         # 料金を変えても、既存の予約の total_amount はそのまま（予約時に保存済み）
         for field, value in data.items():
             setattr(experience, field, value)
         experience.save()
+        if image_keys is not None:
+            replace_images(experience, image_keys)
         return Response(ExperienceWriteResponseSerializer(experience).data)
 
     @transaction.atomic

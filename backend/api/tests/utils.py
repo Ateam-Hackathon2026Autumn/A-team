@@ -114,7 +114,8 @@ def make_experience(producer=None, title="収穫体験", **kw):
     fields = dict(description="にんじんを収穫します", place="山田農園", price_adult=3000,
                     cancel_policy="前日までにご連絡ください", publish_status=PublishStatus.DRAFT)
     fields.update(kw)
-    return Experience.objects.create(producer=producer, prefecture=producer.prefecture, title=title, **fields)
+    fields.setdefault("prefecture", producer.prefecture)
+    return Experience.objects.create(producer=producer, title=title, **fields)
 
 
 def make_slot(experience=None, days=7, **kw):

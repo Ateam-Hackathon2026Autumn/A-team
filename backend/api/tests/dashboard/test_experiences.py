@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from marche.models import Experience, ExperienceImage, ExperienceSlot, Notification, Producer, PublishStatus, Reservation
 
+from ..public.test_uploads import image_file
 from ..utils import ApiTestCase, make_experience, make_producer, make_reservation, make_slot, make_user
 
 BASE = "/api/v1/dashboard/experiences"
@@ -157,13 +158,15 @@ class ExperienceCreateTests(ProducerTestCase):
             "publishStatus": {**VALID, "publishStatus": "suspended"},  # 生産者は選べない
             "flow": {**VALID, "flow": [{"time": "25:00", "text": "集合"}]},
             "producerId": {**VALID, "producerId": 1},  # 定義にない項目
-            "images": {**VALID, "images": [{"imageKey": "a.jpg"}]},  # 画像は準備中
+            "imageKeys": {**VALID, "imageKeys": ["images/999/other.jpg"]},  # 自分の画像ではない
+            "bookingDeadlineHours": {**VALID, "bookingDeadlineHours": 169},
+            "images": {**VALID, "images": []},  # 画像は imageKeys で送る
         }
         for field, data in cases.items():
             res = self.post_json(BASE, data)
             self.assertEqual(res.status_code, 400, field)
             self.assertIn(field, "".join(res.json()["details"]), field)
-        self.assertEqual(self.post_json(BASE, {**VALID, "images": []}).status_code, 201)  # 空配列は受け付ける
+        self.assertEqual(self.post_json(BASE, {**VALID, "imageKeys": []}).status_code, 201)  # 空配列は受け付ける
 
     def test_suspended_producer_cannot_create(self):
         self.suspend_producer()
@@ -236,6 +239,46 @@ class ExperienceUpdateTests(ProducerTestCase):
     def test_suspended_producer_cannot_update(self):
         self.suspend_producer()
         self.assertEqual(self.patch_json(self.url, {"title": "x"}).json()["errorCode"], "PRODUCER_SUSPENDED")
+
+
+class ExperienceImageTests(ProducerTestCase):
+    """imageKeys（画像アップロードAPIで受け取ったキー）と bookingDeadlineHours"""
+
+    def upload(self):
+        return self.post_multipart("/api/v1/uploads/images", {"image": image_file()}).json()["key"]
+
+    def test_create_with_images_and_publish(self):
+        keys = [self.upload(), self.upload()]
+        res = self.post_json(BASE, {**VALID, "imageKeys": keys, "publishStatus": "public",
+                                    "bookingDeadlineHours": 48})
+        self.assertEqual(res.status_code, 201, res.content)
+        detail = self.client.get(f"{BASE}/{res.json()['id']}").json()
+        self.assertEqual([i["imageKey"] for i in detail["images"]], keys)
+        self.assertEqual([i["sortOrder"] for i in detail["images"]], [0, 1])
+        self.assertEqual(detail["bookingDeadlineHours"], 48)
+
+    def test_default_deadline_and_publish_without_image(self):
+        res = self.post_json(BASE, VALID)
+        self.assertEqual(Experience.objects.get(pk=res.json()["id"]).booking_deadline_hours, 24)
+        res = self.post_json(BASE, {**VALID, "publishStatus": "public"})
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "IMAGE_REQUIRED"))
+
+    def test_patch_replaces_images(self):
+        first, second = self.upload(), self.upload()
+        experience_id = self.post_json(BASE, {**VALID, "imageKeys": [first], "publishStatus": "public"}).json()["id"]
+        url = f"{BASE}/{experience_id}"
+        self.assertEqual(self.patch_json(url, {"imageKeys": [second, first]}).status_code, 200)
+        self.assertEqual([i["imageKey"] for i in self.client.get(url).json()["images"]], [second, first])
+        res = self.patch_json(url, {"imageKeys": []})  # 公開中に画像を0枚にはできない
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "IMAGE_REQUIRED"))
+        self.assertEqual(ExperienceImage.objects.filter(experience_id=experience_id).count(), 2)
+        self.assertEqual(self.patch_json(url, {"title": "変更"}).status_code, 200)  # 画像を送らなければそのまま
+        self.assertEqual(ExperienceImage.objects.filter(experience_id=experience_id).count(), 2)
+
+    def test_duplicate_keys(self):
+        key = self.upload()
+        res = self.post_json(BASE, {**VALID, "imageKeys": [key, key]})
+        self.assertIn("imageKeys", res.json()["details"])
 
 
 class ExperienceDeleteTests(ProducerTestCase):
