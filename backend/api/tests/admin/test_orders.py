@@ -8,13 +8,16 @@
 S3 には接続しない（ApiTestCase）。メールは locmem（django.core.mail.outbox）で確認する。
 """
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group
 from django.core import mail
+from django.test import override_settings
 from django.utils import timezone
 
 from marche.models import AuditLog, Inquiry, Notification, Order, OrderShipment, Product
 
+from ...services.payments import PaymentError
 from ..utils import ApiTestCase, add_shipment, make_order, make_producer, make_product, make_user
 
 Status = OrderShipment.Status
@@ -245,11 +248,21 @@ class RefundTests(AdminOrderTestCase):
         self.assertEqual((log.action, log.detail), ("refund", {"shipment_id": self.box.id, "method": "manual",
                                                                "refunded_amount": 3200}))
 
-    def test_stripe_is_not_available_yet(self):
+    def test_manual_refund_notifies_buyer(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.post_json(refund_url(self.order.id), {"shipmentId": self.box.id, "method": "manual"})
+        self.assertEqual(Notification.objects.get(user=self.buyer).title, "返金が完了しました")
+        self.assertIn("3,200円を返金しました", mail.outbox[0].body)
+        self.assertNotIn("ご利用明細", mail.outbox[0].body)
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_dummy")
+    def test_konbini_cannot_use_stripe(self):
         res = self.post_json(refund_url(self.order.id), {"shipmentId": self.box.id, "method": "stripe"})
         self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "STRIPE_REFUND_NOT_AVAILABLE"))
+        self.assertEqual(res.json()["errorMsg"], "コンビニ払いは Stripe で返金できません。")
         self.box.refresh_from_db()
         self.assertIsNone(self.box.refunded_amount)
+        self.assertFalse(AuditLog.objects.exists())
 
     def test_not_waiting_for_refund_is_409(self):
         self.post_json(refund_url(self.order.id), {"shipmentId": self.box.id, "method": "manual"})
@@ -265,3 +278,58 @@ class RefundTests(AdminOrderTestCase):
         self.assertEqual(res.status_code, 404)
         res = self.post_json(refund_url(self.order.id), {"shipmentId": self.box.id, "method": "cash"})
         self.assertEqual(res.status_code, 400)
+
+
+@override_settings(STRIPE_SECRET_KEY="sk_test_dummy")
+class StripeRefundTests(AdminOrderTestCase):
+    """カード払いの箱の Stripe 返金（管理者返金 method=stripe・管理者キャンセル）"""
+
+    def setUp(self):
+        super().setUp()
+        self.order = make_order(user=self.buyer, stripe_payment_intent_id="pi_1")
+        self.box = add_shipment(self.order, self.producer, items=((None, 2),), status=Status.CANCELED,
+                                shipping_fee=1200)
+        self.refund = patch("api.services.payments.refund_shipment").start()
+        self.addCleanup(patch.stopall)
+
+    def stripe_refund(self):
+        return self.post_json(refund_url(self.order.id), {"shipmentId": self.box.id, "method": "stripe"})
+
+    def test_refund(self):
+        self.refund.return_value = {"id": "re_1", "status": "succeeded", "amount": 3200}
+        with self.captureOnCommitCallbacks(execute=True):
+            res = self.stripe_refund()
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual((res.json()["refundedAmount"], res.json()["stripeRefundId"]), (3200, "re_1"))
+        self.refund.assert_called_once_with("pi_1", self.box.id, 3200)
+        self.assertEqual(AuditLog.objects.get().detail, {"shipment_id": self.box.id, "method": "stripe",
+                                                         "refunded_amount": 3200, "stripe_refund_id": "re_1"})
+        self.assertIn("ご利用明細", mail.outbox[0].body)
+
+    def test_stripe_error_is_502(self):
+        self.refund.side_effect = PaymentError("down")
+        res = self.stripe_refund()
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (502, "STRIPE_ERROR"))
+        self.box.refresh_from_db()
+        self.assertIsNone(self.box.refunded_amount)
+        self.assertFalse(AuditLog.objects.exists())
+
+    @override_settings(STRIPE_SECRET_KEY="")
+    def test_without_key_is_409(self):
+        res = self.stripe_refund()
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "STRIPE_REFUND_NOT_AVAILABLE"))
+        self.refund.assert_not_called()
+
+    def test_without_payment_intent_is_409(self):
+        Order.objects.filter(pk=self.order.pk).update(stripe_payment_intent_id=None)
+        res = self.stripe_refund()
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "STRIPE_REFUND_NOT_AVAILABLE"))
+
+    def test_admin_cancel_refunds_card_boxes(self):
+        self.refund.return_value = {"id": "re_2", "status": "succeeded", "amount": 1000}
+        box = add_shipment(self.order, self.other, items=((None, 1),), shipping_fee=0)
+        res = self.post_json(cancel_url(self.order.id), {"shipmentIds": [box.id], "reason": "生産者の都合"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["shipments"][0]["refundedAmount"], 1000)
+        box.refresh_from_db()
+        self.assertEqual((box.status, box.stripe_refund_id), (Status.CANCELED, "re_2"))

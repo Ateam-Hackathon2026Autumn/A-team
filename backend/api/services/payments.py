@@ -12,10 +12,12 @@ Stripe のライブラリを知らなくてよい。テストではこのファ�
   - parse_webhook(payload, signature): 署名を検証して (イベントの種類, セッションの dict) を返す。不正なら InvalidWebhook
   - Stripe のエラーは PaymentError にまとめる（view は 503 PAYMENT_UNAVAILABLE にする）
 
-これから追加するもの（ステップ6b）:
-  - 箱ごとの部分返金（api-spec「Stripe 返金（未実装・決定済み）」）
+  - refund_shipment(payment_intent_id, shipment_id, amount): 箱1つ分の部分返金 → {"id", "status", "amount"}
+      二重返金を防ぐため、重複防止キーを refund-shipment-{箱のID} にし、さらに作る前にその PaymentIntent の返金一覧を見て、
+      metadata.shipment_id が同じで succeeded・pending の返金があればそれを返す（キーは Stripe が24時間しか覚えていない）
 
-使う場所: POST /orders・POST /guest/orders、POST /webhooks/stripe、未決済注文の自動キャンセル（バッチ）
+使う場所: POST /orders・POST /guest/orders、POST /webhooks/stripe、未決済注文の自動キャンセル（バッチ）、
+         キャンセル承認（生産者）・注文キャンセル・返金（管理者）
 """
 import logging
 import time
@@ -131,3 +133,25 @@ def parse_webhook(payload, signature):
     obj = event["data"]["object"]
     session = _session_dict(obj) if event_type.startswith("checkout.session.") else None
     return event_type, session
+
+
+REFUND_OK_STATUSES = ("succeeded", "pending")  # 返金として記録してよい Stripe の状態
+
+
+def refund_shipment(payment_intent_id, shipment_id, amount):
+    """箱1つ分を Stripe で返金する。すでに同じ箱の返金があれば、新しく作らずにそれを返す"""
+    api_key = settings.STRIPE_SECRET_KEY
+    try:
+        for refund in stripe.Refund.list(payment_intent=payment_intent_id, limit=100,
+                                          api_key=api_key).auto_paging_iter():
+            refund = refund.to_dict()
+            if (refund.get("metadata") or {}).get("shipment_id") == str(shipment_id) \
+                    and refund.get("status") in REFUND_OK_STATUSES:
+                return {"id": refund["id"], "status": refund["status"], "amount": refund["amount"]}
+        refund = stripe.Refund.create(
+            payment_intent=payment_intent_id, amount=amount, metadata={"shipment_id": str(shipment_id)},
+            api_key=api_key, idempotency_key=f"refund-shipment-{shipment_id}").to_dict()
+    except stripe.StripeError as exc:
+        logger.exception("Stripe の返金に失敗しました: shipment_id=%s", shipment_id)
+        raise PaymentError(str(exc)) from exc
+    return {"id": refund["id"], "status": refund["status"], "amount": refund["amount"]}

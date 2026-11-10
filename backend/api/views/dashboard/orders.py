@@ -16,7 +16,8 @@
         ・注文が paid でない・状態が合わないときは 409 SHIPMENT_STATE_CONFLICT。更新した箱を返す
     - キャンセル承認: POST /api/v1/dashboard/orders/:orderId/cancel/approve
         ・自分の cancel_requested の箱をまとめて canceled にし、在庫を戻す。購入者に通知・メール
-        ・返金は「返金待ち」（refunded_amount が空）のまま。Stripe の返金は services/payments.py で後から付ける
+        ・トランザクションが終わってから、カード払いの箱を Stripe で返金して refundedAmount を記録する
+          （services/orders.py の refund_canceled_shipments）。コンビニ払い・Stripe のエラーは返金待ちのまま（200）
     - キャンセル拒否: POST /api/v1/dashboard/orders/:orderId/cancel/reject
         ・自分の cancel_requested の箱をまとめて unshipped に戻す。購入者に通知・メール（cancel_rejected）
         ・承認・拒否とも、対象の箱がなければ 409 SHIPMENT_STATE_CONFLICT。処理した箱を {shipments} で返す
@@ -45,7 +46,7 @@ from ...serializers.dashboard.orders import (
     ShipmentUpdateSerializer,
 )
 from ...services.notifications import notify_order_buyer
-from ...services.orders import SHIPMENT_STATE_CONFLICT, restore_stock
+from ...services.orders import SHIPMENT_STATE_CONFLICT, refund_canceled_shipments, restore_stock
 
 Status = OrderShipment.Status
 
@@ -178,8 +179,10 @@ class DashboardOrderCancelApproveView(APIView):
                     "返金の手続きが完了しましたら、あらためてお知らせします。\n"
                 ),
             )
-            body = ShipmentListResponseSerializer({"shipments": targets}).data
-        return Response(body)
+        target_ids = [shipment.id for shipment in targets]
+        refund_canceled_shipments(target_ids)
+        shipments = OrderShipment.objects.filter(pk__in=target_ids).order_by("id").prefetch_related("order_items")
+        return Response(ShipmentListResponseSerializer({"shipments": shipments}).data)
 
 
 class DashboardOrderCancelRejectView(APIView):

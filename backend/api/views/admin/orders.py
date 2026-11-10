@@ -14,24 +14,28 @@
         ・{shipmentIds, reason}。paid の注文だけ（支払い前の注文は自動キャンセルのバッチに任せる）
         ・発送済みの箱も可。キャンセル済みの箱が含まれていたら 409 SHIPMENT_STATE_CONFLICT
         ・未発送・キャンセル申請中だった箱だけ在庫を戻す
-        ・返金は「返金待ち」（refunded_amount が空）にする。Stripe の自動返金は services/payments.py で後から付ける
+        ・トランザクションが終わってから、カード払いの箱を Stripe で返金して refundedAmount を記録する
+          （services/orders.py の refund_canceled_shipments）。コンビニ払い・Stripe のエラーは返金待ちのまま（200）
         ・購入者と、対象の箱の生産者に通知・メール。操作ログ action=cancel
     - 返金: POST /api/v1/admin/orders/:orderId/refund
         ・{shipmentId, method}。返金待ちの箱（canceled かつ refunded_amount が空）だけ。それ以外は 409
         ・manual: 箱の全額（明細の subtotal の合計＋送料）を refunded_amount に記録
-        ・stripe: 準備中のため 409 STRIPE_REFUND_NOT_AVAILABLE
-        ・操作ログ action=refund。返金した箱を返す
+        ・stripe: カード払いの箱を Stripe で返金して記録する（services/orders.py の refund_by_stripe）
+            コンビニ払い・Stripe のキーがない → 409 STRIPE_REFUND_NOT_AVAILABLE
+            Stripe のエラー → 502 STRIPE_ERROR（箱は返金待ちのまま）
+        ・どちらも購入者に「返金が完了しました」と通知・メール。操作ログ action=refund。返金した箱を返す
 """
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from marche.models import AuditLog, Notification, Order, OrderShipment
 
-from ...common.exceptions import Conflict
+from ...common.exceptions import ApiError, Conflict
 from ...common.pagination import paginate, validate_query
 from ...common.permissions import IsAdminCSOrAdmin
 from ...common.serializers import QuerySerializer
@@ -46,7 +50,15 @@ from ...serializers.admin.orders import (
 )
 from ...services.audit import record_audit_log
 from ...services.notifications import notify, notify_order_buyer
-from ...services.orders import SHIPMENT_STATE_CONFLICT, restore_stock
+from ...services import payments
+from ...services.orders import (
+    SHIPMENT_STATE_CONFLICT,
+    RefundNotAvailable,
+    record_refund,
+    refund_by_stripe,
+    refund_canceled_shipments,
+    restore_stock,
+)
 from ...services.pricing import refund_amount
 
 Status = OrderShipment.Status
@@ -148,8 +160,10 @@ class AdminOrderCancelView(APIView):
             record_audit_log(admin=request.user, action="cancel", target_type=TARGET_TYPE, target_id=order.id,
                              detail={"reason": reason, "shipments": history})
             notify_admin_cancel(order, shipments, reason)
-            body = AdminShipmentListResponseSerializer({"shipments": shipments}).data
-        return Response(body)
+        refund_canceled_shipments(shipment_ids)
+        refreshed = (OrderShipment.objects.filter(pk__in=shipment_ids).select_related("producer").order_by("id")
+                     .prefetch_related("order_items"))
+        return Response(AdminShipmentListResponseSerializer({"shipments": refreshed}).data)
 
 
 class AdminOrderRefundView(APIView):
@@ -168,22 +182,35 @@ class AdminOrderRefundView(APIView):
             shipment = None
             if order is not None:
                 shipment = (OrderShipment.objects.select_for_update().filter(pk=shipment_id, order=order)
-                            .select_related("producer").prefetch_related("order_items").first())
+                            .prefetch_related("order_items").first())
             if shipment is None:
                 raise NotFound()
             if shipment.status != Status.CANCELED or shipment.refunded_amount is not None:
                 raise Conflict(SHIPMENT_STATE_CONFLICT, "この配送箱は返金待ちではありません。")
-            if method == "stripe":
-                raise Conflict("STRIPE_REFUND_NOT_AVAILABLE",
-                               "Stripe での返金は準備中です。銀行振込などで返金し、manual で記録してください。")
-
             amount = refund_amount(shipment)
-            shipment.refunded_amount = amount
-            shipment.save(update_fields=["refunded_amount", "updated_at"])
-            record_audit_log(admin=request.user, action="refund", target_type=TARGET_TYPE, target_id=order.id,
-                             detail={"shipment_id": shipment.id, "method": method, "refunded_amount": amount})
-            body = AdminShipmentSerializer(shipment).data
-        return Response(body)
+            if method == "manual":
+                record_refund(shipment.id, amount)
+                record_audit_log(admin=request.user, action="refund", target_type=TARGET_TYPE, target_id=order.id,
+                                 detail={"shipment_id": shipment.id, "method": method, "refunded_amount": amount})
+
+        if method == "stripe":
+            # Stripe の呼び出し中は DB のロックを持たない（トランザクションの外で呼ぶ）
+            try:
+                refunded = refund_by_stripe(shipment.id)
+            except RefundNotAvailable as exc:
+                raise Conflict("STRIPE_REFUND_NOT_AVAILABLE", str(exc))
+            except payments.PaymentError:
+                raise ApiError(status.HTTP_502_BAD_GATEWAY, "STRIPE_ERROR",
+                               "Stripe での返金に失敗しました。時間をおいて再度お試しください。")
+            if refunded:
+                stripe_refund_id = OrderShipment.objects.values_list("stripe_refund_id", flat=True).get(pk=shipment.id)
+                record_audit_log(admin=request.user, action="refund", target_type=TARGET_TYPE, target_id=order.id,
+                                 detail={"shipment_id": shipment.id, "method": method, "refunded_amount": amount,
+                                         "stripe_refund_id": stripe_refund_id})
+
+        refreshed = (OrderShipment.objects.select_related("producer").prefetch_related("order_items")
+                     .get(pk=shipment.id))
+        return Response(AdminShipmentSerializer(refreshed).data)
 
 
 def notify_admin_cancel(order, shipments, reason):

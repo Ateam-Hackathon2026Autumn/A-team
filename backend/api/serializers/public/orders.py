@@ -7,9 +7,14 @@
   - GuestOrderCreateSerializer: POST /api/v1/guest/orders の本文（上に guestContact を足したもの）
   - レスポンス（201）は view が組み立てる: {id, orderNo, paymentStatus, itemsTotal, shippingTotal, grandTotal,
     checkoutUrl, expiresAt}
-
-これから書くもの（ステップ6b）:
-  - 注文履歴一覧（GET /api/v1/users/me/orders）・注文詳細（会員・ゲスト）・キャンセル申請（会員・ゲスト）
+  - MyOrderListQuerySerializer / MyOrderSummarySerializer: 注文履歴一覧（GET /api/v1/users/me/orders）
+      1件 {id, orderNo, paymentStatus, paymentMethod, itemsTotal, shippingTotal, grandTotal, orderedAt,
+           shipments: [{id, producerId, producerName, temperatureZone, status, shippingFee}]}
+  - MyOrderDetailSerializer: 注文詳細（会員・ゲスト共通）
+      一覧の項目＋tax8Amount・tax10Amount・shippingAddress・shipments（箱ごとに producer {id, businessName}・
+      trackingNo・shippedAt・cancelReason・canceledAt・refundedAmount・cancellable・items）。ゲストは buyer（連絡先）も
+      cancellable は view が context["cancellable_producer_ids"] で渡す
+  - CancelRequestSerializer: キャンセル申請の本文 {producerId, cancelReason（1〜500文字）}
 
 入力エラーは 400（項目ごとのメッセージ）。カラム名は claude/er-diagram.md に合わせる
 """
@@ -17,9 +22,11 @@ import re
 
 from rest_framework import serializers
 
-from marche.models import Prefecture, User
+from marche.models import Order, OrderItem, OrderShipment, Prefecture, User
 
+from ...common.pagination import PageQuerySerializer
 from ...common.serializers import StrictSerializer
+from ..dashboard.orders import ShippingAddressSerializer as OrderShippingAddressSerializer
 from .users import PHONE_PATTERN
 
 POSTAL_CODE_PATTERN = re.compile(r"^([0-9]{3})-?([0-9]{4})$")
@@ -104,3 +111,97 @@ class GuestOrderCreateSerializer(OrderCreateSerializer):
     """POST /api/v1/guest/orders（ゲスト）の本文"""
 
     guest_contact = GuestContactSerializer()
+
+
+# =========================================================
+# 注文履歴・詳細・キャンセル申請
+# =========================================================
+
+MAX_ID = 2 ** 63 - 1
+CANCEL_REASON_MAX = 500
+
+
+class MyOrderListQuerySerializer(PageQuerySerializer):
+    payment_status = serializers.ChoiceField(choices=Order.PaymentStatus.choices, required=False)
+
+
+class MyShipmentSummarySerializer(serializers.ModelSerializer):
+    """一覧の箱。producer を select_related しておく"""
+
+    producer_name = serializers.CharField(source="producer.business_name")
+
+    class Meta:
+        model = OrderShipment
+        fields = ["id", "producer_id", "producer_name", "temperature_zone", "status", "shipping_fee"]
+
+
+class MyOrderSummarySerializer(serializers.ModelSerializer):
+    """注文履歴一覧の1件。箱は order_shipments を prefetch しておく（id 順）"""
+
+    shipments = MyShipmentSummarySerializer(source="order_shipments", many=True)
+
+    class Meta:
+        model = Order
+        fields = ["id", "order_no", "payment_status", "payment_method", "items_total", "shipping_total",
+                  "grand_total", "ordered_at", "shipments"]
+
+
+class MyOrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ["id", "product_id", "product_name", "unit_price", "discount_rate", "paid_unit_price", "quantity",
+                  "tax_rate", "subtotal"]
+
+
+class MyShipmentProducerSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    business_name = serializers.CharField()
+
+
+class MyShipmentSerializer(serializers.ModelSerializer):
+    """詳細の箱。producer を select_related、order_items を prefetch しておく"""
+
+    producer = MyShipmentProducerSerializer()
+    cancellable = serializers.SerializerMethodField()
+    items = MyOrderItemSerializer(source="order_items", many=True)
+
+    class Meta:
+        model = OrderShipment
+        fields = ["id", "producer", "temperature_zone", "status", "shipping_fee", "tracking_no", "shipped_at",
+                  "cancel_reason", "canceled_at", "refunded_amount", "cancellable", "items"]
+
+    def get_cancellable(self, shipment):
+        return shipment.producer_id in self.context.get("cancellable_producer_ids", ())
+
+
+class GuestBuyerSerializer(serializers.Serializer):
+    name = serializers.CharField(source="guest_name")
+    email = serializers.CharField(source="guest_email")
+    phone = serializers.CharField(source="guest_phone")
+
+
+class MyOrderDetailSerializer(MyOrderSummarySerializer):
+    """注文詳細（会員）"""
+
+    shipping_address = OrderShippingAddressSerializer(source="*")
+    shipments = MyShipmentSerializer(source="order_shipments", many=True)
+
+    class Meta(MyOrderSummarySerializer.Meta):
+        fields = ["id", "order_no", "payment_status", "payment_method", "items_total", "shipping_total",
+                  "grand_total", "tax_8_amount", "tax_10_amount", "ordered_at", "shipping_address", "shipments"]
+
+
+class GuestOrderDetailSerializer(MyOrderDetailSerializer):
+    """注文詳細（ゲスト）。会員の詳細に購入者の連絡先を足す"""
+
+    buyer = GuestBuyerSerializer(source="*")
+
+    class Meta(MyOrderDetailSerializer.Meta):
+        fields = MyOrderDetailSerializer.Meta.fields + ["buyer"]
+
+
+class CancelRequestSerializer(StrictSerializer):
+    """キャンセル申請の本文。その生産者の箱をまとめて申請する"""
+
+    producer_id = serializers.IntegerField(min_value=1, max_value=MAX_ID)
+    cancel_reason = serializers.CharField(max_length=CANCEL_REASON_MAX)
