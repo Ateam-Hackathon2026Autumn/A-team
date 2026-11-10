@@ -17,6 +17,8 @@ from ...common.pagination import PageQuerySerializer
 from ...common.serializers import AwareDateTimeField, StrictSerializer
 
 MAX_INT = 2_147_483_647
+MAX_IMAGES = 10
+MAX_DEADLINE_HOURS = 168  # 申込の締め切りは最大で開催の7日前
 # 生産者が自分で選べる公開状態（suspended は運営だけが付ける）
 PRODUCER_PUBLISH_CHOICES = [PublishStatus.DRAFT, PublishStatus.PUBLIC, PublishStatus.PRIVATE]
 
@@ -57,7 +59,8 @@ class ExperienceWriteSerializer(StrictSerializer):
 
     - 文字列は前後の空白を除き、空白だけなら 400（DRF の CharField の初期設定）
     - prefecture_id は省略すると view で生産者の都道府県にする。存在しない ID は 400
-    - images は画像アップロード（ステップ12）ができるまで空配列だけ受け付ける
+    - imageKeys は自分がアップロードした画像のキー（最大10件・重複不可・配列の順が表示順）。送ったら全部置き換え
+    - bookingDeadlineHours は申込・キャンセルの締め切り（開催の何時間前か、0〜168。省略時24）
     """
 
     title = serializers.CharField(max_length=100)
@@ -77,18 +80,19 @@ class ExperienceWriteSerializer(StrictSerializer):
                                     required=False, allow_null=True)
     cancel_policy = serializers.CharField(max_length=10000)
     publish_status = serializers.ChoiceField(choices=PRODUCER_PUBLISH_CHOICES, required=False)
-    images = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
+    booking_deadline_hours = serializers.IntegerField(min_value=0, max_value=MAX_DEADLINE_HOURS, required=False)
+    image_keys = serializers.ListField(child=serializers.CharField(max_length=500), max_length=MAX_IMAGES,
+                                       required=False)
 
     def validate_age_condition(self, value):
         return value or None  # 空文字は「条件なし」として null で保存する
 
-    def validate_images(self, value):
-        if value:
-            raise serializers.ValidationError("画像の登録は準備中です。空の配列で送ってください。")
+    def validate_image_keys(self, value):
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("同じ画像を複数指定することはできません。")
         return value
 
     def validate(self, attrs):
-        attrs.pop("images", None)  # 準備中のため保存しない
         if self.partial and not self.initial_data:
             raise serializers.ValidationError("更新する項目を1つ以上指定してください。")
         return attrs
@@ -112,7 +116,8 @@ class ExperienceDetailSerializer(serializers.ModelSerializer):
         model = Experience
         fields = ["id", "producer_id", "title", "prefecture_id", "description", "place", "price_adult",
                     "price_child", "age_condition", "family_ok", "beginner_ok", "flow", "belongings", "notes",
-                    "cancel_policy", "publish_status", "images", "created_at", "updated_at"]
+                    "cancel_policy", "booking_deadline_hours", "publish_status", "images", "created_at",
+                    "updated_at"]
 
 
 class ExperienceWriteResponseSerializer(serializers.ModelSerializer):

@@ -5,8 +5,8 @@ api/urls/__init__.py から /api/v1/ に include する。
 """
 from django.urls import path
 
-from ..views.public import (addresses, announcements, auth, cart, catalog, favorites, notifications, orders,
-                            producer_applications, producers, uploads, users, webhooks)
+from ..views.public import (addresses, announcements, auth, cart, catalog, experiences, favorites, notifications,
+                            orders, producer_applications, producers, uploads, users, webhooks)
 
 urlpatterns = [
     # 認証・ユーザー
@@ -52,6 +52,16 @@ urlpatterns = [
     path("cart", cart.CartView.as_view(), name="cart"),
     path("cart/items", cart.CartItemListView.as_view(), name="cart-items"),
     path("cart/items/<int:item_id>", cart.CartItemDetailView.as_view(), name="cart-item"),
+
+    # 体験
+    path("experiences", experiences.ExperienceListView.as_view(), name="experiences-list"),
+    path("experiences/<int:experience_id>", experiences.ExperienceDetailView.as_view(), name="experiences-detail"),
+    path("experiences/<int:experience_id>/applications", experiences.ExperienceApplicationCreateView.as_view(),
+         name="experience-applications"),
+    path("users/me/experience-applications", experiences.MyExperienceApplicationListView.as_view(),
+         name="my-experience-applications"),
+    path("users/me/experience-applications/<int:application_id>/cancel",
+         experiences.MyExperienceApplicationCancelView.as_view(), name="my-experience-application-cancel"),
 
     # 注文・決済
     path("orders", orders.OrderCreateView.as_view(), name="orders-create"),
