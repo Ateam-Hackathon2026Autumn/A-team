@@ -94,6 +94,8 @@ class Notification(TimeStampedModel):
         CANCELED = "canceled", "キャンセル確定・返金"
         CANCEL_REJECTED = "cancel_rejected", "キャンセル申請の不承認"
         PRODUCER_REVIEW = "producer_review", "生産者登録の審査結果"
+        NEW_APPLICATION = "new_application", "新規応募"
+        APPLICATION_WITHDRAWN = "application_withdrawn", "応募の取り下げ"
         APPLICATION_RESULT = "application_result", "応募結果"
         RESERVATION = "reservation", "体験予約"
 

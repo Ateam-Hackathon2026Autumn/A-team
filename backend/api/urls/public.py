@@ -5,8 +5,8 @@ api/urls/__init__.py から /api/v1/ に include する。
 """
 from django.urls import path
 
-from ..views.public import (addresses, announcements, auth, cart, catalog, experiences, favorites, notifications,
-                            orders, producer_applications, producers, uploads, users, webhooks)
+from ..views.public import (addresses, announcements, auth, cart, catalog, experiences, favorites, jobs,
+                            notifications, orders, producer_applications, producers, uploads, users, webhooks)
 
 urlpatterns = [
     # 認証・ユーザー
@@ -62,6 +62,14 @@ urlpatterns = [
          name="my-experience-applications"),
     path("users/me/experience-applications/<int:application_id>/cancel",
          experiences.MyExperienceApplicationCancelView.as_view(), name="my-experience-application-cancel"),
+
+    # 求人
+    path("jobs", jobs.JobListView.as_view(), name="jobs-list"),
+    path("jobs/<int:job_id>", jobs.JobDetailView.as_view(), name="jobs-detail"),
+    path("jobs/<int:job_id>/applications", jobs.JobApplicationCreateView.as_view(), name="job-applications"),
+    path("users/me/job-applications", jobs.MyJobApplicationListView.as_view(), name="my-job-applications"),
+    path("users/me/job-applications/<int:application_id>/withdraw", jobs.MyJobApplicationWithdrawView.as_view(),
+         name="my-job-application-withdraw"),
 
     # 注文・決済
     path("orders", orders.OrderCreateView.as_view(), name="orders-create"),

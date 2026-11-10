@@ -15,8 +15,9 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from marche.models import (Area, Category, Experience, ExperienceSlot, Order, OrderItem, OrderShipment, Prefecture,
-                            Producer, Product, PublishStatus, Reservation, ShippingSetting, User)
+from marche.models import (ApplicationWorkDate, Area, Category, Experience, ExperienceSlot, Job, JobApplication,
+                            JobWorkDate, Order, OrderItem, OrderShipment, Prefecture, Producer, Product, PublishStatus,
+                            Reservation, ShippingSetting, User)
 
 # テストでは S3 に接続しない。アップロードしたファイルは一時フォルダーに置き、テストが終わったら消す
 TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="marche-test-media-")
@@ -183,3 +184,28 @@ def add_shipment(order, producer, items=((None, 1),), status=OrderShipment.Statu
     order.grand_total += items_total + shipping_fee
     order.save(update_fields=["items_total", "shipping_total", "grand_total"])
     return shipment
+
+
+def make_job(producer=None, title="収穫スタッフ", **kw):
+    """求人（初期値は公開中・単発・募集人数3・募集期間なし）"""
+    producer = producer or make_producer()
+    fields = dict(term_type="one_day", pay_unit="daily", pay_amount=10000, work_hours="8:00〜15:00",
+                  work_place="山田農園の畑", slots=3, description="野菜の収穫を手伝ってください",
+                  publish_status=PublishStatus.PUBLIC)
+    fields.update(kw)
+    fields.setdefault("prefecture", producer.prefecture)
+    return Job.objects.create(producer=producer, title=title, **fields)
+
+
+def make_work_date(job, days=7, needed_count=2):
+    """days 日後の勤務日（マイナスなら過去）"""
+    return JobWorkDate.objects.create(job=job, work_date=timezone.localdate() + timedelta(days=days),
+                                      needed_count=needed_count)
+
+
+def make_job_application(job, user=None, status="applied", work_dates=()):
+    user = user or make_user(email=f"worker{User.objects.count()}@example.com")
+    application = JobApplication.objects.create(job=job, user=user, status=status, answers=[])
+    for work_date in work_dates:
+        ApplicationWorkDate.objects.create(application=application, work_date=work_date)
+    return application
