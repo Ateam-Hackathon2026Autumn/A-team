@@ -109,6 +109,12 @@ AWS_QUERYSTRING_AUTH = False
 PRIVATE_FILE_URL_EXPIRE = 60 * 5
 
 
+# djangorestframework-camel-case: リクエストの addressLine1 を address_line1 に直す（初期設定では address_line_1 になり、
+# レスポンスの camelize（address_line1 → addressLine1）と往復しないため）
+JSON_CAMEL_CASE = {
+    "JSON_UNDERSCOREIZE": {"no_underscore_before_number": True},
+}
+
 REST_FRAMEWORK = {
     # 未ログインにも CSRF を確認し、未ログインは 401 にするセッション認証
     "DEFAULT_AUTHENTICATION_CLASSES": ["api.common.authentication.SessionAuthentication"],
@@ -131,6 +137,7 @@ REST_FRAMEWORK = {
         "email_verification_resend": "10/hour",
         "inquiry": "5/hour",
         "password_reset": "5/hour",
+        "order": "30/hour",
         "email_verification_resend": "10/hour",
         "email_verification_resend_minute": "1/min",
         "email_verification_resend_hour": "5/hour",

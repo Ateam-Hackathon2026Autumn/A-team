@@ -99,8 +99,9 @@ def make_product(producer=None, name="にんじん", **kw):
     category = kw.pop("category", None) or Category.objects.get_or_create(name="野菜", defaults={"sort_order": 1})[0]
     fields = dict(volume="1kg", description="説明", price=1000, publish_status=PublishStatus.PUBLIC)
     fields.update(kw)
-    return Product.objects.create(producer=producer, category=category,
-                                  shipping_setting=producer.shipping_settings.first(), name=name, **fields)
+    shipping_setting = fields.pop("shipping_setting", None) or producer.shipping_settings.first()
+    return Product.objects.create(producer=producer, category=category, shipping_setting=shipping_setting,
+                                  name=name, **fields)
 
 
 

@@ -37,10 +37,14 @@ def notify(user, notification_type, title, body, link_path=None):
 GUEST_ORDER_GUIDE = "ご注文の状況は、ご注文時にお送りした注文確認メールのURLからご確認いただけます。\n"
 
 
-def notify_order_buyer(order, notification_type, title, body, link_path=None):
-    """注文の購入者に知らせる。会員は通知＋メール、ゲストはメールだけ（Notification は作らないので None を返す）"""
+def notify_order_buyer(order, notification_type, title, body, link_path=None, guest_guide=True):
+    """注文の購入者に知らせる。会員は通知＋メール、ゲストはメールだけ（Notification は作らないので None を返す）
+
+    guest_guide=False: ゲストへの「注文確認メールのURLから」の案内を付けない（確認メール自体・支払い前に取り消した注文）
+    """
     if order.user_id:
         return notify(order.user, notification_type, title, body, link_path)
     greeting = f"{order.guest_name or 'お客'} 様\n\n"
-    transaction.on_commit(lambda: mail.send(order.guest_email, title, greeting + body + "\n" + GUEST_ORDER_GUIDE))
+    guide = "\n" + GUEST_ORDER_GUIDE if guest_guide else ""
+    transaction.on_commit(lambda: mail.send(order.guest_email, title, greeting + body + guide))
     return None

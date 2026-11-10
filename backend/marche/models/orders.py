@@ -192,12 +192,21 @@ class Order(TimeStampedModel):
         verbose_name="決済状態",
     )
 
-    # Stripe の決済ID
+    # Stripe の決済ID（PaymentIntent）。Checkout で支払われたときに Webhook で受け取って入れる。返金に使う
     stripe_payment_intent_id = models.CharField(
         max_length=255,
         null=True,
         blank=True,
         verbose_name="Stripe 決済ID",
+    )
+
+    # Stripe Checkout のセッションID（cs_...）。注文時に作った支払いページ。Webhook の照合と、
+    # 未決済注文の自動キャンセル（支払いページの期限切れ）に使う
+    stripe_checkout_session_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Stripe Checkout セッションID",
     )
 
     ordered_at = models.DateTimeField(
