@@ -51,7 +51,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from marche.models import Order, OrderShipment
+from marche.models import Order, OrderItem, OrderShipment
 
 from ...common.exceptions import ApiError, Conflict
 from ...common.pagination import paginate, validate_query
@@ -160,8 +160,9 @@ def order_not_found():
 
 
 def detail_queryset():
-    shipments = (OrderShipment.objects.select_related("producer").prefetch_related("order_items")
-                 .order_by("id"))
+    items = OrderItem.objects.select_related("review").order_by("id")
+    shipments = (OrderShipment.objects.select_related("producer")
+                 .prefetch_related(Prefetch("order_items", queryset=items)).order_by("id"))
     return Order.objects.prefetch_related(Prefetch("order_shipments", queryset=shipments))
 
 

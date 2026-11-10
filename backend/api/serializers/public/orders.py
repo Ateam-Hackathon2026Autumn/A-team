@@ -29,6 +29,7 @@ from marche.models import Address, Order, OrderItem, OrderShipment, Prefecture, 
 
 from ...common.pagination import PageQuerySerializer
 from ...common.serializers import StrictSerializer
+from ...services.reviews import has_review, is_reviewable
 from ..dashboard.orders import ShippingAddressSerializer as OrderShippingAddressSerializer
 from .users import PHONE_PATTERN
 
@@ -175,10 +176,21 @@ class MyOrderSummarySerializer(serializers.ModelSerializer):
 
 
 class MyOrderItemSerializer(serializers.ModelSerializer):
+    """明細。review を select_related しておく。reviewId（書いたレビュー）・reviewable（今レビューを書けるか）"""
+
+    review_id = serializers.SerializerMethodField()
+    reviewable = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         fields = ["id", "product_id", "product_name", "unit_price", "discount_rate", "paid_unit_price", "quantity",
-                  "tax_rate", "subtotal"]
+                  "tax_rate", "subtotal", "review_id", "reviewable"]
+
+    def get_review_id(self, item):
+        return item.review.id if has_review(item) else None
+
+    def get_reviewable(self, item):
+        return is_reviewable(item)
 
 
 class MyShipmentProducerSerializer(serializers.Serializer):

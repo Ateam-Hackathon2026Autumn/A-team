@@ -5,7 +5,7 @@ api/urls/__init__.py から /api/v1/dashboard/ に include する。
 """
 from django.urls import path
 
-from ..views.dashboard import experiences, jobs, orders, products, shipping_settings
+from ..views.dashboard import experiences, jobs, orders, products, reviews, shipping_settings
 from ..views.dashboard.analytics import AnalyticsView
 
 urlpatterns = [
@@ -16,6 +16,8 @@ urlpatterns = [
     path("products/<int:product_id>/stock", products.DashboardProductStockView.as_view(),
          name="dashboard-product-stock"),
     path("shipping-settings", shipping_settings.ShippingSettingsView.as_view(), name="dashboard-shipping-settings"),
+    path("reviews", reviews.DashboardReviewListView.as_view(), name="dashboard-reviews"),
+    path("reviews/<int:review_id>/reply", reviews.DashboardReviewReplyView.as_view(), name="dashboard-review-reply"),
 
     # 体験管理・予約枠・申込者
     path("experiences", experiences.ExperienceListCreateView.as_view(), name="dashboard-experiences"),
