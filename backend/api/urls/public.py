@@ -5,7 +5,8 @@ api/urls/__init__.py から /api/v1/ に include する。
 """
 from django.urls import path
 
-from ..views.public import auth, cart, catalog, favorites, producer_applications, producers, uploads, users
+from ..views.public import (auth, cart, catalog, favorites, orders, producer_applications, producers, uploads, users,
+                            webhooks)
 
 urlpatterns = [
     # 認証・ユーザー
@@ -29,10 +30,17 @@ urlpatterns = [
     path("producers/<int:producer_id>", producers.ProducerProfileView.as_view(), name="producers-profile"),
     path("producers/<int:producer_id>/story", producers.ProducerStoryView.as_view(), name="producers-story"),
 
-    # お気に入り
+    # カート
     path("cart", cart.CartView.as_view(), name="cart"),
     path("cart/items", cart.CartItemListView.as_view(), name="cart-items"),
     path("cart/items/<int:item_id>", cart.CartItemDetailView.as_view(), name="cart-item"),
+
+    # 注文・決済
+    path("orders", orders.OrderCreateView.as_view(), name="orders-create"),
+    path("guest/orders", orders.GuestOrderCreateView.as_view(), name="guest-orders-create"),
+    path("webhooks/stripe", webhooks.StripeWebhookView.as_view(), name="webhooks-stripe"),
+
+    # お気に入り
     path("users/me/favorites", favorites.FavoriteListView.as_view(), name="favorites-list"),
     path("users/me/favorites/products/<int:product_id>", favorites.FavoriteProductView.as_view(),
          name="favorites-product"),
