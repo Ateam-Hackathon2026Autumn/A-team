@@ -1,12 +1,29 @@
-"""カート のシリアライザー
+"""カート のシリアライザー（リクエストの検証だけ）
 
 使う view: api/views/public/cart.py
-
-このファイルに書くもの（リクエストの検証用・レスポンスの形用）:
-  - カート取得（GET /api/v1/cart）: クエリ・入力の検証とレスポンス
-  - カートに追加（POST /api/v1/cart/items）: 入力の検証とレスポンス
-  - カートの数量変更（PATCH /api/v1/cart/items/:itemId）: 入力の検証とレスポンス
-  - カートから削除（DELETE /api/v1/cart/items/:itemId）: 入力の検証とレスポンス
-
-入力エラーは 400（項目ごとのメッセージ）。カラム名は claude/er-diagram.md に合わせる
+レスポンスは services/cart.py の build_cart() が組み立てる:
+  {items: [{id, productId, productName, volume, thumbnailUrl, quantity, unitPrice, subtotal, purchasable,
+            unavailableReason}],
+   shipments: [{producerId, producerName, temperatureZone, itemIds, itemsTotal, shippingFee, freeShippingThreshold}],
+   itemsTotal, shippingTotal, total, canCheckout}
 """
+from rest_framework import serializers
+
+from ...common.serializers import StrictSerializer
+from ...services.cart import MAX_QUANTITY
+
+MAX_ID = 2 ** 63 - 1
+QUANTITY_ERRORS = {"max_value": f"1つの商品は{MAX_QUANTITY}個までです。", "min_value": "1以上の数を指定してください。"}
+
+
+class CartItemAddSerializer(StrictSerializer):
+    """POST /cart/items の本文 {productId, quantity}（quantity は追加する数）"""
+
+    product_id = serializers.IntegerField(min_value=1, max_value=MAX_ID)
+    quantity = serializers.IntegerField(min_value=1, max_value=MAX_QUANTITY, error_messages=QUANTITY_ERRORS)
+
+
+class CartItemUpdateSerializer(StrictSerializer):
+    """PATCH /cart/items/:itemId の本文 {quantity}（変更後の数。0 は使わず削除APIで）"""
+
+    quantity = serializers.IntegerField(min_value=1, max_value=MAX_QUANTITY, error_messages=QUANTITY_ERRORS)
