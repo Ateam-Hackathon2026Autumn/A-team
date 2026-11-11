@@ -1,9 +1,11 @@
+import type { Job, JobDetail } from '../../../types/job';
+import { jobsList } from './get_api_v1_jobs';
 import type { RestMock } from '../../types';
 import { daysFromNow } from '../../helpers';
 
 // 求人詳細取得API GET /api/v1/jobs/{jobId}
 //
-// どの jobId でも求人1（りんごの収穫・選果スタッフ）を返す
+// 一覧のIDに対応する詳細を返す。求人1以外の詳細は画面確認用の簡易データ。
 // workDates は今日以降の勤務日（満員も含む）。応募時は選んだ id を workDateIds に入れて送る
 // applicationQuestions は現状の仕様では常に空配列
 //
@@ -56,3 +58,19 @@ const jobDetail: RestMock = {
 };
 
 export { jobDetail };
+
+export function getMockJob(id: number): JobDetail | undefined {
+  const item = (jobsList.body as { items: Job[] }).items.find(item => item.id === id);
+  if (!item) return undefined;
+  const original = jobDetail.body as JobDetail;
+  if (id === 1) return original;
+  const dates = [3, 4, 5].map((offset, index) => ({ id: id * 10 + index, workDate: daysFromNow(offset), neededCount: item.slots, remainingCount: item.slots, isSelectable: true }));
+  return { ...original, ...item, description: `${item.producer.businessName}の「${item.title}」をお手伝いいただきます。詳細の説明はデモ用のサンプルです。`,
+    requirements: ['募集内容を確認し、勤務できる方'], belongings: ['動きやすい服装', '飲み物'], notes: ['集合場所や詳しい作業内容は事業者にご確認ください。'],
+    workDates: { items: dates, total: dates.length, page: 1, pageSize: 20, totalPages: 1 },
+  };
+}
+jobDetail.handler = url => {
+  const detail = getMockJob(Number(url.pathname.split('/').at(-1)));
+  return detail ? { status: 200, body: detail } : { status: 404, body: { errorCode: 'NOT_FOUND', errorMsg: '求人が見つかりません。' } };
+};

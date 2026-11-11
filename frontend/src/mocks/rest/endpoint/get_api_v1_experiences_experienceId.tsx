@@ -1,9 +1,11 @@
+import type { Experience, ExperienceDetail } from '../../../types/experience';
+import { experiencesList } from './get_api_v1_experiences';
 import type { RestMock } from '../../types';
 import { daysFromNow } from '../../helpers';
 
 // 体験詳細取得API GET /api/v1/experiences/{experienceId}
 //
-// どの experienceId でも体験1（蜜入りりんごの収穫体験とアップルパイづくり）を返す
+// 一覧のIDに対応する詳細を返す。体験1以外の詳細は画面確認用の簡易データ。
 // slots は将来の開催枠（満席も含む）。remainingCapacity = 定員 - 予約数（満席は 0）
 // quoteToken は申込API（POST /api/v1/experiences/:experienceId/applications）にそのまま渡す
 //
@@ -80,3 +82,24 @@ const experienceDetail: RestMock = {
 };
 
 export { experienceDetail };
+
+export function getMockExperience(id: number): ExperienceDetail | undefined {
+  const item = (experiencesList.body as { items: Experience[] }).items.find(item => item.id === id);
+  if (!item) return undefined;
+  const original = experienceDetail.body as ExperienceDetail;
+  if (id === 1) return original;
+  return {
+    ...original, ...item,
+    description: `${item.producer.businessName}が案内する「${item.title}」の体験です。詳細の説明はデモ用のサンプルです。`,
+    images: item.thumbnailUrl ? [{ id: 1, url: item.thumbnailUrl, sortOrder: 0 }] : [],
+    place: `${item.prefectureName} ${item.producer.city} ${item.producer.businessName}`,
+    ageCondition: item.familyOk ? '小学生以上（子どもは保護者同伴）' : '大人対象',
+    flow: ['集合・体験内容の説明', '生産者と一緒に体験', '振り返り・解散'],
+    belongings: ['汚れてもよい服装', '飲み物'], notes: ['天候によって内容が変更になる場合があります。'],
+    slots: { items: item.nextStartAt ? [{ id: id * 10, startAt: item.nextStartAt, durationMin: 120, capacity: 10, remainingCapacity: 5, quoteToken: `mock-quote-${id}` }] : [], total: item.nextStartAt ? 1 : 0, page: 1, pageSize: 20, totalPages: 1 },
+  };
+}
+experienceDetail.handler = url => {
+  const detail = getMockExperience(Number(url.pathname.split('/').at(-1)));
+  return detail ? { status: 200, body: detail } : { status: 404, body: { errorCode: 'NOT_FOUND', errorMsg: '体験が見つかりません。' } };
+};

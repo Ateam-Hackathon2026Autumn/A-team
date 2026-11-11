@@ -1,3 +1,5 @@
+import { demoJobApplications } from './post_api_v1_jobs_jobId_applications';
+import type { JobApplication } from '../../../types/job';
 import type { RestMock } from '../../types';
 import { daysFromNow, hoursFromNow } from '../../helpers';
 
@@ -52,3 +54,9 @@ const myJobApplications: RestMock = {
 };
 
 export { myJobApplications };
+
+myJobApplications.handler = () => {
+  const seed = (myJobApplications.body as { items: JobApplication[] }).items;
+  const items = [...demoJobApplications, ...seed];
+  return { status: 200, body: { items, total: items.length, page: 1, pageSize: 20, totalPages: items.length ? 1 : 0 } };
+};
