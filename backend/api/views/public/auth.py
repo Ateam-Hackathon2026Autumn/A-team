@@ -1,4 +1,4 @@
-"""認証（CSRF取得・ログイン・ログインチェック・ログアウト・メール認証）
+"""認証（CSRF取得・ログイン・ログインチェック・ログアウト・メール認証・パスワード再設定）
 
 Notion の API 定義（認証・ユーザー）に合わせる。新規登録（POST /api/v1/users）は users.py。
 - GET  /api/v1/auth/csrf                         CSRFトークン取得
@@ -7,6 +7,8 @@ Notion の API 定義（認証・ユーザー）に合わせる。新規登録�
 - POST /api/v1/auth/signout                      ログアウト
 - POST /api/v1/auth/email-verification/resend    確認メール再送
 - POST /api/v1/auth/email-verification/confirm   メール認証完了
+- POST /api/v1/auth/password-reset               パスワード再設定の申請（ステップ12）
+- POST /api/v1/auth/password-reset/confirm       パスワード再設定（ステップ12）
 
 共通ルール
 - データを変えるリクエストは未ログインでも CSRF を確認する（api/common/authentication.py）
@@ -14,6 +16,8 @@ Notion の API 定義（認証・ユーザー）に合わせる。新規登録�
 - ログイン前のゲストのカートは、ログイン後に会員のカートへ付け替える（services/cart.py）
 """
 from django.contrib.auth import authenticate, login, logout
+from django.db import transaction
+from django.utils import timezone
 from django.middleware.csrf import get_token
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -21,10 +25,19 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from marche.models import User
+
 from ...common.exceptions import ApiError, Conflict
 from ...common.throttles import IPRateThrottle
-from ...serializers.public.auth import AuthUserSerializer, EmailVerificationConfirmSerializer, SigninSerializer
-from ...services import email_verification, mail
+from ...serializers.public.auth import (
+    AuthUserSerializer,
+    EmailVerificationConfirmSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetSerializer,
+    SigninSerializer,
+)
+from ...serializers.public.users import check_password_policy
+from ...services import email_verification, mail, password_reset
 from ...services.cart import merge_guest_cart
 
 
@@ -163,3 +176,64 @@ class EmailVerificationConfirmView(APIView):
             raise ApiError(status.HTTP_400_BAD_REQUEST, "INVALID_OR_EXPIRED_TOKEN",
                             "認証リンクが無効、または有効期限が切れています。確認メールを再送してください。")
         return Response({"message": "メール認証が完了しました。", "email_verified": True})
+
+
+class PasswordResetView(APIView):
+    """POST /api/v1/auth/password-reset パスワード再設定の申請
+
+    - 本文は {email}。登録の有無にかかわらず同じ 200 を返す（登録があるかを推測させないため）
+    - 利用中のアカウントがあるときだけ再設定のメールを送る（利用停止中・退会済みには送らない）
+    - リンクはフロントの /password-reset/confirm?uid=…&token=…。有効期限1時間（settings.PASSWORD_RESET_TIMEOUT）
+    - ログイン中でも使える。同じIPから1時間5回まで
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [IPRateThrottle]
+    throttle_scope = "password_reset"
+
+    def post(self, request):
+        s = PasswordResetSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        email = User.objects.normalize_email(s.validated_data["email"])
+        user = password_reset.active_users().filter(email=email).first()
+        if user is not None:
+            mail.send_password_reset(user, password_reset.make_url(user))
+        return Response({"message": "ご登録のメールアドレスであれば、パスワード再設定のメールをお送りしました。"})
+
+
+class PasswordResetConfirmView(APIView):
+    """POST /api/v1/auth/password-reset/confirm パスワード再設定
+
+    - 本文は {uid, token, newPassword}。無効・期限切れ・使用済みは 400 INVALID_OR_EXPIRED_TOKEN
+    - 新しいパスワードは新規登録と同じ規則（だめなら 400 details.newPassword）
+    - パスワードを変えると、すべての端末のセッションが無効になる（Django の標準）。自動ではログインしない
+    - メールのリンクから来たので、メールアドレスが未確認なら確認済みにする
+    - お知らせメールを送る。運営スタッフの初回パスワード設定にも使う
+    - 同じIPから1時間20回まで
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [IPRateThrottle]
+    throttle_scope = "password_reset_confirm"
+
+    def post(self, request):
+        s = PasswordResetConfirmSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        data = s.validated_data
+        with transaction.atomic():
+            user = password_reset.find_user(data["uid"], data["token"], lock=True)
+            if user is None:
+                raise ApiError(status.HTTP_400_BAD_REQUEST, "INVALID_OR_EXPIRED_TOKEN",
+                               "再設定のリンクが無効、または有効期限が切れています。もう一度お申し込みください。")
+            check_password_policy(data["new_password"], user)
+            user.set_password(data["new_password"])
+            fields = ["password", "updated_at"]
+            if user.email_verified_at is None:
+                user.email_verified_at = timezone.now()
+                fields.append("email_verified_at")
+            user.save(update_fields=fields)
+            email, name = user.email, f"{user.last_name} {user.first_name}".strip()
+            transaction.on_commit(lambda: mail.send_account_notice(
+                email, name or "お客様", "パスワードが再設定されました",
+                "ログインに使うパスワードが再設定されました。新しいパスワードでログインしてください。"))
+        return Response({"message": "パスワードを再設定しました。新しいパスワードでログインしてください。"})

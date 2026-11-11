@@ -70,3 +70,35 @@ def send_account_notice(to, name, subject, message):
         "この操作に心当たりがない場合は、お問い合わせフォームからすぐにご連絡ください。\n"
     )
     return send(to, subject, body)
+
+
+def send_password_reset(user, url):
+    """パスワード再設定のメール。リンク先はフロントの /password-reset/confirm 画面"""
+    name = f"{user.last_name} {user.first_name}".strip()
+    body = (
+        f"{name or 'お客様'} 様\n\n"
+        "パスワードの再設定のお申し込みを受け付けました。\n"
+        "下のリンクを開いて、新しいパスワードを設定してください。\n\n"
+        f"{url}\n\n"
+        "このリンクの有効期限は1時間です。一度使うと無効になります。\n"
+        "お申し込みに心当たりがない場合は、このメールを破棄してください。パスワードは変わりません。\n"
+    )
+    return send(user.email, "パスワードの再設定", body)
+
+
+def send_inquiry_received(inquiry, name=""):
+    """問い合わせの受付メール（件名・本文の控えつき）"""
+    body = (
+        f"{name or 'お客様'} 様\n\n"
+        f"{SITE_NAME}へのお問い合わせを受け付けました。\n"
+        "内容を確認のうえ、担当者からこのメールアドレスにご返信します。\n\n"
+        "―――― お問い合わせ内容 ――――\n"
+        f"受付番号：{inquiry.id}\n"
+        f"種別：{inquiry.get_category_display()}\n"
+        f"件名：{inquiry.subject}\n\n"
+        f"{inquiry.body}\n"
+        "――――――――――――――――\n\n"
+        "このメールは送信専用です。このメールに返信しても届きません。\n"
+        "お問い合わせに心当たりがない場合は、このメールを破棄してください。\n"
+    )
+    return send(inquiry.email, "お問い合わせを受け付けました", body)
