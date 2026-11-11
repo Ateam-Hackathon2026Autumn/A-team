@@ -56,3 +56,17 @@ class EmailVerificationConfirmSerializer(StrictSerializer):
     """POST /api/v1/auth/email-verification/confirm"""
 
     token = serializers.CharField(max_length=512)
+
+
+class PasswordResetSerializer(StrictSerializer):
+    """POST /api/v1/auth/password-reset"""
+
+    email = serializers.EmailField(max_length=254)
+
+
+class PasswordResetConfirmSerializer(StrictSerializer):
+    """POST /api/v1/auth/password-reset/confirm。新しいパスワードの規則は view でユーザーを決めてから確かめる"""
+
+    uid = serializers.CharField(max_length=64)
+    token = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(max_length=128, trim_whitespace=False)

@@ -5,8 +5,8 @@ api/urls/__init__.py から /api/v1/ に include する。
 """
 from django.urls import path
 
-from ..views.public import (addresses, announcements, auth, cart, catalog, experiences, favorites, jobs,
-                            notifications, orders, producer_applications, producers, reviews, uploads, users,
+from ..views.public import (addresses, announcements, auth, cart, catalog, experiences, favorites, inquiries, jobs,
+                            notifications, orders, producer_applications, producers, reports, reviews, uploads, users,
                             webhooks)
 
 urlpatterns = [
@@ -19,6 +19,8 @@ urlpatterns = [
         name="auth-email-verification-resend"),
     path("auth/email-verification/confirm", auth.EmailVerificationConfirmView.as_view(),
         name="auth-email-verification-confirm"),
+    path("auth/password-reset", auth.PasswordResetView.as_view(), name="auth-password-reset"),
+    path("auth/password-reset/confirm", auth.PasswordResetConfirmView.as_view(), name="auth-password-reset-confirm"),
     path("users", users.SignupView.as_view(), name="users-signup"),
     path("users/me", users.MeView.as_view(), name="users-me"),
     path("users/me/email", users.EmailChangeView.as_view(), name="users-me-email"),
@@ -96,6 +98,10 @@ urlpatterns = [
          name="producer-applications"),
     path("producer-applications/me", producer_applications.MyProducerApplicationView.as_view(),
          name="producer-applications-me"),
+
+    # 問い合わせ・通報
+    path("inquiries", inquiries.InquiryCreateView.as_view(), name="inquiries"),
+    path("reports", reports.ReportCreateView.as_view(), name="reports"),
 
     # 画像アップロード
     path("uploads/images", uploads.ImageUploadView.as_view(), name="uploads-images"),

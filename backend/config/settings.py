@@ -137,6 +137,8 @@ REST_FRAMEWORK = {
         "email_verification_resend": "10/hour",
         "inquiry": "5/hour",
         "password_reset": "5/hour",
+        "password_reset_confirm": "20/hour",
+        "report": "10/hour",
         "order": "30/hour",
         "password_check": "10/hour",
         "email_verification_resend": "10/hour",
