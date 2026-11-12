@@ -72,6 +72,12 @@ def send_account_notice(to, name, subject, message):
     return send(to, subject, body)
 
 
+def send_admin_notice(to, name, subject, message):
+    """運営が行った操作（利用停止・再開・削除など）のお知らせ"""
+    body = f"{name} 様\n\n{message}\n\nご不明な点は、お問い合わせフォームからご連絡ください。\n"
+    return send(to, subject, body)
+
+
 def send_password_reset(user, url):
     """パスワード再設定のメール。リンク先はフロントの /password-reset/confirm 画面"""
     name = f"{user.last_name} {user.first_name}".strip()
