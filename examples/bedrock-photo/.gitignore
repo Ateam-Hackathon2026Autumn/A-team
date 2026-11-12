@@ -1,0 +1,29 @@
+# リポジトリのルートで除外されている README.md を、このサンプルでは共有する。
+!README.md
+
+# インストール・ビルド・テストで生成されるファイル
+node_modules
+dist/
+build/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 手元で設定する接続情報・認証情報
+.env
+.env.*
+!.env.example
+access.local.json
+*.local.json
+.aws/
+
+# 実環境の Terraform の状態・入力・計画
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+*.tfvars
+*.tfvars.*
