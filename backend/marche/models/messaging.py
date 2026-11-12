@@ -92,8 +92,16 @@ class Notification(TimeStampedModel):
         SHIPPED = "shipped", "発送"
         CANCEL_REQUESTED = "cancel_requested", "キャンセル申請"
         CANCELED = "canceled", "キャンセル確定・返金"
+        CANCEL_REJECTED = "cancel_rejected", "キャンセル申請の不承認"
+        PRODUCER_REVIEW = "producer_review", "生産者登録の審査結果"
+        NEW_APPLICATION = "new_application", "新規応募"
+        APPLICATION_WITHDRAWN = "application_withdrawn", "応募の取り下げ"
         APPLICATION_RESULT = "application_result", "応募結果"
+        NEW_REVIEW = "new_review", "新しいレビュー"
+        REVIEW_REPLY = "review_reply", "レビューへの返信"
         RESERVATION = "reservation", "体験予約"
+        LISTING_SUSPENDED = "listing_suspended", "掲載停止"
+        LISTING_RESUMED = "listing_resumed", "掲載停止の解除"
 
     # 通知を受け取る会員（生産者も含む）。ゲストには作らない
     user = models.ForeignKey(
@@ -103,7 +111,9 @@ class Notification(TimeStampedModel):
         verbose_name="通知を受け取る会員",
     )
 
-    # new_order（新規注文）/ shipped（発送）/ cancel_requested（キャンセル申請）/ canceled（キャンセル確定・返金）/ application_result（応募結果）/ reservation（体験予約）
+    # new_order（新規注文）/ shipped（発送）/ cancel_requested（キャンセル申請）/ canceled（キャンセル確定・返金）
+    # / cancel_rejected（キャンセル申請の不承認）/ producer_review（生産者登録の審査結果）
+    # / application_result（応募結果）/ reservation（体験予約）
     notification_type = models.CharField(
         max_length=30,
         choices=NotificationType.choices,

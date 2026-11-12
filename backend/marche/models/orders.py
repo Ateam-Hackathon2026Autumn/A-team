@@ -48,6 +48,10 @@ class CartItem(TimeStampedModel):
         verbose_name_plural = "カート"
         constraints = [
             models.CheckConstraint(condition=Q(user__isnull=False) | Q(session_key__isnull=False), name="chk_cart_items_user_or_session"),
+            # 同じ持ち主の同じ商品は1行（連打で重複しないように）。NULL どうしは重複にならないので、
+            # 会員の行（session_key が空）とゲストの行（user が空）でそれぞれ効く
+            models.UniqueConstraint(fields=["user", "product"], name="uniq_cart_items_user_product"),
+            models.UniqueConstraint(fields=["session_key", "product"], name="uniq_cart_items_session_product"),
         ]
 
 
@@ -188,12 +192,21 @@ class Order(TimeStampedModel):
         verbose_name="決済状態",
     )
 
-    # Stripe の決済ID
+    # Stripe の決済ID（PaymentIntent）。Checkout で支払われたときに Webhook で受け取って入れる。返金に使う
     stripe_payment_intent_id = models.CharField(
         max_length=255,
         null=True,
         blank=True,
         verbose_name="Stripe 決済ID",
+    )
+
+    # Stripe Checkout のセッションID（cs_...）。注文時に作った支払いページ。Webhook の照合と、
+    # 未決済注文の自動キャンセル（支払いページの期限切れ）に使う
+    stripe_checkout_session_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Stripe Checkout セッションID",
     )
 
     ordered_at = models.DateTimeField(

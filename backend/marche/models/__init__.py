@@ -1,6 +1,6 @@
 """marche のモデル一覧（ドメインごとにファイルを分けている）"""
 from .base import PublishStatus, TimeStampedModel  # noqa: F401
-from .accounts import User, Area, Prefecture, Address  # noqa: F401
+from .accounts import User, UserConsent, Area, Prefecture, Address  # noqa: F401
 from .producers import Producer, ProducerImage, ShippingSetting, ProducerApplication, ApplicationDocument, ProducerStory  # noqa: F401
 from .catalog import Category, Product, ProductImage, FavoriteProduct, FavoriteProducer  # noqa: F401
 from .orders import CartItem, Order, OrderShipment, OrderItem, ProductReview  # noqa: F401
