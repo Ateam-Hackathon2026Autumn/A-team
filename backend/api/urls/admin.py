@@ -3,13 +3,13 @@
 api/urls/__init__.py から /api/v1/admin/ に include する。
 パスは api-spec.md のとおり（末尾スラッシュなし）。:id は <int:...> にする。
 
-これから並べる view: users・inquiries・reports・announcements・analytics・admins・audit_logs
+これから並べる view: announcements・analytics・admins・audit_logs
 （api/views/admin/ の同名ファイル）
 """
 
 from django.urls import path
 
-from ..views.admin import auth, contents, orders, producer_applications, summary
+from ..views.admin import auth, contents, inquiries, orders, producer_applications, reports, summary, users
 
 
 
@@ -34,6 +34,17 @@ urlpatterns = [
     *content_paths("experiences"),
     *content_paths("jobs"),
     *content_paths("stories"),
+
+    # ユーザー管理
+    path("users", users.AdminUserListView.as_view(), name="admin-users"),
+    path("users/<int:user_id>", users.AdminUserDetailView.as_view(), name="admin-user-detail"),
+    path("users/<int:user_id>/status", users.AdminUserStatusView.as_view(), name="admin-user-status"),
+
+    # 問い合わせ・通報
+    path("inquiries", inquiries.AdminInquiryListView.as_view(), name="admin-inquiries"),
+    path("inquiries/<int:inquiry_id>", inquiries.AdminInquiryDetailView.as_view(), name="admin-inquiry-detail"),
+    path("reports", reports.AdminReportListView.as_view(), name="admin-reports"),
+    path("reports/<int:report_id>", reports.AdminReportDetailView.as_view(), name="admin-report-detail"),
 
     # 管理者ログイン
     path("auth/session", auth.AdminSessionView.as_view(), name="admin-auth-session"),
