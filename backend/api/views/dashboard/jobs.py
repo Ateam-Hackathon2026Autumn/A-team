@@ -38,6 +38,7 @@ from api.common.permissions import (
     ensure_producer_not_suspended,
 )
 
+from api.common.exceptions import Conflict as ContentConflict
 from api.services.notifications import MY_JOB_APPLICATIONS_PATH, notify
 
 
@@ -522,6 +523,14 @@ class JobDetailView(APIView):
                 job_id,
                 lock=True,
             )
+
+            # 運営に掲載停止された求人は、内容の編集はできるが公開状態は変えられない（商品・体験と同じ）
+            # 公開の条件の確認（400）より先に確かめる
+            requested = request.data.get("publish_status") if isinstance(request.data, dict) else None
+            if (job.publish_status == "suspended" and requested is not None
+                    and requested != job.publish_status):
+                raise ContentConflict("CONTENT_SUSPENDED",
+                                      "運営により掲載停止中のため、公開状態は変更できません。")
 
             serializer = JobUpdateSerializer(
                 job,
