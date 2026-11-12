@@ -100,6 +100,8 @@ class Notification(TimeStampedModel):
         NEW_REVIEW = "new_review", "新しいレビュー"
         REVIEW_REPLY = "review_reply", "レビューへの返信"
         RESERVATION = "reservation", "体験予約"
+        LISTING_SUSPENDED = "listing_suspended", "掲載停止"
+        LISTING_RESUMED = "listing_resumed", "掲載停止の解除"
 
     # 通知を受け取る会員（生産者も含む）。ゲストには作らない
     user = models.ForeignKey(

@@ -20,3 +20,21 @@
 
 S3 には接続しない（override_settings で STORAGES を FileSystemStorage にする）
 """
+from marche.models import Job, PublishStatus
+
+from ..utils import ApiTestCase, make_job, make_producer
+
+
+class SuspendedJobTests(ApiTestCase):
+    """運営に掲載停止された求人は、公開状態を変えられない（ステップ14で追加。商品・体験と同じ）"""
+
+    def test_publish_status_is_locked(self):
+        producer = make_producer()
+        job = make_job(producer, publish_status=PublishStatus.SUSPENDED)
+        self.signin(producer.user.email)
+        res = self.patch_json(f"/api/v1/dashboard/jobs/{job.id}", {"publishStatus": "public"})
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "CONTENT_SUSPENDED"))
+        self.assertEqual(Job.objects.get().publish_status, "suspended")
+        res = self.patch_json(f"/api/v1/dashboard/jobs/{job.id}", {"title": "直した求人"})
+        self.assertEqual(res.status_code, 200, res.json())
+        self.assertEqual(Job.objects.get().title, "直した求人")
