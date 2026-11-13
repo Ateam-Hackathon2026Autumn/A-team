@@ -11,6 +11,8 @@ backend/__pycache__/
 backend/**/*.py[cod]
 backend/.pytest_cache/
 
+media/
+
 .DS_Store
 .idea/
 .vscode/

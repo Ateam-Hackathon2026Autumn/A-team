@@ -1,0 +1,240 @@
+import type { RestMock } from '../../types';
+
+// 商品一覧取得API GET /api/v1/products
+//
+// 公開中の商品だけを返す（非公開の商品3「りんごのドライチップス」は含めない）。
+// 並び順は sort=popular（既定）を想定。売り切れ（stock: 0）の商品も表示する
+//
+// 該当なし（存在しない categoryId・producerId、ページ範囲外など）:
+//   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
+//
+// パラメーター不正（400）:
+//   { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。', details: { sort: ['指定できない値です。'] } }
+const productsSnapshot = {
+  method: 'GET',
+  path: '/api/v1/products',
+  status: 200,
+  body: {
+    items: [
+      {
+        id: 1,
+        name: '安曇野ふじ 家庭用 5kg',
+        volume: '5kg（14〜20玉）',
+        price: 4800,
+        discountRate: null,
+        salePrice: 4800,
+        taxRate: 8,
+        ratingAvg: 4.8,
+        reviewCount: 126,
+        stock: 40,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product1/800/600',
+        category: { id: 2, name: '果物', sortOrder: 2 },
+        producer: { id: 1, businessName: '山本農園', prefectureId: 20, prefectureName: '長野県', city: '安曇野市' },
+      },
+      {
+        id: 2,
+        name: 'シャインマスカット 2房',
+        volume: '2房（約1.2kg）',
+        price: 5400,
+        discountRate: null,
+        salePrice: 5400,
+        taxRate: 8,
+        ratingAvg: 4.9,
+        reviewCount: 58,
+        stock: 3,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product2/800/600',
+        category: { id: 2, name: '果物', sortOrder: 2 },
+        producer: { id: 1, businessName: '山本農園', prefectureId: 20, prefectureName: '長野県', city: '安曇野市' },
+      },
+      {
+        id: 5,
+        name: 'はさがけ天日干し コシヒカリ 5kg',
+        volume: '5kg',
+        price: 4200,
+        discountRate: null,
+        salePrice: 4200,
+        taxRate: 8,
+        ratingAvg: 4.7,
+        reviewCount: 89,
+        stock: 30,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product5/800/600',
+        category: { id: 3, name: '米', sortOrder: 3 },
+        producer: { id: 4, businessName: '棚田のこめ', prefectureId: 15, prefectureName: '新潟県', city: '魚沼市' },
+      },
+      {
+        id: 4,
+        name: '朝どれ旬野菜セット M（8〜10品）',
+        volume: '8〜10品',
+        price: 2980,
+        discountRate: null,
+        salePrice: 2980,
+        taxRate: 8,
+        ratingAvg: 4.6,
+        reviewCount: 41,
+        stock: 15,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product4/800/600',
+        category: { id: 1, name: '野菜', sortOrder: 1 },
+        producer: { id: 5, businessName: 'そら野菜畑', prefectureId: 12, prefectureName: '千葉県', city: '南房総市' },
+      },
+      {
+        id: 9,
+        name: '平飼いたまご 30個',
+        volume: '30個',
+        price: 1980,
+        discountRate: null,
+        salePrice: 1980,
+        taxRate: 8,
+        ratingAvg: 4.8,
+        reviewCount: 64,
+        stock: 25,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product9/800/600',
+        category: { id: 7, name: 'その他', sortOrder: 7 },
+        producer: { id: 6, businessName: 'ひだまり養鶏', prefectureId: 3, prefectureName: '岩手県', city: '遠野市' },
+      },
+      {
+        id: 6,
+        name: '沼津 あじの開き干し 10枚',
+        volume: '10枚',
+        price: 3200,
+        discountRate: null,
+        salePrice: 3200,
+        taxRate: 8,
+        ratingAvg: 4.5,
+        reviewCount: 37,
+        stock: 12,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product6/800/600',
+        category: { id: 5, name: '魚介類', sortOrder: 5 },
+        producer: { id: 2, businessName: '海風水産', prefectureId: 22, prefectureName: '静岡県', city: '沼津市' },
+      },
+      {
+        // 売り切れの表示確認用
+        id: 7,
+        name: '十勝牛 切り落とし 600g',
+        volume: '600g（300g×2）',
+        price: 3980,
+        discountRate: null,
+        salePrice: 3980,
+        taxRate: 8,
+        ratingAvg: 4.4,
+        reviewCount: 22,
+        stock: 0,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product7/800/600',
+        category: { id: 6, name: '肉', sortOrder: 6 },
+        producer: { id: 3, businessName: '北の丘ファーム', prefectureId: 1, prefectureName: '北海道', city: '十勝' },
+      },
+      {
+        // レビュー0件（ratingAvg: null）の表示確認用
+        id: 8,
+        name: 'ジャージー牛乳のヨーグルト 4本',
+        volume: '500ml×4本',
+        price: 2160,
+        discountRate: null,
+        salePrice: 2160,
+        taxRate: 8,
+        ratingAvg: null,
+        reviewCount: 0,
+        stock: 20,
+        isSubscription: false,
+        isPreorder: false,
+        thumbnailUrl: 'https://picsum.photos/seed/product8/800/600',
+        category: { id: 7, name: 'その他', sortOrder: 7 },
+        producer: { id: 3, businessName: '北の丘ファーム', prefectureId: 1, prefectureName: '北海道', city: '十勝' },
+      },
+    ],
+    total: 8,
+    page: 1,
+    pageSize: 20,
+    totalPages: 1,
+  },
+} satisfies RestMock;
+
+
+
+export const productSamples = productsSnapshot.body.items;
+
+const productsList: RestMock = {
+  ...productsSnapshot,
+  handler(url) {
+    const params = url.searchParams;
+    const page = Number(params.get("page") ?? 1);
+    const pageSize = Number(params.get("pageSize") ?? 20);
+    const categoryId = params.get("categoryId");
+    const producerId = params.get("producerId");
+    const sort = params.get("sort") ?? "popular";
+    const price = params.get("price") ?? "all";
+    const keyword = (params.get("q") ?? "").trim().toLocaleLowerCase("ja-JP");
+    const validId = (value: string | null) =>
+      value === null || (/^[1-9][0-9]*$/.test(value) && Number.isSafeInteger(Number(value)));
+
+    if (!Number.isSafeInteger(page) || page < 1
+      || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50
+      || !validId(categoryId) || !validId(producerId)
+      || !["popular", "price_asc", "price_desc", "rating"].includes(sort)
+      || !["all", "under2000", "2000to4000", "over4000"].includes(price)
+      || ["subscription", "preorder"].some((key) =>
+        params.has(key) && !["0", "1"].includes(params.get(key) ?? ""))) {
+      return {
+        status: 400,
+        body: {
+          errorCode: "VALIDATION_ERROR",
+          errorMsg: "検索条件を確認してください。",
+        },
+      };
+    }
+
+    const items = productSamples.filter((product) => {
+      const text = [
+        product.name,
+        product.producer.businessName,
+        product.producer.prefectureName,
+        product.producer.city,
+      ].join(" ").toLocaleLowerCase("ja-JP");
+      return (!keyword || text.includes(keyword))
+        && (categoryId === null || product.category.id === Number(categoryId))
+        && (producerId === null || product.producer.id === Number(producerId))
+        && (price === "all"
+          || (price === "under2000" && product.salePrice < 2000)
+          || (price === "2000to4000" && product.salePrice >= 2000 && product.salePrice < 4000)
+          || (price === "over4000" && product.salePrice >= 4000))
+        && (params.get("subscription") !== "1" || product.isSubscription)
+        && (params.get("preorder") !== "1" || product.isPreorder);
+    });
+
+    if (sort === "price_asc") {
+      items.sort((a, b) => a.salePrice - b.salePrice || b.id - a.id);
+    } else if (sort === "price_desc") {
+      items.sort((a, b) => b.salePrice - a.salePrice || b.id - a.id);
+    } else if (sort === "rating") {
+      items.sort((a, b) =>
+        Number(b.reviewCount >= 3) - Number(a.reviewCount >= 3)
+        || (b.ratingAvg ?? -1) - (a.ratingAvg ?? -1)
+        || b.id - a.id);
+    }
+    // popularは画面確認用fixtureの既定順。人気スコアの計算は実APIで行う。
+    return {
+      status: 200,
+      body: {
+        items: items.slice((page - 1) * pageSize, page * pageSize),
+        total: items.length,
+        page,
+        pageSize,
+        totalPages: Math.ceil(items.length / pageSize),
+      },
+    };
+  },
+};
+export { productsList };

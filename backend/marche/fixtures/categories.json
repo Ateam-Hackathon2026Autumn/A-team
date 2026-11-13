@@ -1,0 +1,10 @@
+[
+    {"model": "marche.category", "pk": 1, "fields": {"name": "野菜", "sort_order": 1}},
+    {"model": "marche.category", "pk": 2, "fields": {"name": "果物", "sort_order": 2}},
+    {"model": "marche.category", "pk": 3, "fields": {"name": "米", "sort_order": 3}},
+    {"model": "marche.category", "pk": 4, "fields": {"name": "お茶", "sort_order": 4}},
+    {"model": "marche.category", "pk": 5, "fields": {"name": "魚介類", "sort_order": 5}},
+    {"model": "marche.category", "pk": 6, "fields": {"name": "肉", "sort_order": 6}},
+    {"model": "marche.category", "pk": 7, "fields": {"name": "加工品", "sort_order": 7}},
+    {"model": "marche.category", "pk": 8, "fields": {"name": "その他", "sort_order": 8}}
+]
