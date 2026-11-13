@@ -12,7 +12,7 @@ import type {
   DashboardExperience,
   ExperienceInput,
   ExperienceWritableStatus,
-} from '../types/experience';
+} from '../types/dashboardExperience';
 import { PREFECTURES } from '../utils/prefectures';
 import DashboardButton from './DashboardButton';
 import {
@@ -26,14 +26,19 @@ import {
   type PublishStatusOption,
 } from './DashboardFormParts';
 import { PlusIcon } from './DashboardIcons';
+import {
+  EXPERIENCE_MAX_IMAGES,
+  EXPERIENCE_MAX_LIST_ITEMS,
+  EXPERIENCE_MAX_LIST_ITEM_LENGTH,
+} from '../utils/experienceLimits';
 
-// API の仕様に合わせた上限
-const MAX_IMAGES = 20;
+// API の仕様に合わせた上限（画像・案内の行数はモックAPIと共通の定数を使う）
+const MAX_IMAGES = EXPERIENCE_MAX_IMAGES;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 const MAX_INT = 2147483647;
-const MAX_LIST_ITEMS = 50;
-const MAX_LIST_ITEM_LENGTH = 500;
+const MAX_LIST_ITEMS = EXPERIENCE_MAX_LIST_ITEMS;
+const MAX_LIST_ITEM_LENGTH = EXPERIENCE_MAX_LIST_ITEM_LENGTH;
 
 // 入力欄の値（数値も入力中は文字列、リストは1行1項目の文字列で持つ）
 type ExperienceFormValues = {

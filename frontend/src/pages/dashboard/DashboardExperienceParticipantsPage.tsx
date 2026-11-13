@@ -15,7 +15,7 @@ import type {
   ExperienceApplication,
   ExperienceApplicationStatus,
   ExperienceSlot,
-} from '../../types/experience';
+} from '../../types/dashboardExperience';
 import {
   applicationStatusLabels,
   formatDateTime,

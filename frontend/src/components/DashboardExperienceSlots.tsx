@@ -12,7 +12,7 @@ import type {
   ExperienceSlot,
   ExperienceSlotStatus,
   ExperienceSlotUpdateInput,
-} from '../types/experience';
+} from '../types/dashboardExperience';
 import {
   formatDateTime,
   formatDuration,

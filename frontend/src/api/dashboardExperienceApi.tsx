@@ -10,7 +10,7 @@ import type {
   ExperienceSlotList,
   ExperienceSlotUpdateInput,
   ExperienceWriteResult,
-} from '../types/experience';
+} from '../types/dashboardExperience';
 import { toApiError } from './apiError';
 import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';

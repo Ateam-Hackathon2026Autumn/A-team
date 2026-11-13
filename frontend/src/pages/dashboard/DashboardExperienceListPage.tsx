@@ -14,7 +14,7 @@ import { userInfoAtom } from '../../stores/userAtom';
 import type {
   DashboardExperienceSummary,
   ExperiencePublishStatus,
-} from '../../types/experience';
+} from '../../types/dashboardExperience';
 import {
   formatDateTime,
   formatYen,

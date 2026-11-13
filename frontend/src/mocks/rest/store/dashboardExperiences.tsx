@@ -5,9 +5,14 @@ import type {
   ExperienceImage,
   ExperienceSlot,
   ExperienceSlotStatus,
-} from '../../../types/experience';
+} from '../../../types/dashboardExperience';
 import type { MockResult } from '../../types';
 import { daysFromNow, hoursFromNow } from '../../helpers';
+import {
+  EXPERIENCE_MAX_IMAGES,
+  EXPERIENCE_MAX_LIST_ITEMS,
+  EXPERIENCE_MAX_LIST_ITEM_LENGTH,
+} from '../../../utils/experienceLimits';
 import {
   conflict,
   idFromPath,
@@ -511,8 +516,11 @@ const isPrice = (value: unknown) =>
 const isLines = (value: unknown) =>
   value === null ||
   (Array.isArray(value) &&
-    value.length <= 20 &&
-    value.every((line) => typeof line === 'string' && line !== '' && line.length <= 200));
+    value.length <= EXPERIENCE_MAX_LIST_ITEMS &&
+    value.every(
+      (line) =>
+        typeof line === 'string' && line !== '' && line.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH,
+    ));
 
 const experienceChecks: Record<keyof ExperienceFields, (value: unknown) => boolean> = {
   title: (value) => isText(value, 100),
@@ -531,7 +539,7 @@ const experienceChecks: Record<keyof ExperienceFields, (value: unknown) => boole
   publishStatus: (value) => value === 'draft' || value === 'public' || value === 'private',
   images: (value) =>
     Array.isArray(value) &&
-    value.length <= 10 &&
+    value.length <= EXPERIENCE_MAX_IMAGES &&
     value.every(
       (image) => isObject(image) && typeof image.imageKey === 'string' && image.imageKey !== '',
     ) &&

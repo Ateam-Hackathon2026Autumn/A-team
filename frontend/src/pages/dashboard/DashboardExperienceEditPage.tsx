@@ -8,13 +8,25 @@ import DashboardButton from '../../components/DashboardButton';
 import DashboardExperienceForm from '../../components/DashboardExperienceForm';
 import DashboardExperienceSlots from '../../components/DashboardExperienceSlots';
 import { userInfoAtom } from '../../stores/userAtom';
-import type { DashboardExperience, ExperienceInput } from '../../types/experience';
+import type { DashboardExperience, ExperienceInput } from '../../types/dashboardExperience';
 
 const EXPERIENCE_LIST_PATH = '/dashboard/experiences';
 
 // 他の画面で先に更新されていた（412）ときの案内
 const STALE_MESSAGE =
   '他の画面で体験が更新されていたため、最新の内容を読み込み直しました。もう一度編集して保存してください。';
+
+// 予約枠の変更後、体験の内容が他の画面で更新されていたときの案内
+const CHANGED_ELSEWHERE_MESSAGE =
+  '他の画面で体験の内容が更新されています。このまま保存すると最新の内容を読み込み直すため、入力内容を控えてから保存してください。';
+
+// 予約枠の変更では更新日時（updatedAt）だけが変わる。それ以外が同じなら同じ内容とみなす
+function hasSameContent(a: DashboardExperience, b: DashboardExperience): boolean {
+  const { updatedAt: _a, ...restA } = a;
+  const { updatedAt: _b, ...restB } = b;
+
+  return JSON.stringify(restA) === JSON.stringify(restB);
+}
 
 function Notice({ children }: { children: ReactNode }) {
   return (
@@ -93,10 +105,22 @@ function DashboardExperienceEditPage() {
     setReloadCount((count) => count + 1);
   };
 
-  // 予約枠を変更したら、体験の ETag だけ取り直す（入力中のフォームは残す）
+  // 予約枠を変更すると体験の ETag も変わるため、取り直す（入力中のフォームは残す）
+  // ただし ETag を新しくしてよいのは、体験の内容がフォームの元にした版から変わっていないときだけ。
+  // 他の画面で内容が変わっていたら古い ETag のままにし、保存時に 412 → 読み込み直しで
+  // 他の人の変更を古い入力内容で上書きしないようにする。
   const refreshEtag = () => {
+    const base = experience;
+
     getDashboardExperience(experienceId)
-      .then((result) => setEtag(result.etag))
+      .then((result) => {
+        if (base !== null && hasSameContent(base, result.data)) {
+          setEtag(result.etag);
+          return;
+        }
+
+        setNotice(CHANGED_ELSEWHERE_MESSAGE);
+      })
       .catch(() => {
         // 取り直せなくても、保存時に 412 になれば読み込み直す
       });

@@ -4,7 +4,7 @@ import { useAtomValue } from 'jotai';
 import { createExperience, newIdempotencyKey } from '../../api/dashboardExperienceApi';
 import DashboardExperienceForm from '../../components/DashboardExperienceForm';
 import { userInfoAtom } from '../../stores/userAtom';
-import type { ExperienceInput } from '../../types/experience';
+import type { ExperienceInput } from '../../types/dashboardExperience';
 
 const EXPERIENCE_LIST_PATH = '/dashboard/experiences';
 

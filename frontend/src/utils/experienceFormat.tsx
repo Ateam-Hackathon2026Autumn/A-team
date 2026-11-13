@@ -2,7 +2,7 @@ import type {
   ExperienceApplicationStatus,
   ExperiencePublishStatus,
   ExperienceSlotStatus,
-} from '../types/experience';
+} from '../types/dashboardExperience';
 
 // 体験の管理画面で使う表示用の変換
 

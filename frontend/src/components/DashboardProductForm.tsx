@@ -657,11 +657,32 @@ function DashboardProductForm({
             />
           </Field>
 
-          <PublishStatusField
-            options={publishStatusOptions}
-            value={publishStatus}
-            onChange={setPublishStatus}
-          />
+          <fieldset className="m-0 min-w-0 border-0 p-0">
+            <legend className="p-0 text-sm font-bold">
+              税率
+              <span className="ml-2 text-xs font-normal text-marche-red">
+                必須
+              </span>
+            </legend>
+            <div className="mt-2 flex gap-4 py-2.5">
+              {(['8', '10'] as const).map((rate) => (
+                <label
+                  key={rate}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="radio"
+                    name="taxRate"
+                    value={rate}
+                    checked={values.taxRate === rate}
+                    onChange={() => setValue('taxRate', rate)}
+                    className="m-0 size-4 accent-marche-green"
+                  />
+                  {rate}%{rate === '8' && '（食品）'}
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <Field
             id="product-discountRate"
@@ -761,32 +782,11 @@ function DashboardProductForm({
 
       {isEdit && (
         <FormSection title="公開設定">
-          <fieldset className="m-0 min-w-0 border-0 p-0">
-            <legend className="sr-only">公開状態</legend>
-            <div className="flex flex-col gap-2">
-              {publishStatusOptions.map(({ value, label, description }) => (
-                <label
-                  key={value}
-                  className={`box-border flex cursor-pointer items-start gap-3 rounded-xl border border-solid px-4 py-3 ${publishStatus === value ? 'border-marche-green bg-marche-sage' : 'border-marche-line bg-white'}`}
-                >
-                  <input
-                    type="radio"
-                    name="publishStatus"
-                    value={value}
-                    checked={publishStatus === value}
-                    onChange={() => setPublishStatus(value)}
-                    className="m-0 mt-1 size-4 shrink-0 accent-marche-green"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold">{label}</span>
-                    <span className="block text-xs text-marche-muted">
-                      {description}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <PublishStatusField
+            options={publishStatusOptions}
+            value={publishStatus}
+            onChange={setPublishStatus}
+          />
         </FormSection>
       )}
 
