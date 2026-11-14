@@ -60,7 +60,7 @@ const jobDetail: RestMock = {
 export { jobDetail };
 
 export function getMockJob(id: number): JobDetail | undefined {
-  const item = (jobsList.body as { items: Job[] }).items.find(item => item.id === id);
+  const item = (jobsList.body as { items?: Job[] } | undefined)?.items?.find(item => item.id === id);
   if (!item) return undefined;
   const original = jobDetail.body as JobDetail;
   if (id === 1) return original;

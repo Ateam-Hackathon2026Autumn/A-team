@@ -1,4 +1,4 @@
-import type { JobApplication } from '../../../types/job';
+import { demoJobApplications, getAllJobApplications } from '../../demoJobApplications';
 import { getMockJob } from './get_api_v1_jobs_jobId';
 import type { RestMock } from '../../types';
 import { hoursFromNow } from '../../helpers';
@@ -38,7 +38,7 @@ const jobApply: RestMock = {
 export { jobApply };
 
 // タブを再読み込みするとリセットされる、デモ応募履歴。
-export const demoJobApplications: JobApplication[] = [];
+
 jobApply.handler = (url, init) => {
   const jobId = Number(url.pathname.split('/').at(-2));
   const job = getMockJob(jobId);
@@ -49,7 +49,7 @@ jobApply.handler = (url, init) => {
   if (!Array.isArray(input.workDateIds) || !input.workDateIds.length) return { status: 400, body: { errorMsg: '勤務希望日を選択してください。' } };
   const selected = job.workDates.items.filter(day => (input.workDateIds as unknown[]).includes(day.id));
   if (selected.length !== input.workDateIds.length || selected.some(day => !day.isSelectable || day.remainingCount <= 0)) return { status: 409, body: { errorMsg: '選択した勤務日は募集を締め切りました。' } };
-  if (demoJobApplications.some(application => application.job.id === jobId)) return { status: 409, body: { errorMsg: 'この求人にはデモ応募済みです。' } };
+  if (getAllJobApplications().some(application => application.job.id === jobId)) return { status: 409, body: { errorCode: 'ALREADY_APPLIED', errorMsg: 'この求人には応募済みです。' } };
   const id = 100 + demoJobApplications.length;
   demoJobApplications.unshift({ id, job: { id: jobId, title: job.title, isPublic: true }, workDates: selected.map(day => ({ id: day.id, workDate: day.workDate })), status: 'applied', createdAt: hoursFromNow(0) });
   return { status: 201, body: { ...input, id, jobId, status: 'applied', createdAt: hoursFromNow(0) } };

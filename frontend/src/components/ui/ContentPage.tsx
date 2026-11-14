@@ -25,9 +25,9 @@ export function ContentPage({ eyebrow, title, intro, children }: { eyebrow: stri
     {children}
   </div>;
 }
-export function ContentStatus({ loading, error, retry }: { loading: boolean; error: string; retry: () => void }) {
+export function ContentStatus({ loading, error, retry, errorStatus, notFoundTo }: { loading: boolean; error: string; retry: () => void; errorStatus?: number | null; notFoundTo?: string }) {
   if (loading) return <p role="status" className={panelClass}>読み込み中です…</p>;
-  if (error) return <div role="alert" className={panelClass}><p className="text-marche-red">{error}</p><Button onClick={retry}>再読み込み</Button></div>;
+  if (error) return <div role="alert" className={panelClass}><p className="text-marche-red">{error}</p>{errorStatus === 404 && notFoundTo ? <Link to={notFoundTo} className={linkClass}>一覧へ戻る</Link> : <Button onClick={retry}>再読み込み</Button>}</div>;
   return null;
 }
 export function EmptyContent({ children }: { children: ReactNode }) {

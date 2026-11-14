@@ -22,7 +22,7 @@ export default function JobDetailPage() {
       >
         ← 求人一覧
       </Link>
-      <ContentStatus {...state} />
+      <ContentStatus {...state} notFoundTo="/jobs" />
       {job && (
         <div className="mt-5 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div>

@@ -11,7 +11,7 @@ export default function StoryDetailPage() {
   const state = usePublicContent(loader);
   const story = state.data;
   return <ContentPage eyebrow="STORY" title={story?.title ?? 'ストーリー詳細'}>
-    <Link to="/learn" className={textLinkClass}>← 記事一覧</Link><ContentStatus {...state} />
+    <Link to="/learn" className={textLinkClass}>← 記事一覧</Link><ContentStatus {...state} notFoundTo="/learn" />
     {story && <article className="mx-auto mt-5 max-w-4xl">
       <ContentImage src={story.producer.coverImageUrl} alt={story.producer.businessName} className="aspect-[16/9] rounded-2xl" />
       <div className="mx-auto max-w-2xl"><p className="mt-6 text-sm font-bold text-marche-green">{story.category.name}</p><p>{story.producer.businessName} ／ {story.producer.prefectureName} {story.producer.city}</p><p className="text-xs text-marche-muted">更新：{dateLabel(story.updatedAt)}</p>

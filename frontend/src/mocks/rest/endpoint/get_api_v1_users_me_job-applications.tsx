@@ -1,62 +1,13 @@
-import { demoJobApplications } from './post_api_v1_jobs_jobId_applications';
-import type { JobApplication } from '../../../types/job';
 import type { RestMock } from '../../types';
-import { daysFromNow, hoursFromNow } from '../../helpers';
+import { getAllJobApplications, initialJobApplications } from '../../demoJobApplications';
 
-// 求人応募状況取得API GET /api/v1/users/me/job-applications
-//
-// ログイン中の会員（山本 健太）が、ほかの生産者の求人に応募した一覧
-// status: applied=応募済 / screening=選考中 / hired=採用 / rejected=不採用 / withdrawn=取下げ / completed=勤務完了
-// 応募後に求人が非公開・削除になった場合は job: { id, title: null, isPublic: false } になる
-//
-// 応募なしの場合:
-//   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
-// 未ログインの場合（status: 401）:
-//   { errorCode: 'UNAUTHENTICATED', errorMsg: 'ログインしてください。' }
+// 初期データと追加応募の共通ストアを参照する。再読み込みすると初期状態へ戻る。
 const myJobApplications: RestMock = {
-  method: 'GET',
-  path: '/api/v1/users/me/job-applications',
-  status: 200,
-  body: {
-    items: [
-      {
-        id: 4,
-        job: {
-          id: 3,
-          title: '干物の加工・出荷のお手伝い',
-          isPublic: true,
-        },
-        workDates: [{ id: 7, workDate: daysFromNow(12) }],
-        status: 'applied',
-        decidedAt: null,
-        createdAt: hoursFromNow(-5),
-        updatedAt: hoursFromNow(-5),
-      },
-      {
-        id: 5,
-        job: {
-          id: 4,
-          title: '酪農スタッフ（将来の独立支援あり）',
-          isPublic: true,
-        },
-        workDates: [],
-        status: 'screening',
-        decidedAt: null,
-        createdAt: hoursFromNow(-24 * 10),
-        updatedAt: hoursFromNow(-24 * 2),
-      },
-    ],
-    total: 2,
-    page: 1,
-    pageSize: 20,
-    totalPages: 1,
+  method: 'GET', path: '/api/v1/users/me/job-applications', status: 200,
+  body: { items: initialJobApplications, total: initialJobApplications.length, page: 1, pageSize: 20, totalPages: 1 },
+  handler: () => {
+    const items = getAllJobApplications();
+    return { status: 200, body: { items, total: items.length, page: 1, pageSize: Math.max(20, items.length), totalPages: items.length ? 1 : 0 } };
   },
 };
-
 export { myJobApplications };
-
-myJobApplications.handler = () => {
-  const seed = (myJobApplications.body as { items: JobApplication[] }).items;
-  const items = [...demoJobApplications, ...seed];
-  return { status: 200, body: { items, total: items.length, page: 1, pageSize: 20, totalPages: items.length ? 1 : 0 } };
-};

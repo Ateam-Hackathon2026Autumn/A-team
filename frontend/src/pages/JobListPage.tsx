@@ -40,6 +40,10 @@ export default function JobListPage() {
       >
         応募状況を確認 →
       </Link>
+      {params.get("producerId") && <div className="my-4 flex flex-wrap items-center gap-3 rounded-xl bg-marche-sage p-4">
+        <span>生産者：{state.data?.find(job => job.producer.id === Number(params.get("producerId")))?.producer.businessName ?? `ID ${params.get("producerId")}`} で絞り込み中</span>
+        <Button variant="outline" onClick={() => update("producerId", "")}>生産者の条件を解除</Button>
+      </div>}
       <section
         aria-label="求人の絞り込み"
         className={`${panelClass} mt-4`}

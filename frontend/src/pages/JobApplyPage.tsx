@@ -23,6 +23,8 @@ function JobForm({ id }: { id: number }) {
   const [message, setMessage] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
+  const [dateError, setDateError] = useState(false);
+  const [validationAttempt, setValidationAttempt] = useState(0);
   const [sending, setSending] = useState(false);
   const [receipt, setReceipt] = useState<number | null>(null);
   const locked = useRef(false);
@@ -30,13 +32,20 @@ function JobForm({ id }: { id: number }) {
   useEffect(() => {
     if (confirming || receipt !== null) formPanel.current?.focus();
   }, [confirming, receipt]);
+  useEffect(() => {
+    if (dateError && !confirming) formPanel.current?.querySelector<HTMLElement>('input[type="checkbox"]:not(:disabled)')?.focus();
+  }, [dateError, validationAttempt, confirming]);
   const job = state.data;
   const available = job?.workDates.items.filter((day) => day.isSelectable && day.remainingCount > 0) ?? [];
   function validate() {
     if (!dates.length || dates.some((id) => !available.some((day) => day.id === id))) {
+      setDateError(true);
+      setValidationAttempt(value => value + 1);
+      setConfirming(false);
       setError("勤務希望日を1日以上選択してください。応募条件もご確認ください。");
       return false;
     }
+    setDateError(false);
     return true;
   }
   async function submit() {
@@ -65,7 +74,7 @@ function JobForm({ id }: { id: number }) {
       >
         ← 求人詳細
       </Link>
-      <ContentStatus {...state} />
+      <ContentStatus {...state} notFoundTo="/jobs" />
       {job && (
         <div
           ref={formPanel}
@@ -117,7 +126,8 @@ function JobForm({ id }: { id: number }) {
                 <>
                   <fieldset
                     className="m-0 border-0 p-0"
-                    aria-describedby={error ? "job-error" : undefined}
+                    aria-invalid={dateError}
+                    aria-describedby={dateError ? "job-error" : undefined}
                   >
                     <legend className="font-bold">勤務希望日（1日以上選択）</legend>
                     {job.workDates.items.map((day) => (
@@ -126,6 +136,8 @@ function JobForm({ id }: { id: number }) {
                         className="my-2 flex min-h-12 items-center gap-3 rounded-xl border border-marche-line p-3"
                       >
                         <input
+                          aria-invalid={dateError}
+                          aria-describedby={dateError ? "job-error" : undefined}
                           type="checkbox"
                           className="size-5 accent-marche-green"
                           disabled={!day.isSelectable || day.remainingCount <= 0}

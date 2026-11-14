@@ -5,13 +5,13 @@ export type Experience = {
   thumbnailUrl: string | null; nextStartAt: string | null;
   producer: { id: number; businessName: string; city: string };
 };
-export type ExperienceSlot = { id: number; startAt: string; durationMin: number; capacity: number; remainingCapacity: number; quoteToken: string };
+export type PublicExperienceSlot = { id: number; startAt: string; durationMin: number; capacity: number; remainingCapacity: number; quoteToken: string };
 export type ExperienceDetail = Experience & {
   description: string; images: { id: number; url: string; sortOrder: number }[];
   place: string; ageCondition: string; flow: string[]; belongings: string[]; notes: string[];
-  cancelPolicy: string; slots: PageResult<ExperienceSlot>;
+  cancelPolicy: string; slots: PageResult<PublicExperienceSlot>;
 };
-export type ExperienceInput = {
+export type ExperienceApplyInput = {
   slotId: number; quoteToken: string; adultCount: number; childCount: number;
   representativeName: string; phone: string; message: string; policyAgreed: boolean;
 };

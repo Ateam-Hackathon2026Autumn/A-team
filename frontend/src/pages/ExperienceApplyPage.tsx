@@ -6,6 +6,8 @@ import FormField from "../components/ui/FormField";
 import { ContentPage, ContentStatus, dateLabel, timeLabel, fieldClass, panelClass, textLinkClass, yen } from "../components/ui/ContentPage";
 import { USE_MOCK } from "../config/env";
 import { usePublicContent } from "../hooks/usePublicContent";
+import ApiError from "../api/apiError";
+import { validateExperienceApply } from "../utils/experienceValidation";
 import type { ExperienceReceipt } from "../types/experience";
 
 export default function ExperienceApplyPage() {
@@ -42,17 +44,27 @@ function ExperienceForm({ id }: { id: number }) {
   const selected = slots.find((slot) => slot.id === Number(slotId));
   const adultCount = Number(adult);
   const childCount = Number(child);
+  const quoteRefreshPending = useRef(false);
+  const quoteRefreshLoading = useRef(false);
+  useEffect(() => {
+    if (step === "input" && Object.keys(errors).length) {
+      formPanel.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    }
+  }, [errors, step]);
+  useEffect(() => {
+    if (!quoteRefreshPending.current) return;
+    if (state.loading) quoteRefreshLoading.current = true;
+    if (quoteRefreshLoading.current && !state.loading && item) {
+      if (item.priceChild === null) setChild("0");
+      (formPanel.current?.querySelector<HTMLElement>('#slot') ?? formPanel.current)?.focus();
+      quoteRefreshPending.current = false;
+      quoteRefreshLoading.current = false;
+    }
+  }, [state.loading, item]);
   const total = item ? adultCount * item.priceAdult + childCount * (item.priceChild ?? 0) : 0;
   function validate() {
-    const next: Record<string, string> = {};
-    if (!selected) next.slot = "開催日を選択してください。";
-    if (!adult.trim() || !Number.isSafeInteger(adultCount) || adultCount < 1) next.people = "大人は1名以上の整数で入力してください。";
-    if (!child.trim() || !Number.isSafeInteger(childCount) || childCount < 0 || (item?.priceChild === null && childCount > 0)) next.people = "子どもの人数を確認してください。";
-    if (selected && adultCount + childCount > selected.remainingCapacity) next.people = `残り枠（${selected.remainingCapacity}名）を超えています。人数を減らしてください。`;
-    if (!name.trim()) next.name = "代表者氏名を入力してください。";
-    const normalizedPhone = phone.normalize("NFKC").replace(/[() ー−-]/g, "");
-    if (!/^\+?[0-9]{10,15}$/.test(normalizedPhone)) next.phone = "電話番号を確認してください（数字10〜15桁、ハイフン可）。";
-    if (!agreed) next.agreed = "キャンセルポリシーと注意事項への同意が必要です。";
+    const next = validateExperienceApply({ adult, child, name, phone, agreed, selected, childAllowed: item?.priceChild !== null });
+    if (Object.keys(next).length) setStep("input");
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -64,7 +76,15 @@ function ExperienceForm({ id }: { id: number }) {
     try {
       setReceipt(await applyExperience(id, { slotId: selected.id, quoteToken: selected.quoteToken, adultCount, childCount, representativeName: name.trim(), phone: phone.trim(), message: message.trim(), policyAgreed: agreed }));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "申込できませんでした。");
+      if (cause instanceof ApiError && cause.status === 409 && cause.errorCode === "QUOTE_CHANGED") {
+        setStep("input"); setSlotId(""); setAgreed(false); setErrors({});
+        setError(`${cause.message} 最新の開催日・料金・人数・同意内容を確認してください。`);
+        quoteRefreshPending.current = true;
+        quoteRefreshLoading.current = false;
+        state.retry();
+      } else {
+        setError(cause instanceof Error ? cause.message : "申込できませんでした。");
+      }
     } finally {
       locked.current = false;
       setSending(false);
@@ -81,7 +101,8 @@ function ExperienceForm({ id }: { id: number }) {
       >
         ← 体験詳細
       </Link>
-      <ContentStatus {...state} />
+      <ContentStatus {...state} notFoundTo="/experiences" />
+      {error && <p role="alert" className="text-marche-red">{error}</p>}
       {item && (
         <div
           ref={formPanel}
@@ -151,7 +172,7 @@ function ExperienceForm({ id }: { id: number }) {
                       htmlFor="slot"
                       className="block font-bold"
                     >
-                      開催日
+                      開催日<span className="ml-2 text-xs font-normal text-red-800">必須</span>
                     </label>
                     <select
                       id="slot"
@@ -190,7 +211,9 @@ function ExperienceForm({ id }: { id: number }) {
                         max={selected ? String(selected.remainingCapacity) : undefined}
                         value={adult}
                         onChange={setAdult}
-                        error={errors.people}
+                        error={errors.adult}
+                        invalid={Boolean(errors.capacity)}
+                        describedBy={errors.capacity ? "capacity-error" : undefined}
                       />
                       {item.priceChild !== null && (
                         <FormField
@@ -201,9 +224,13 @@ function ExperienceForm({ id }: { id: number }) {
                           max={selected ? String(selected.remainingCapacity) : undefined}
                           value={child}
                           onChange={setChild}
+                          error={errors.child}
+                          invalid={Boolean(errors.capacity)}
+                          describedBy={errors.capacity ? "capacity-error" : undefined}
                         />
                       )}
                     </div>
+                    {errors.capacity && <p id="capacity-error" role="alert" className="text-marche-red">{errors.capacity}</p>}
                     <p className="text-sm">
                       対象：{item.ageCondition}。大人{yen(item.priceAdult)}
                       {item.priceChild !== null && ` ／子ども${yen(item.priceChild)}`}
@@ -251,6 +278,7 @@ function ExperienceForm({ id }: { id: number }) {
                     </ul>
                     <label className="flex min-h-11 items-start gap-3">
                       <input
+                        id="policy-agreed"
                         type="checkbox"
                         className="mt-2 size-5 shrink-0 accent-marche-green"
                         checked={agreed}
@@ -294,18 +322,9 @@ function ExperienceForm({ id }: { id: number }) {
                 )}
                 <p
                   className="mt-6 border-t border-marche-line pt-4 text-xl font-bold"
-                  role="status"
                 >
                   合計：{Number.isFinite(total) && total >= 0 ? yen(total) : "人数を確認してください"}
                 </p>
-                {error && (
-                  <p
-                    role="alert"
-                    className="text-marche-red"
-                  >
-                    {error}
-                  </p>
-                )}
                 {!USE_MOCK && <p className="text-marche-red">実際の申込送信は準備中です。</p>}
                 <div className="mt-6 flex flex-wrap gap-3">
                   {step === "confirm" && (

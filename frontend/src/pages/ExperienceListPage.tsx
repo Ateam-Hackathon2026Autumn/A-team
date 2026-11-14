@@ -30,6 +30,10 @@ export default function ExperienceListPage() {
       title="畑へ、海へ、牧場へ。"
       intro="生産者が案内する、農業・漁業・畜産の体験プログラム。"
     >
+      {params.get("producerId") && <div className="my-4 flex flex-wrap items-center gap-3 rounded-xl bg-marche-sage p-4">
+        <span>生産者：{state.data?.find(item => item.producer.id === Number(params.get("producerId")))?.producer.businessName ?? `ID ${params.get("producerId")}`} で絞り込み中</span>
+        <Button variant="outline" onClick={() => update("producerId", "")}>生産者の条件を解除</Button>
+      </div>}
       <section
         aria-label="体験の絞り込み"
         className={panelClass}

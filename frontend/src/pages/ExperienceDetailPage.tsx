@@ -21,7 +21,7 @@ export default function ExperienceDetailPage() {
       >
         ← 体験一覧
       </Link>
-      <ContentStatus {...state} />
+      <ContentStatus {...state} notFoundTo="/experiences" />
       {item && (
         <>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">

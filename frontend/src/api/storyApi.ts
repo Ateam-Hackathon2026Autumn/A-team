@@ -19,6 +19,6 @@ export async function getStories(signal?: AbortSignal): Promise<StoryArticle[]> 
 }
 export async function getStory(id: number, signal?: AbortSignal) {
   const story = (await getStories(signal)).find(item => item.id === id);
-  if (!story) throw new Error('ストーリーが見つかりません。');
+  if (!story) throw new ApiError(404, 'ストーリーが見つかりません。');
   return story;
 }
