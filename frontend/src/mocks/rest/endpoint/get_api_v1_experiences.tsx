@@ -103,4 +103,14 @@ const experiencesList: RestMock = {
   },
 };
 
+// エラー表示テスト
+// const experiencesList: RestMock = {
+//   method: 'GET',
+//   path: '/api/v1/experiences',
+//   status: 500,
+//   body: {
+//     errorMsg: 'テスト用の取得エラーです。'
+//   },
+// };
+
 export { experiencesList };
