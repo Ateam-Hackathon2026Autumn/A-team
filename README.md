@@ -38,12 +38,27 @@ docker compose exec backend python manage.py createsuperuser # 初回のみ実�
 ### 開発用のデータ
 
 画面の確認に使うデータ（会員・生産者・商品・体験・求人・注文・レビュー）をまとめて入れます。カテゴリーと都道府県のマスタも一緒に入ります。
+データを流し込んで本物のAPIに繋ぐフロー
+# 1. 最新の dev を取る
+git switch dev
+git pull
 
-```bash
-docker compose exec backend python manage.py seed_dev          # 入れる（何回実行しても増えません）
-docker compose exec backend python manage.py seed_dev --reset  # 開発用のデータだけ消して入れ直す
-```
+# 2. 起動する（backend は起動時に自動でマイグレーションする）
+docker compose up --build -d
 
+# 3. フロントの部品を入れ直す（frontend/package.jsonが変わった or 初めてpackage.jsonを取得した）
+docker compose exec frontend npm install
+
+# 4. 確認用のデータを入れる（マスタと写真も一緒に入る）
+docker compose exec backend python manage.py seed_dev
+
+# 5. フロントを本物の API につなぐ
+echo "VITE_USE_MOCK=false" > frontend/.env.development.local
+docker compose restart frontend
+
+# 6. 終わったら http://localhost:5173/products を開く
+
+登録されたユーザー
 | メールアドレス | 内容 |
 | --- | --- |
 | buyer1@example.com | 会員（注文・予約・応募・カートあり） |
@@ -59,4 +74,8 @@ docker compose exec backend python manage.py seed_dev --reset  # 開発用のデ
 
 画像は、`AWS_STORAGE_BUCKET_NAME` を設定していなければ `backend/media/` に保存され、<http://localhost:8000/media/> から表示されます（S3 の設定は不要です）。
 
-フロントを本物の API につなぐには、`frontend/.env.development.local` に `VITE_USE_MOCK=false` と書いて `docker compose restart frontend` を実行します。
+モックに戻すには
+frontend/.env.development.local を ture にして docker compose restart frontend
+
+確認用データを消して入れ直す
+docker compose exec backend python manage.py seed_dev --reset
