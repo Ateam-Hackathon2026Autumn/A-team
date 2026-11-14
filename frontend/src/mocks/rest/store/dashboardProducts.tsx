@@ -510,17 +510,4 @@ function deleteProduct(url: URL, init?: RequestInit): MockResult {
   return { status: 204 };
 }
 
-// ダッシュボード集計（GET /api/v1/dashboard/summary）用。公開中の商品数
-function countPublishedProducts(): number {
-  return getState().products.filter((product) => product.publishStatus === 'public').length;
-}
-
-export {
-  countPublishedProducts,
-  createProduct,
-  deleteProduct,
-  getProduct,
-  listProducts,
-  updateProduct,
-  updateStock,
-};
+export { createProduct, deleteProduct, getProduct, listProducts, updateProduct, updateStock };

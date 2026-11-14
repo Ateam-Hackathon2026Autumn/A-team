@@ -1,12 +1,14 @@
 import type { RestMock } from '../../types';
-import { updateApplication } from '../store/dashboardJobs';
+import { daysFromNow, hoursFromNow } from '../../helpers';
 
 // 【生産者】応募者の採用・不採用更新API PATCH /api/v1/dashboard/jobs/{jobId}/applications/{applicationId}
 //
+// 応募1（高橋 ゆい）を採用（hired）にした結果を返す
 // リクエストの status は screening（選考中）/ hired（採用）/ rejected（不採用）のどれか
-// If-Match に応募者一覧の items[].etag が必要。更新後の応募（新しい etag 付き）を返す
-// 変更できるのは applied → screening / hired / rejected、screening → hired / rejected だけ
-// データは store/dashboardJobs.tsx（採用すると求人の採用人数・勤務日の残り枠に反映される）
+// 不採用にした結果を見たい場合は status を 'rejected' に書き換える。screening のときは decidedAt を null にする
+// 返ってきた etag が次の更新の If-Match になる
+//
+// エラーにしたい場合は status と body を下記に書き換える
 //
 // 採用枠が埋まっている（status: 409）:
 //   { errorCode: 'CAPACITY_CONFLICT', errorMsg: '募集人数に達しているため採用できません。' }
@@ -18,7 +20,30 @@ const dashboardJobApplicationUpdate: RestMock = {
   method: 'PATCH',
   path: '/api/v1/dashboard/jobs/:jobId/applications/:applicationId',
   status: 200,
-  handler: (url, init) => updateApplication(url, init),
+  body: {
+    id: 1,
+    jobId: 1,
+    applicant: {
+      id: 5,
+      lastName: '高橋',
+      firstName: 'ゆい',
+      email: 'takahashi@example.com',
+      phone: '080-3456-7890',
+      isActive: true,
+    },
+    message: '週末に家庭菜園をしています。りんご農家の仕事を間近で学びたいです。体力には自信があります。',
+    answers: [],
+    workDates: [
+      { id: 1, workDate: daysFromNow(5) },
+      { id: 2, workDate: daysFromNow(6) },
+      { id: 3, workDate: daysFromNow(12) },
+    ],
+    status: 'hired',
+    decidedAt: hoursFromNow(0),
+    createdAt: hoursFromNow(-24 * 3),
+    updatedAt: hoursFromNow(0),
+    etag: '"application-1-v2"',
+  },
 };
 
 export { dashboardJobApplicationUpdate };
