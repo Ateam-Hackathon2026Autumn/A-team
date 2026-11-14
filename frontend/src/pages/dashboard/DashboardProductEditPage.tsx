@@ -269,7 +269,7 @@ function DashboardProductEditPage() {
         >
           ← 商品管理に戻る
         </Link>
-        <h1 className="m-0 mt-2 text-2xl font-bold">商品編集</h1>
+        <h1 className="m-0 font-serif mt-2 text-2xl font-bold">商品編集</h1>
       </header>
 
       {notice !== null && (

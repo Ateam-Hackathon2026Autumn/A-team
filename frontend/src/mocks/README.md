@@ -62,6 +62,7 @@ src/mocks/
 │   │   ├── patch_api_v1_dashboard_products_productId.tsx
 │   │   │                                             PATCH /api/v1/dashboard/products/{productId}
 │   │   └── ...
+│   ├── store/                       登録・更新を反映するモックのデータと処理（handler から使う）
 │   ├── settings.tsx                 共通の設定（遅延時間）
 │   └── index.tsx                    endpoint/ の一覧（登録するだけ）
 ├── helpers.tsx                    使用する関数（日付の生成など）
@@ -85,19 +86,36 @@ HTTPメソッド + URL を `_` で繋ぐ（先頭の `/` は省略、`{productId
 
 ### パスの書き方
 
-ID などの可変部分は `:` で書く。どの ID で呼ばれても同じ内容を返す。
+ID などの可変部分は `:` で書く。`body` だけを書いた場合は、どの ID で呼ばれても同じ内容を返す。
 
 ```ts
 path: '/api/v1/dashboard/products/:productId',
 ```
 
-クエリ文字列（`?category=1` など）は無視される（絞り込み結果は再現しない）。
+`body` だけを書いた場合、クエリ文字列（`?category=1` など）は無視される（絞り込み結果は再現しない）。
+
+### 登録・更新を反映するモック（handler）
+
+ID・クエリ・リクエスト本文に応じて返す内容を変えるモックは、`body` の代わりに `handler(url, init)` を書く。
+戻り値は `{ status, body, headers }`（`headers` はレスポンスヘッダーを返す場合だけ）。
+
+一覧・詳細・登録・更新・削除で同じデータを使うものは、データと処理を `rest/store/` にまとめている。
+データは同じタブのセッション（sessionStorage）に保存されるため、再読み込みしても変更が残る（タブを閉じると初期状態に戻る）。
+
+| データ | ストア | 主な内容 |
+| ------ | ------ | -------- |
+| ダッシュボードの商品 | `rest/store/dashboardProducts.tsx` | 一覧・詳細・登録・更新・在庫・削除。etag が更新ごとに変わり、古い etag は 412 |
+| ダッシュボードの体験 | `rest/store/dashboardExperiences.tsx` | 体験・予約枠・申込者。一覧は publishStatus、申込者は slotId・status で絞り込み。体験の ETag はヘッダーで返す |
+| カート | `rest/endpoint/get_api_v1_cart.tsx` | 追加・数量変更・削除 |
+
+初期データに戻したい場合は、開発者ツールの Application → Session Storage から `tsunagaru-marche.mock-` で始まる項目を削除して再読み込みする。
 
 ---
 
 ### レスポンスを変える
 
 `rest/endpoint/` の該当ファイルの `status` と `body` を書き換える。
+`handler` のあるモックも、`status` を 400 以上にすると handler を使わずに `body` を返す（エラー画面の確認用）。
 エラー時のレスポンス例などは、各ファイルのコメントに書いてある。
 
 例：未ログイン状態を確認したい場合は `get_api_v1_auth_session.tsx` の body を

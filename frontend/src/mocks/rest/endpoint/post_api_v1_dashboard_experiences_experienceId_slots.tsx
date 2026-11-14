@@ -1,9 +1,10 @@
 import type { RestMock } from '../../types';
-import { daysFromNow, hoursFromNow } from '../../helpers';
+import { createSlot } from '../store/dashboardExperiences';
 
 // 体験予約枠登録API POST /api/v1/dashboard/experiences/:experienceId/slots
 //
-// 作成した予約枠を返す（予約数0、etag は以後の更新・削除の If-Match に使う）
+// 送った日時・定員で作成した予約枠を返す（予約数0、etag は以後の更新・削除の If-Match に使う）
+// 同じ Idempotency-Key で同じ内容を再送した場合は、前回作成した枠を返す
 //
 // 同じ開始日時の枠がすでにある場合（status: 409）:
 //   { errorCode: 'DUPLICATE_SLOT', errorMsg: '同じ開始日時の予約枠がすでにあります。' }
@@ -18,19 +19,7 @@ const dashboardExperienceSlotCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/dashboard/experiences/:experienceId/slots',
   status: 201,
-  body: {
-    id: 10,
-    experienceId: 1,
-    startAt: `${daysFromNow(24)}T10:00:00+09:00`,
-    durationMin: 180,
-    capacity: 20,
-    status: 'open',
-    reservedCount: 0,
-    remainingCapacity: 20,
-    etag: '"slot-10-v1"',
-    createdAt: hoursFromNow(0),
-    updatedAt: hoursFromNow(0),
-  },
+  handler: (url, init) => createSlot(url, init),
 };
 
 export { dashboardExperienceSlotCreate };

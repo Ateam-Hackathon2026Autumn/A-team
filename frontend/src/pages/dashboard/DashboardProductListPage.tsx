@@ -247,7 +247,7 @@ function DashboardProductListPage() {
   if (!canManageProducts) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="m-0 text-2xl font-bold">商品管理</h1>
+        <h1 className="m-0 font-serif text-2xl font-bold">商品管理</h1>
         <p className="m-0 box-border rounded-2xl border border-solid border-marche-line bg-white p-5 text-sm">
           商品の登録・管理は、生産者登録が承認されると使えるようになります。
         </p>
@@ -258,7 +258,7 @@ function DashboardProductListPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-2xl font-bold">
+        <h1 className="m-0 font-serif text-2xl font-bold">
           商品管理
           {products !== null && (
             <span className="ml-2 text-sm font-normal text-marche-muted">
