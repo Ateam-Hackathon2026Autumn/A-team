@@ -7,3 +7,11 @@ export type ProducerSummary = StoryProducer & {
   careerStartYear: number;
   badges: string[];
 };
+
+export type ProducerProfile = ProducerSummary & {
+  foundedYear: number;
+  representativeName: string;
+  intro: string;
+  images: { id: number; url: string; sortOrder: number }[];
+  hasPublicStory: boolean;
+};

@@ -1,3 +1,4 @@
+import { consumerDemoOrders } from '../store/consumerOrders';
 import type { RestMock } from '../../types';
 import { hoursFromNow } from '../../helpers';
 
@@ -60,3 +61,12 @@ const myOrdersList: RestMock = {
 };
 
 export { myOrdersList };
+
+myOrdersList.handler = url => {
+ const initial = myOrdersList.body as { items: import('../../../types/consumerOrder').OrderSummary[] };
+ const created = consumerDemoOrders.map(order => ({ ...order, shipments: order.shipments.map(box => ({ ...box, producerId: box.producer.id, producerName: box.producer.businessName })) }));
+ const items = [...created, ...initial.items];
+ const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+ const pageSize = 20;
+ return { status: 200, body: { items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length, page, pageSize, totalPages: Math.ceil(items.length / pageSize) } };
+};
