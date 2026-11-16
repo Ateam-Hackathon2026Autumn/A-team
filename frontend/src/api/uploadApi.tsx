@@ -14,7 +14,8 @@ type UploadedImage = {
 async function uploadImage(file: File): Promise<UploadedImage> {
   const csrfToken = await getCsrfToken();
   const formData = new FormData();
-  formData.append('file', file);
+  // 実API（backend/api/views/public/uploads.py）は multipart の image を受け取る（それ以外の項目は 400）
+  formData.append('image', file);
 
   // Content-Type は FormData から自動で付く（境界文字列が必要なため指定しない）
   const response = await apiFetch('/api/v1/uploads/images', {
