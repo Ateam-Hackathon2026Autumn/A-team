@@ -23,7 +23,7 @@ class ProfileTests(ApiTestCase):
         self.signin(self.producer.user.email)
 
     def upload(self):
-        return self.post_multipart("/api/v1/uploads/images", {"image": image_file()}).json()["key"]
+        return self.post_multipart("/api/v1/uploads/images", {"file": image_file()}).json()["key"]
 
     def test_get(self):
         ProducerStory.objects.create(producer=self.producer, reason="祖父の畑", goal="担い手を増やす")

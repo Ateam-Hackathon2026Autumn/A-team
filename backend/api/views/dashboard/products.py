@@ -9,7 +9,9 @@
         ・自分の商品だけ（すべての公開状態）。publishStatus・categoryId で絞り込み。updated_at・id の降順
     - 商品登録: POST /api/v1/dashboard/products
         ・カテゴリーは実在するもの、配送設定は自分のもの、画像キーは自分がアップロードしたもの（だめなら 400）
-        ・公開（public）にするには画像1枚以上・割引後の価格が1円以上（だめなら 400 details.publishStatus）
+        ・公開（public）にするには画像1枚以上・割引後の価格が1円以上・商品説明あり
+          （だめなら 409 PRODUCT_NOT_PUBLISHABLE。errorMsg に理由を1つ。画像 → 価格 → 説明の順）
+        ・商品説明は、下書き・非公開なら空でもよい
         ・201 と Location（詳細のURL）。初期値は taxRate=8・真偽値 false・publishStatus=draft・画像なし・stock なし
     - 商品詳細: GET /api/v1/dashboard/products/:productId
     - 商品更新: PATCH /api/v1/dashboard/products/:productId
@@ -106,17 +108,22 @@ class ProducerProductView(APIView):
 
 
 def ensure_publishable(product, image_count):
-    """公開（public）にする・公開のまま保存する条件。満たさなければ 400（details.publishStatus）"""
+    """公開（public）にする・公開のまま保存する条件。満たさなければ 409 PRODUCT_NOT_PUBLISHABLE
+
+    理由は errorMsg に1つだけ入れる（画像 → 価格 → 説明の順で最初のもの）。フロントはそのまま表示する。
+    """
     if product.publish_status != PublishStatus.PUBLIC:
         return
-    reasons = []
-    if image_count == 0:
-        reasons.append("公開するには画像を1枚以上登録してください。")
     sale_price = product.price * (100 - (product.discount_rate or 0)) // 100
-    if sale_price < 1:
-        reasons.append("公開するには割引後の価格を1円以上にしてください。")
-    if reasons:
-        raise serializers.ValidationError({"publish_status": reasons})
+    if image_count == 0:
+        reason = "公開するには画像を1枚以上登録してください。"
+    elif sale_price < 1:
+        reason = "公開するには割引後の価格を1円以上にしてください。"
+    elif not (product.description or "").strip():
+        reason = "公開するには商品説明を入力してください。"
+    else:
+        return
+    raise Conflict("PRODUCT_NOT_PUBLISHABLE", reason)
 
 
 # =========================================================

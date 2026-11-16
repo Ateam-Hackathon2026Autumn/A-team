@@ -54,7 +54,7 @@ class ApplicationTestCase(ApiTestCase):
 
 class CreateTests(ApplicationTestCase):
     def test_apply(self):
-        key = self.post_multipart("/api/v1/uploads/images", {"image": image_file()}).json()["key"]
+        key = self.post_multipart("/api/v1/uploads/images", {"file": image_file()}).json()["key"]
         res = self.apply(careerStartYear=2024, profileImage=key, applicationReason="  直接届けたいです  ")
         self.assertEqual(res.status_code, 201)
         body_ = res.json()
