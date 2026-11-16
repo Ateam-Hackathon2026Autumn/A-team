@@ -7,6 +7,9 @@
     - 商品一覧: GET /api/v1/products
         ・公開条件は services/visibility.py（ユーザーが有効・未退会も含む）
         ・categoryId・producerId で絞り込み（両方なら AND）。存在しない・非公開の ID は 200 の空配列
+        ・q（キーワード）: 商品名・生産者名の部分一致。空白で区切った語は、すべて含む商品だけ
+        ・price（価格帯）: 割引後の価格で under2000・2000to4000・over4000
+        ・subscription・preorder: true／false（定期便・予約商品だけ／それ以外だけ）。絞り込みはすべて AND
         ・sort: popular（初期値・popularity_score）/ newest（created_at）/ price_asc・price_desc（sale_price）
           / rating（review_count が3件以上を先、その中で rating_avg の降順、null は末尾）。どれも最後に id DESC
         ・ページングは common/pagination.py（件数と一覧は同じ時点で読む）
@@ -24,7 +27,7 @@
 未知のクエリパラメーターは 400（どのAPIも）。
 """
 from django.db import transaction
-from django.db.models import BooleanField, Case, Exists, F, OuterRef, Subquery, Value, When
+from django.db.models import BooleanField, Case, Exists, F, OuterRef, Q, Subquery, Value, When
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -52,6 +55,13 @@ SORT_ORDERS = {
     "price_desc": ["-sale_price", "-id"],
     # レビュー1件で★5の商品が先頭に来ないよう、3件以上の商品を先に並べる
     "rating": ["-has_enough_reviews", F("rating_avg").desc(nulls_last=True), "-id"],
+}
+
+# 価格帯 → 割引後の価格（sale_price）の条件
+PRICE_RANGES = {
+    "under2000": {"sale_price__lt": 2000},
+    "2000to4000": {"sale_price__gte": 2000, "sale_price__lt": 4000},
+    "over4000": {"sale_price__gte": 4000},
 }
 
 
@@ -85,6 +95,14 @@ class ProductListView(APIView):
             queryset = queryset.filter(category_id=query["category_id"])
         if "producer_id" in query:
             queryset = queryset.filter(producer_id=query["producer_id"])
+        for word in query.get("q", "").split():  # 全角の空白でも区切る（str.split）
+            queryset = queryset.filter(Q(name__icontains=word) | Q(producer__business_name__icontains=word))
+        if "price" in query:
+            queryset = queryset.filter(**PRICE_RANGES[query["price"]])
+        if "subscription" in query:
+            queryset = queryset.filter(is_subscription=query["subscription"])
+        if "preorder" in query:
+            queryset = queryset.filter(is_preorder=query["preorder"])
 
         listed = annotate_product_list(queryset, request.user)
         if query["sort"] == "rating":

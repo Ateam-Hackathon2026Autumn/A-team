@@ -13,6 +13,7 @@ from marche.models import Category, Producer, Product, ProductImage, PublishStat
 
 from ...common.images import ImageUrlField
 from ...common.pagination import PageQuerySerializer
+from ...common.serializers import QueryBooleanField
 
 # BIGINT の上限。これより大きい ID は DB に渡さない（SQLite ではエラーになるため）
 MAX_ID = 2 ** 63 - 1
@@ -20,19 +21,29 @@ MAX_ID = 2 ** 63 - 1
 # 並び順。どれも最後に id DESC（並びが毎回変わらないように）
 SORT_CHOICES = ["popular", "newest", "price_asc", "price_desc", "rating"]
 
+# 価格帯（割引後の価格 sale_price で判定）
+PRICE_CHOICES = ["under2000", "2000to4000", "over4000"]
+
 
 # =========================================================
 # リクエスト（クエリパラメーター）
 # =========================================================
 
 class ProductListQuerySerializer(PageQuerySerializer):
-    """GET /products の ?categoryId=&producerId=&sort=&page=&pageSize=
+    """GET /products の ?q=&categoryId=&producerId=&price=&subscription=&preorder=&sort=&page=&pageSize=
 
     未知のキー・同じキーの重複・空文字・不正な値は 400（QuerySerializer）
+    - q: キーワード（100文字まで）。商品名・生産者名の部分一致
+    - price: under2000（2,000円未満）/ 2000to4000（2,000円以上4,000円未満）/ over4000（4,000円以上）
+    - subscription・preorder: true は定期便・予約商品だけ、false はそれ以外だけ。省略したら絞り込まない
     """
 
     category_id = serializers.IntegerField(required=False, min_value=1, max_value=MAX_ID)
     producer_id = serializers.IntegerField(required=False, min_value=1, max_value=MAX_ID)
+    q = serializers.CharField(required=False, max_length=100)
+    price = serializers.ChoiceField(choices=PRICE_CHOICES, required=False)
+    subscription = QueryBooleanField(required=False)
+    preorder = QueryBooleanField(required=False)
     sort = serializers.ChoiceField(choices=SORT_CHOICES, required=False, default="popular")
 
 

@@ -36,7 +36,7 @@ class DashboardProductTestCase(ApiTestCase):
         self.signin(self.producer.user.email)
 
     def upload(self):
-        return self.post_multipart("/api/v1/uploads/images", {"image": image_file()}).json()["key"]
+        return self.post_multipart("/api/v1/uploads/images", {"file": image_file()}).json()["key"]
 
     def body(self, **overrides):
         data = {"name": "にんじん", "volume": "1kg", "categoryId": self.category.id,
@@ -76,12 +76,38 @@ class CreateTests(DashboardProductTestCase):
 
     def test_public_needs_image_and_positive_sale_price(self):
         res = self.post_json(LIST_URL, self.body(publishStatus="public"))
-        self.assertEqual(res.status_code, 400)
-        self.assertEqual(res.json()["details"]["publishStatus"], ["公開するには画像を1枚以上登録してください。"])
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json(), {"errorCode": "PRODUCT_NOT_PUBLISHABLE",
+                                      "errorMsg": "公開するには画像を1枚以上登録してください。"})
         res = self.post_json(LIST_URL, self.body(publishStatus="public", price=1, discountRate=50,
                                                  imageKeys=[self.upload()]))
-        self.assertEqual(res.json()["details"]["publishStatus"], ["公開するには割引後の価格を1円以上にしてください。"])
-        self.assertEqual(Product.objects.count(), 0)
+        self.assertEqual((res.status_code, res.json()["errorMsg"]),
+                         (409, "公開するには割引後の価格を1円以上にしてください。"))
+        self.assertFalse(Product.objects.exists())
+
+    def test_description_is_optional_unless_public(self):
+        no_description = {k: v for k, v in self.body().items() if k != "description"}
+        for data in [no_description, {**no_description, "description": None},
+                     {**no_description, "description": "  "}, {**no_description, "publishStatus": "private"}]:
+            with self.subTest(data=data):
+                res = self.post_json(LIST_URL, data)
+                self.assertEqual(res.status_code, 201, res.content)
+                self.assertEqual(res.json()["description"], "")
+        # 公開には商品説明が必要（登録でも、あとから公開にするときも）
+        key = self.upload()
+        res = self.post_json(LIST_URL, {**no_description, "publishStatus": "public", "imageKeys": [key]})
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json(), {"errorCode": "PRODUCT_NOT_PUBLISHABLE",
+                                      "errorMsg": "公開するには商品説明を入力してください。"})
+        draft = self.post_json(LIST_URL, {**no_description, "imageKeys": [key]}).json()
+        res = self.patch_json(detail_url(draft["id"]), {"publishStatus": "public"})
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "PRODUCT_NOT_PUBLISHABLE"))
+        res = self.patch_json(detail_url(draft["id"]), {"publishStatus": "public", "description": "甘いです"})
+        self.assertEqual(res.status_code, 200)
+        # 公開中の商品の説明を空にすることはできない
+        res = self.patch_json(detail_url(draft["id"]), {"description": ""})
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(Product.objects.get(pk=draft["id"]).description, "甘いです")
 
     def test_invalid_references_are_400(self):
         other = make_producer()
@@ -105,8 +131,7 @@ class CreateTests(DashboardProductTestCase):
             {**self.body(), "name": "   "}, {**self.body(), "price": 0}, {**self.body(), "taxRate": 5},
             {**self.body(), "discountRate": 100}, {**self.body(), "publishStatus": "suspended"},
             {**self.body(), "imageKeys": [key, key]}, {**self.body(), "imageKeys": [key] * 11},
-            {**self.body(), "salePrice": 1}, {**self.body(), "description": ""},
-            {k: v for k, v in self.body().items() if k != "description"},
+            {**self.body(), "salePrice": 1}, {**self.body(), "description": ["甘い"]},
         ]
         for data in bad:
             with self.subTest(data=data):
@@ -187,13 +212,15 @@ class UpdateTests(DashboardProductTestCase):
         self.assertEqual([image["key"] for image in res.json()["images"]], [key])
         # 公開中に画像を全部外すことはできない
         res = self.patch_json(detail_url(self.product.id), {"imageKeys": []})
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("publishStatus", res.json()["details"])
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json()["errorCode"], "PRODUCT_NOT_PUBLISHABLE")
         self.assertEqual(self.product.product_images.count(), 1)
 
-    def test_publish_without_image_is_400(self):
+    def test_publish_without_image_is_409(self):
         res = self.patch_json(detail_url(self.product.id), {"publishStatus": "public"})
-        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json(), {"errorCode": "PRODUCT_NOT_PUBLISHABLE",
+                                      "errorMsg": "公開するには画像を1枚以上登録してください。"})
 
     def test_invalid_patch_is_400(self):
         for data in [{}, {"stock": 5}, {"foo": 1}, {"name": ""}, {"publishStatus": "suspended"}]:

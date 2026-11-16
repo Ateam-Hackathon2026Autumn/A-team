@@ -32,16 +32,16 @@ def public_image_prefix(user):
 def save_public_image(user, uploaded_file):
     """画像を検証し、メタデータを消して公開用の場所に保存する。保存したキーを返す。不正なら ValidationError"""
     if uploaded_file.size > MAX_IMAGE_BYTES:
-        raise serializers.ValidationError({"image": ["画像は5MB以下にしてください。"]})
+        raise serializers.ValidationError({"file": ["画像は5MB以下にしてください。"]})
     try:
         image = Image.open(uploaded_file)
         if image.format not in FORMATS or image.width * image.height > MAX_IMAGE_PIXELS:
-            raise serializers.ValidationError({"image": ["jpg または png の画像を選んでください。"]})
+            raise serializers.ValidationError({"file": ["jpg または png の画像を選んでください。"]})
         image_format = image.format
         image = ImageOps.exif_transpose(image)  # スマホ写真の向きを反映してから、メタデータを捨てる
         image.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
-        raise serializers.ValidationError({"image": ["jpg または png の画像を選んでください。"]})
+        raise serializers.ValidationError({"file": ["jpg または png の画像を選んでください。"]})
 
     buffer = io.BytesIO()
     if image_format == "JPEG":

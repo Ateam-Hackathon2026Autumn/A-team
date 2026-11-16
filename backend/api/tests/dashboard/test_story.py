@@ -40,9 +40,12 @@ class StoryTests(ApiTestCase):
         self.assertEqual(public.status_code, 404)  # 下書きは公開側に出ない
 
     def test_validation(self):
-        for data, key in [(body(publishStatus="public"), "publishStatus"),
-                          (body(publishStatus="public", craft="  "), "publishStatus"),
-                          (body(publishStatus="suspended"), "publishStatus"),
+        for data in [body(publishStatus="public"), body(publishStatus="public", craft="  ")]:
+            res = self.put_json(URL, data)
+            self.assertEqual(res.status_code, 409, data)
+            self.assertEqual(res.json(), {"errorCode": "STORY_NOT_PUBLISHABLE",
+                                          "errorMsg": "公開するには本文を1項目以上入力してください。"})
+        for data, key in [(body(publishStatus="suspended"), "publishStatus"),
                           (body(method="あ" * 2001), "method"),
                           ({k: v for k, v in body().items() if k != "goal"}, "goal"),
                           (body(title="題名"), "title")]:
