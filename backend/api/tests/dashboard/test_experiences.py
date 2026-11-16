@@ -245,7 +245,7 @@ class ExperienceImageTests(ProducerTestCase):
     """imageKeys（画像アップロードAPIで受け取ったキー）と bookingDeadlineHours"""
 
     def upload(self):
-        return self.post_multipart("/api/v1/uploads/images", {"image": image_file()}).json()["key"]
+        return self.post_multipart("/api/v1/uploads/images", {"file": image_file()}).json()["key"]
 
     def test_create_with_images_and_publish(self):
         keys = [self.upload(), self.upload()]

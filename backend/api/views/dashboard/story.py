@@ -9,7 +9,7 @@
       ・行は承認時に作ってある。なければ 404 にせず空の内容（すべて null・draft・updatedAt null）
   - ストーリー保存: PUT /api/v1/dashboard/story
       ・7項目すべて送って置き換える（本文は null か2,000文字まで。空なら null）。行がなければ作る。作ったときも 200
-      ・公開（public）には本文が1項目以上（足りなければ 400 details.publishStatus）
+      ・公開（public）には本文が1項目以上（足りなければ 409 STORY_NOT_PUBLISHABLE。errorMsg に理由）
       ・生産者が掲載停止中 → 409 PRODUCER_SUSPENDED／運営がストーリーを停止中 → 409 STORY_SUSPENDED
       ・農園が非公開でも public にしておける（お客さんに見えるのは農園も公開中のとき。services/visibility.py）
 """

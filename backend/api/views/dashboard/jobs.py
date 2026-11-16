@@ -1,14 +1,14 @@
 """生産者ダッシュボードの求人管理・採用View"""
 
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Count, IntegerField, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import (
-    APIException,
     ValidationError,
     NotFound,
 )
@@ -38,20 +38,9 @@ from api.common.permissions import (
     ensure_producer_not_suspended,
 )
 
-from api.common.exceptions import Conflict as ContentConflict
+from api.common.exceptions import Conflict
+from api.services.jobs import HIRED_STATUSES, date_hired_count
 from api.services.notifications import MY_JOB_APPLICATIONS_PATH, notify
-
-
-# ============================================================
-# 共通エラー
-# ============================================================
-
-class Conflict(APIException):
-    """状態競合エラー"""
-
-    status_code = status.HTTP_409_CONFLICT
-    default_code = "CONFLICT"
-    default_detail = "現在の状態ではこの操作を実行できません。"
 
 
 # ============================================================
@@ -257,10 +246,10 @@ def update_job_work_dates(job, work_dates):
                 work_date.work_date != item["work_date"]
                 and work_date.application_work_dates.exists()
             ):
-                raise Conflict({
-                    "code": "WORK_DATE_HAS_APPLICATIONS",
-                    "message": "応募者がいる勤務日は変更できません。",
-                })
+                raise Conflict(
+                    "WORK_DATE_HAS_APPLICATIONS",
+                    "応募者がいる勤務日は変更できません。",
+                )
 
             work_date.work_date = item["work_date"]
             work_date.needed_count = item["needed_count"]
@@ -291,10 +280,10 @@ def update_job_work_dates(job, work_dates):
         work_date = existing_dates[work_date_id]
 
         if work_date.application_work_dates.exists():
-            raise Conflict({
-                "code": "WORK_DATE_HAS_APPLICATIONS",
-                "message": "応募者が希望している勤務日は削除できません。",
-            })
+            raise Conflict(
+                "WORK_DATE_HAS_APPLICATIONS",
+                "応募者が希望している勤務日は削除できません。",
+            )
 
         work_date.delete()
 
@@ -324,6 +313,40 @@ def get_application_with_related(application_id, job):
         raise NotFound("応募者が見つかりません。")
 
     return application
+
+
+def with_counts(queryset):
+    """求人に応募数・採用数を付ける（一覧でも1本の SQL で取れるようにサブクエリにする）
+
+    - application_count: 応募の数（取り下げは除く）
+    - hired_count: 採用済みの数（採用・勤務完了。公開側の求人と同じ数え方 → services/jobs.py）
+    """
+
+    def count_of(applications):
+        counted = applications.order_by().values("job").annotate(c=Count("id")).values("c")[:1]
+        return Coalesce(Subquery(counted, output_field=IntegerField()), Value(0))
+
+    applications = JobApplication.objects.filter(job=OuterRef("pk"))
+    return queryset.annotate(
+        application_count=count_of(applications.exclude(status=JobApplication.Status.WITHDRAWN)),
+        hired_count=count_of(applications.filter(status__in=HIRED_STATUSES)),
+    )
+
+
+def get_job_for_response(job_id):
+    """レスポンス用に求人を読み直す（応募数・採用数と、勤務日ごとの採用数を付ける）"""
+
+    work_dates = (
+        JobWorkDate.objects
+        .annotate(hired_count=date_hired_count(OuterRef("pk")))
+        .order_by("work_date", "id")
+    )
+
+    return (
+        with_counts(Job.objects.all())
+        .prefetch_related(Prefetch("job_work_dates", queryset=work_dates))
+        .get(id=job_id)
+    )
 
 
 def get_hired_count(job):
@@ -380,7 +403,7 @@ class JobListCreateView(APIView):
                 | Q(description__icontains=keyword)
             )
 
-        queryset = queryset.order_by(
+        queryset = with_counts(queryset).order_by(
             "-created_at",
             "-id",
         )
@@ -457,11 +480,7 @@ class JobListCreateView(APIView):
                     needed_count=item["needed_count"],
                 )
 
-        job = (
-            Job.objects
-            .prefetch_related("job_work_dates")
-            .get(id=job.id)
-        )
+        job = get_job_for_response(job.id)
 
         response_serializer = JobDetailSerializer(
             job
@@ -495,14 +514,7 @@ class JobDetailView(APIView):
             job_id,
         )
 
-        job = (
-            Job.objects
-            .prefetch_related("job_work_dates")
-            .get(
-                id=job.id,
-                producer=producer,
-            )
-        )
+        job = get_job_for_response(job.id)
 
         serializer = JobDetailSerializer(
             job
@@ -529,7 +541,7 @@ class JobDetailView(APIView):
             requested = request.data.get("publish_status") if isinstance(request.data, dict) else None
             if (job.publish_status == "suspended" and requested is not None
                     and requested != job.publish_status):
-                raise ContentConflict("CONTENT_SUSPENDED",
+                raise Conflict("CONTENT_SUSPENDED",
                                       "運営により掲載停止中のため、公開状態は変更できません。")
 
             serializer = JobUpdateSerializer(
@@ -610,11 +622,7 @@ class JobDetailView(APIView):
                     existing_dates,
                 )
 
-            job = (
-                Job.objects
-                .prefetch_related("job_work_dates")
-                .get(id=job.id)
-            )
+            job = get_job_for_response(job.id)
 
         response_serializer = JobDetailSerializer(
             job
@@ -644,10 +652,10 @@ class JobDetailView(APIView):
                 job=job
             ).exists():
 
-                raise Conflict({
-                    "code": "JOB_HAS_APPLICATIONS",
-                    "message": "応募履歴がある求人は削除できません。非公開にしてください。",
-                })
+                raise Conflict(
+                    "JOB_HAS_APPLICATIONS",
+                    "応募履歴がある求人は削除できません。非公開にしてください。",
+                )
 
             job.delete()
 
@@ -819,10 +827,10 @@ class JobApplicationDetailView(APIView):
                 current_status,
                 [],
             ):
-                raise Conflict({
-                    "code": "INVALID_APPLICATION_STATUS_TRANSITION",
-                    "message": "現在の応募状態から指定された状態には変更できません。",
-                })
+                raise Conflict(
+                    "INVALID_APPLICATION_STATUS_TRANSITION",
+                    "現在の応募状態から指定された状態には変更できません。",
+                )
 
             application.status = new_status
 

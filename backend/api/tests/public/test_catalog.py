@@ -137,6 +137,55 @@ class ProductListTests(ApiTestCase):
         self.assertEqual(ids(self.client.get(LIST_URL, {"categoryId": fruit.id, "producerId": self.producer.id})),
                             [fruit_mine.id])
 
+    def test_filter_by_keyword(self):
+        farm = make_producer(business_name="山本農園")
+        apple = make_product(farm, name="安曇野ふじ 家庭用 5kg")
+        juice = make_product(farm, name="りんごジュース")
+        fish = make_product(name="あじの開き干し")
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"q": "りんご"})), [juice.id])
+        # 生産者名でも探せる。英字は大文字・小文字を区別しない
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"q": "山本"})), [apple.id, juice.id])
+        make_product(name="Apple Chips")
+        self.assertEqual(len(ids(self.client.get(LIST_URL, {"q": "apple"}))), 1)
+        # 空白（全角も）で区切った語は、すべて含む商品だけ
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"q": "山本　ジュース"})), [juice.id])
+        self.assertEqual(ids(self.client.get(LIST_URL, {"q": "山本 干し"})), [])
+        self.assertNotIn(fish.id, ids(self.client.get(LIST_URL, {"q": " 山本 "})))
+        # LIKE の記号はそのままの文字として探す
+        self.assertEqual(ids(self.client.get(LIST_URL, {"q": "%"})), [])
+
+    def test_filter_by_price_uses_sale_price(self):
+        cheap = make_product(price=1999)
+        discounted = make_product(price=2200, discount_rate=10)  # 割引後 1,980円
+        middle_low = make_product(price=2000)
+        middle_high = make_product(price=3999)
+        high = make_product(price=4000)
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"price": "under2000"})), [cheap.id, discounted.id])
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"price": "2000to4000"})),
+                              [middle_low.id, middle_high.id])
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"price": "over4000"})), [high.id])
+
+    def test_filter_by_subscription_and_preorder(self):
+        normal = make_product()
+        subscription = make_product(is_subscription=True)
+        preorder = make_product(is_preorder=True)
+        self.assertEqual(ids(self.client.get(LIST_URL, {"subscription": "true"})), [subscription.id])
+        self.assertCountEqual(ids(self.client.get(LIST_URL, {"subscription": "false"})), [normal.id, preorder.id])
+        self.assertEqual(ids(self.client.get(LIST_URL, {"preorder": "true"})), [preorder.id])
+        self.assertEqual(ids(self.client.get(LIST_URL, {"subscription": "false", "preorder": "false"})),
+                         [normal.id])
+        # 絞り込みはすべて AND。件数（total）も絞り込んだあとの数
+        body = self.client.get(LIST_URL, {"q": "テスト", "price": "under2000", "preorder": "true"}).json()
+        self.assertEqual(body["total"], len(body["items"]))
+
+    def test_invalid_filter_values_are_400(self):
+        make_product()
+        for params in [{"subscription": "1"}, {"preorder": "yes"}, {"price": "all"}, {"price": "1000"},
+                       {"q": ""}, {"q": "あ" * 101}]:
+            res = self.client.get(LIST_URL, params)
+            self.assertEqual(res.status_code, 400, params)
+            self.assertEqual(res.json()["errorCode"], "VALIDATION_ERROR")
+
     def test_unknown_ids_return_empty(self):
         make_product(self.producer)
         hidden = make_producer(publish=PublishStatus.PRIVATE)
