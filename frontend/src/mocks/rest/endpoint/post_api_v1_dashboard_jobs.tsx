@@ -3,14 +3,15 @@ import { createJob } from '../store/dashboardJobs';
 
 // 【生産者】求人登録API POST /api/v1/dashboard/jobs
 //
-// 求人と勤務日（workDates）をまとめて登録し、ID と公開状態を返す。ETag はレスポンスヘッダー
-// 全項目が必須（任意の情報は null、勤務日なしは空配列）。同じ Idempotency-Key の再送は最初の結果を返す
-// データは store/dashboardJobs.tsx
+// 求人と勤務日（workDates）をまとめて登録し、登録後の詳細（求人詳細取得APIと同じ形）を返す
+// 必須: title・termType・payUnit・payAmount・workHours・workPlace・slots・description・inexperiencedOk
+// 任意: prefectureId（省略時は生産者の都道府県）・periodStart・periodEnd・requirements・belongings・notes・
+//   coverImage（アップロード済み画像のキー）・publishStatus（省略時は draft）・workDates
+// 長期（long）は勤務日なし。単発・短期を公開するには今日以降の勤務日が1日以上必要
+// 定義にない項目（例: coverImageKey）は 400。データは store/dashboardJobs.tsx
 //
 // 入力不正（status: 400）:
-//   { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。', details: { title: ['入力してください。'] } }
-// 公開に必要な項目が足りない（status: 409）:
-//   { errorCode: 'CONFLICT', errorMsg: '公開するには、今日以降の勤務日が1日以上必要です。' }
+//   { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。', details: { title: ['この項目は必須です。'] } }
 const dashboardJobCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/dashboard/jobs',

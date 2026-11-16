@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router';
 import { useAtomValue } from 'jotai';
 
-import { createJob, newIdempotencyKey } from '../../api/dashboardJobApi';
+import { createJob } from '../../api/dashboardJobApi';
 import DashboardJobForm from '../../components/DashboardJobForm';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { JobInput } from '../../types/dashboardJob';
@@ -15,8 +15,8 @@ function DashboardJobNewPage() {
   const canManage = userInfo?.isProducer === true;
 
   const handleSubmit = async (input: JobInput) => {
-    // 失敗時は ApiError のまま投げ、フォーム側でエラーを表示する
-    await createJob(input, newIdempotencyKey());
+    // 失敗時は ApiError のまま投げ、フォーム側でエラーを表示する（送信中はボタンを押せないので二重登録にならない）
+    await createJob(input);
     const action = input.publishStatus === 'public' ? '公開しました' : '下書きとして保存しました';
 
     navigate(JOB_LIST_PATH, { state: { flash: `「${input.title}」を${action}。` } });

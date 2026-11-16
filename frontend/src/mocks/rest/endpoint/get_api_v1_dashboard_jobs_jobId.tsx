@@ -3,8 +3,8 @@ import { getJob } from '../store/dashboardJobs';
 
 // 【生産者】求人詳細取得API GET /api/v1/dashboard/jobs/{jobId}
 //
-// 求人の編集用データを返す。ETag はレスポンスヘッダー（更新・削除時の If-Match に使う）
-// workDates は過去日も含む全勤務日（日付の早い順）。hiredCount は採用済み人数、remainingCount は残り枠
+// 求人の編集用データを返す（一覧の項目に prefectureId・description・requirements・belongings・notes・workDates を足したもの）
+// workDates は過去日も含む全勤務日 { id, workDate, neededCount }（日付の早い順）。採用人数は含まない
 // データは store/dashboardJobs.tsx
 //
 // 他者の求人・存在しない場合（status: 404）:

@@ -16,6 +16,7 @@ import type {
   DashboardJobApplication,
   JobApplicationStatus,
   JobDecisionStatus,
+  JobTermType,
 } from '../../types/dashboardJob';
 import { formatDateTime } from '../../utils/experienceFormat';
 import {
@@ -36,17 +37,25 @@ const statusOptions: JobApplicationStatus[] = [
   'completed',
 ];
 
-// 状態ごとに選べる操作（applied → 選考中・採用・不採用、screening → 採用・不採用）
-const actionsByStatus: Partial<Record<JobApplicationStatus, JobDecisionStatus[]>> = {
-  applied: ['screening', 'hired', 'rejected'],
-  screening: ['hired', 'rejected'],
-};
-
 const actionLabels: Record<JobDecisionStatus, string> = {
   screening: '選考中にする',
   hired: '採用する',
   rejected: '不採用にする',
+  completed: '勤務完了にする',
 };
+
+// 状態ごとに選べる操作（applied → 選考中・採用・不採用、screening → 採用・不採用、長期の hired → 勤務完了）
+function actionsFor(status: JobApplicationStatus, termType: JobTermType | null): JobDecisionStatus[] {
+  if (status === 'applied') {
+    return ['screening', 'hired', 'rejected'];
+  }
+
+  if (status === 'screening') {
+    return ['hired', 'rejected'];
+  }
+
+  return status === 'hired' && termType === 'long' ? ['completed'] : [];
+}
 
 function Notice({ children }: { children: ReactNode }) {
   return (
@@ -57,32 +66,39 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 function applicantName(application: DashboardJobApplication): string {
-  const { applicant } = application;
-
-  if (!applicant.isActive) {
-    return '退会済みの会員';
-  }
-
-  const name = `${applicant.lastName ?? ''} ${applicant.firstName ?? ''}`.trim();
+  const name = `${application.lastName} ${application.firstName}`.trim();
 
   return name === '' ? '（氏名未登録）' : name;
 }
 
+// 採用人数と募集人数（見出し用）
+type Capacity = { hiredCount: number; slots: number };
+
 // 確認ダイアログの文言（採用・不採用は取り消せない）
-function confirmMessage(application: DashboardJobApplication, status: JobDecisionStatus): string {
+function confirmMessage(
+  application: DashboardJobApplication,
+  status: JobDecisionStatus,
+  capacity: Capacity | null,
+): string {
   const name = applicantName(application);
-  const dates = application.workDates.map((day) => formatDate(day.workDate)).join('、');
 
   if (status === 'hired') {
+    // 募集人数を超えても採用はできるため、超える場合は確認で知らせる
+    const isFull = capacity !== null && capacity.hiredCount >= capacity.slots;
+
     return (
       `${name}さんを採用します。` +
-      (dates === '' ? '' : `\n希望日（${dates}）のすべてが採用になります。`) +
-      '\n採用後は取り消せません。よろしいですか？'
+      (isFull ? `\n募集人数（${capacity.slots}人）を超えての採用になります。` : '') +
+      '\n採用・不採用は応募者に通知され、後から取り消せません。よろしいですか？'
     );
   }
 
   if (status === 'rejected') {
-    return `${name}さんを不採用にします。\n不採用にした後は取り消せません。よろしいですか？`;
+    return `${name}さんを不採用にします。\n応募者に通知され、後から取り消せません。よろしいですか？`;
+  }
+
+  if (status === 'completed') {
+    return `${name}さんの勤務を完了にします。後から戻せません。よろしいですか？`;
   }
 
   return `${name}さんを選考中にします。よろしいですか？`;
@@ -90,20 +106,19 @@ function confirmMessage(application: DashboardJobApplication, status: JobDecisio
 
 function ApplicationRow({
   application,
+  termType,
   isPending,
   disabledActions,
-  canHire,
   onDecide,
 }: {
   application: DashboardJobApplication;
+  // 求人を読み込めていないときは null（勤務完了の操作は出さない）
+  termType: JobTermType | null;
   isPending: boolean;
   disabledActions: boolean;
-  // 公開中の求人だけ採用できる
-  canHire: boolean;
   onDecide: (application: DashboardJobApplication, status: JobDecisionStatus) => void;
 }) {
-  const { applicant } = application;
-  const actions = actionsByStatus[application.status] ?? [];
+  const actions = actionsFor(application.status, termType);
   const isClosed = ['rejected', 'withdrawn'].includes(application.status);
 
   return (
@@ -123,25 +138,20 @@ function ApplicationRow({
       </div>
 
       <div className="min-w-0">
-        <p className="m-0 font-bold">{applicantName(application)}</p>
-        {applicant.isActive && (
-          <p className="m-0 mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {applicant.email !== null && (
-              <a
-                href={`mailto:${applicant.email}`}
-                className="break-all text-marche-green no-underline hover:underline"
-              >
-                {applicant.email}
-              </a>
-            )}
-            {applicant.phone !== null && (
-              <a
-                href={`tel:${applicant.phone}`}
-                className="text-marche-green no-underline hover:underline"
-              >
-                {applicant.phone}
-              </a>
-            )}
+        <p className="m-0 font-bold">
+          {applicantName(application)}
+          {application.age !== null && (
+            <span className="ml-2 text-sm font-normal text-marche-muted">{application.age}歳</span>
+          )}
+        </p>
+        {application.phone !== null && application.phone !== '' && (
+          <p className="m-0 mt-1 text-sm">
+            <a
+              href={`tel:${application.phone}`}
+              className="text-marche-green no-underline hover:underline"
+            >
+              {application.phone}
+            </a>
           </p>
         )}
       </div>
@@ -173,12 +183,8 @@ function ApplicationRow({
             <DashboardButton
               key={status}
               size="sm"
-              variant={status === 'hired' ? 'primary' : status === 'rejected' ? 'danger' : 'secondary'}
-              disabled={
-                isPending ||
-                disabledActions ||
-                (status === 'hired' && (!applicant.isActive || !canHire))
-              }
+              variant={status === 'rejected' ? 'danger' : status === 'screening' ? 'secondary' : 'primary'}
+              disabled={isPending || disabledActions}
               onClick={() => onDecide(application, status)}
             >
               {isPending ? '更新中…' : actionLabels[status]}
@@ -200,6 +206,7 @@ function DashboardJobApplicantsPage() {
   const canManage = userInfo?.isProducer === true;
 
   const [job, setJob] = useState<DashboardJob | null>(null);
+  const [capacity, setCapacity] = useState<Capacity | null>(null);
   const [applications, setApplications] = useState<DashboardJobApplication[] | null>(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -212,6 +219,7 @@ function DashboardJobApplicantsPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   // 求人名と採用人数（見出し用）。取れなくても応募者一覧は表示する
+  // 求人の詳細に採用人数はないため、採用（hired）の応募の件数を数える
   useEffect(() => {
     if (!canManage || !isValidId) {
       return;
@@ -219,10 +227,14 @@ function DashboardJobApplicantsPage() {
 
     let isActive = true;
 
-    getDashboardJob(jobId)
-      .then(({ data }) => {
+    Promise.all([
+      getDashboardJob(jobId),
+      getJobApplications(jobId, { page: 1, pageSize: 1, status: 'hired' }),
+    ])
+      .then(([data, hired]) => {
         if (isActive) {
           setJob(data);
+          setCapacity({ hiredCount: hired.total, slots: data.slots });
         }
       })
       .catch(() => {});
@@ -287,7 +299,7 @@ function DashboardJobApplicantsPage() {
   };
 
   const handleDecide = async (application: DashboardJobApplication, status: JobDecisionStatus) => {
-    if (!window.confirm(confirmMessage(application, status))) {
+    if (!window.confirm(confirmMessage(application, status, capacity))) {
       return;
     }
 
@@ -296,29 +308,34 @@ function DashboardJobApplicantsPage() {
     setPendingId(application.id);
 
     try {
-      const updated = await updateJobApplication(application, status);
+      // レスポンスは更新結果だけなので、表示中の応募データに状態と決定日時を反映する
+      const result = await updateJobApplication(jobId, application.id, status);
 
       setApplications(
-        (current) => current?.map((item) => (item.id === updated.id ? updated : item)) ?? null,
+        (current) =>
+          current?.map((item) =>
+            item.id === result.id ? { ...item, status: result.status, decidedAt: result.decidedAt } : item,
+          ) ?? null,
       );
-      setNotice(`${applicantName(updated)}さんを「${applicationStatusLabels[updated.status]}」にしました。`);
-      // 採用人数・残り枠を見出しに反映する
-      getDashboardJob(jobId)
-        .then(({ data }) => setJob(data))
-        .catch(() => {});
+      setCapacity({ hiredCount: result.hiredCount, slots: result.slots });
+      setNotice(
+        `${applicantName(application)}さんを「${applicationStatusLabels[result.status]}」にしました。` +
+          (result.isOverCapacity
+            ? `採用人数（${result.hiredCount}人）が募集人数（${result.slots}人）を超えています。`
+            : ''),
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         window.location.replace('/signin');
         return;
       }
 
-      if (error instanceof ApiError && (error.status === 404 || error.status === 412)) {
-        setActionError('他の画面で応募が更新されていたため、最新の内容を読み込み直しました。もう一度操作してください。');
-        reload();
-      } else if (error instanceof ApiError && error.errorCode === 'CAPACITY_CONFLICT') {
+      // 404（応募が見つからない）・409（今の状態からは変えられない）は、他の画面で先に変わっている
+      if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
         setActionError(
-          '募集人数または希望日の必要人数に達しているため採用できません。求人の募集人数を増やすか、ほかの応募者の選考を見直してください。',
+          'この応募は他の画面で状態が変わっていたため、最新の内容を読み込み直しました。もう一度確認してください。',
         );
+        reload();
       } else if (error instanceof ApiError) {
         setActionError(error.message);
       } else {
@@ -328,9 +345,6 @@ function DashboardJobApplicantsPage() {
       setPendingId(null);
     }
   };
-
-  // 採用できるのは公開中の求人だけ。掲載停止中の求人は操作できない
-  const isSuspended = job?.publishStatus === 'suspended';
 
   const renderBody = () => {
     if (!canManage) {
@@ -352,20 +366,18 @@ function DashboardJobApplicantsPage() {
     return (
       <>
         {job !== null && (
-          <dl className="m-0 box-border grid grid-cols-2 gap-3 rounded-2xl border border-solid border-marche-line bg-white p-5 text-sm sm:grid-cols-4">
+          <dl className="m-0 box-border grid grid-cols-2 gap-3 rounded-2xl border border-solid border-marche-line bg-white p-5 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-xs text-marche-muted">報酬</dt>
               <dd className="m-0 font-bold">{formatPay(job.payUnit, job.payAmount)}</dd>
             </div>
             <div>
-              <dt className="text-xs text-marche-muted">採用</dt>
-              <dd className="m-0 font-bold">
-                {job.hiredCount} / {job.slots}人
+              <dt className="text-xs text-marche-muted">採用 / 募集</dt>
+              <dd
+                className={`m-0 font-bold ${capacity !== null && capacity.hiredCount > capacity.slots ? 'text-marche-red' : ''}`}
+              >
+                {capacity === null ? '—' : `${capacity.hiredCount} / ${capacity.slots}人`}
               </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-marche-muted">応募</dt>
-              <dd className="m-0 font-bold">{job.applicationCount}件</dd>
             </div>
             <div>
               <dt className="text-xs text-marche-muted">勤務日</dt>
@@ -374,12 +386,6 @@ function DashboardJobApplicantsPage() {
               </dd>
             </div>
           </dl>
-        )}
-
-        {job !== null && job.publishStatus !== 'public' && !isSuspended && (
-          <p className="m-0 box-border rounded-2xl border border-solid border-marche-orange/40 bg-marche-orange/15 p-4 text-sm">
-            この求人は公開されていないため、採用できません。選考中・不採用にはできます。採用する場合は、求人を公開してください。
-          </p>
         )}
 
         <label className="flex min-w-0 max-w-xs flex-col gap-1 text-xs font-bold">
@@ -448,9 +454,9 @@ function DashboardJobApplicantsPage() {
               <ApplicationRow
                 key={application.id}
                 application={application}
+                termType={job?.termType ?? null}
                 isPending={pendingId === application.id}
-                disabledActions={pendingId !== null || isSuspended}
-                canHire={job === null || job.publishStatus === 'public'}
+                disabledActions={pendingId !== null}
                 onDecide={handleDecide}
               />
             ))}
@@ -500,7 +506,7 @@ function DashboardJobApplicantsPage() {
               <span className="ml-2 text-sm font-normal text-marche-muted">{total}件</span>
             )}
           </h1>
-          {canManage && isValidId && loadError === null && job !== null && !isSuspended && (
+          {canManage && isValidId && loadError === null && job !== null && (
             <DashboardButton to={`/dashboard/jobs/${jobId}/edit`} variant="secondary" size="sm">
               求人を編集
             </DashboardButton>

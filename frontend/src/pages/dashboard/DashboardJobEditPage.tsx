@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { useAtomValue } from 'jotai';
 
 import ApiError from '../../api/apiError';
-import { getDashboardJob, updateJob } from '../../api/dashboardJobApi';
+import { getAllJobApplications, getDashboardJob, updateJob } from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardJobForm from '../../components/DashboardJobForm';
 import { userInfoAtom } from '../../stores/userAtom';
@@ -11,13 +11,16 @@ import type { DashboardJob, JobInput } from '../../types/dashboardJob';
 
 const JOB_LIST_PATH = '/dashboard/jobs';
 
-// 他の画面で先に更新されていた（412）ときの案内
-const STALE_MESSAGE =
-  '他の画面で求人が更新されていたため、最新の内容を読み込み直しました。もう一度編集して保存してください。';
+// 保存中に応募が入り、希望者がいる勤務日を削除・変更しようとした（409）ときの案内
+const WORK_DATE_LOCKED_MESSAGE =
+  '応募者が希望している勤務日は、削除や日付の変更ができません。最新の内容を読み込み直しました。もう一度編集して保存してください。';
 
-// 編集中に応募が入り、募集条件を変えられなくなったときの案内
-const APPLIED_MESSAGE =
-  '編集中にこの求人へ応募が入ったため、募集人数と公開設定以外は変更できなくなりました。最新の内容を読み込み直しました。';
+// 読み込んだ求人と、応募者が希望している勤務日・応募件数
+type Loaded = {
+  job: DashboardJob;
+  lockedWorkDateIds: ReadonlySet<number>;
+  applicationCount: number;
+};
 
 function Notice({ children }: { children: ReactNode }) {
   return (
@@ -37,8 +40,7 @@ function DashboardJobEditPage() {
   // 審査中は管理画面に入れるが、求人のAPIは承認済みの生産者のみ使える
   const canManage = userInfo?.isProducer === true;
 
-  const [job, setJob] = useState<DashboardJob | null>(null);
-  const [etag, setEtag] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // 読み込み直すたびに増やす（フォームも作り直して最新の内容にする）
@@ -51,11 +53,17 @@ function DashboardJobEditPage() {
 
     let isActive = true;
 
-    getDashboardJob(jobId)
-      .then((result) => {
+    // 求人の詳細には応募の情報がないため、応募者一覧から希望者がいる勤務日を集める
+    Promise.all([getDashboardJob(jobId), getAllJobApplications(jobId)])
+      .then(([job, applications]) => {
         if (isActive) {
-          setJob(result.data);
-          setEtag(result.etag);
+          setLoaded({
+            job,
+            lockedWorkDateIds: new Set(
+              applications.flatMap((application) => application.workDates.map((day) => day.id)),
+            ),
+            applicationCount: applications.length,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -77,47 +85,36 @@ function DashboardJobEditPage() {
   const reload = (message: string | null = null) => {
     setNotice(message);
     setLoadError(null);
-    setJob(null);
+    setLoaded(null);
     setReloadCount((count) => count + 1);
     window.scrollTo({ top: 0 });
   };
 
   const handleSubmit = async (input: JobInput) => {
-    if (job === null) {
+    if (loaded === null) {
       return;
     }
 
     setNotice(null);
 
-    // 応募がある求人は、募集人数と公開状態だけを送る（それ以外を送ると同じ値でも 409）
+    // 掲載停止中の求人は公開状態を変えられないため、publishStatus を送らない
     const body: Partial<JobInput> =
-      job.applicationCount > 0
-        ? { publishStatus: input.publishStatus, slots: input.slots }
+      loaded.job.publishStatus === 'suspended'
+        ? Object.fromEntries(Object.entries(input).filter(([name]) => name !== 'publishStatus'))
         : input;
 
     try {
-      await updateJob(job.id, body, etag);
+      await updateJob(loaded.job.id, body);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 412) {
-        reload(STALE_MESSAGE);
+      // 409 は、希望者がいる勤務日の削除・日付変更（読み込んだ後に応募が入った場合）か、掲載停止中の公開状態の変更
+      if (error instanceof ApiError && error.status === 409 && error.errorCode !== 'CONTENT_SUSPENDED') {
+        reload(WORK_DATE_LOCKED_MESSAGE);
         return;
       }
 
-      // 読み込んだ後に応募が入った場合は、変更できる項目が変わるため読み込み直す
-      if (error instanceof ApiError && error.status === 409 && job.applicationCount === 0) {
-        const latest = await getDashboardJob(job.id).catch(() => null);
-
-        if (latest !== null && latest.data.applicationCount > 0) {
-          reload(APPLIED_MESSAGE);
-          return;
-        }
-      }
-
-      // 409（公開に必要な勤務日がない・採用済み人数より少ない など）はフォームに表示する
       throw error;
     }
 
-    // 応募がある求人はタイトルを変えられないため、どちらの場合もフォームの値が保存後のタイトル
     navigate(JOB_LIST_PATH, { state: { flash: `「${input.title}」を保存しました。` } });
   };
 
@@ -153,7 +150,7 @@ function DashboardJobEditPage() {
       );
     }
 
-    if (job === null) {
+    if (loaded === null) {
       return (
         <div aria-busy="true" className="flex flex-col gap-6">
           {Array.from({ length: 3 }, (_, i) => (
@@ -166,23 +163,14 @@ function DashboardJobEditPage() {
       );
     }
 
-    // 運営による掲載停止中は、生産者は変更できない
-    if (job.publishStatus === 'suspended') {
-      return (
-        <Notice>
-          <p className="m-0 font-bold">この求人は運営により掲載停止中のため、編集できません。</p>
-          <p className="m-0 mt-1 text-marche-muted">
-            届いている応募は「応募者を見る」から確認できます。くわしくは運営にお問い合わせください。
-          </p>
-          <DashboardButton to={JOB_LIST_PATH} variant="secondary" className="mt-4">
-            求人管理に戻る
-          </DashboardButton>
-        </Notice>
-      );
-    }
-
     return (
-      <DashboardJobForm key={reloadCount} job={job} onSubmit={handleSubmit} cancelTo={JOB_LIST_PATH} />
+      <DashboardJobForm
+        key={reloadCount}
+        job={loaded.job}
+        lockedWorkDateIds={loaded.lockedWorkDateIds}
+        onSubmit={handleSubmit}
+        cancelTo={JOB_LIST_PATH}
+      />
     );
   };
 
@@ -200,7 +188,7 @@ function DashboardJobEditPage() {
           {canManage && isValidId && loadError === null && (
             <DashboardButton to={`/dashboard/jobs/${jobId}/applicants`} variant="secondary" size="sm">
               応募者を見る
-              {job !== null && `（${job.applicationCount}件）`}
+              {loaded !== null && `（${loaded.applicationCount}件）`}
             </DashboardButton>
           )}
         </div>

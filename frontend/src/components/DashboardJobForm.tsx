@@ -70,7 +70,8 @@ type WorkDateRow = {
   // 登録済みの日付（変えたかどうかの判定に使う）
   originalDate?: string;
   neededCount: string;
-  hiredCount: number;
+  // 応募者が希望している勤務日（削除・日付の変更はできない。必要人数は変えられる）
+  hasApplicants: boolean;
 };
 
 // カバー写真（1枚まで）
@@ -153,14 +154,14 @@ function toFormValues(job: DashboardJob): JobFormValues {
   };
 }
 
-function toWorkDateRows(job: DashboardJob): WorkDateRow[] {
+function toWorkDateRows(job: DashboardJob, lockedIds: ReadonlySet<number>): WorkDateRow[] {
   return job.workDates.map((day, index) => ({
     localId: index + 1,
     id: day.id,
     workDate: day.workDate,
     originalDate: day.workDate,
     neededCount: String(day.neededCount),
-    hiredCount: day.hiredCount,
+    hasApplicants: lockedIds.has(day.id),
   }));
 }
 
@@ -209,8 +210,14 @@ function validateLines(value: string, label: string) {
     : undefined;
 }
 
-function validateWorkDates(rows: WorkDateRow[], slots: string): string | undefined {
+function validateWorkDates(rows: WorkDateRow[], values: JobFormValues): string | undefined {
   const today = todayInJapan();
+  const { slots, periodStart, periodEnd } = values;
+
+  // 長期のお仕事は勤務日を登録できない
+  if (values.termType === 'long' && rows.length > 0) {
+    return '長期のお仕事には勤務日を登録できません。勤務日を削除するか、期間を変えてください。';
+  }
 
   if (rows.length > JOB_MAX_WORK_DATES) {
     return `勤務日は${JOB_MAX_WORK_DATES}日までにしてください。`;
@@ -236,31 +243,23 @@ function validateWorkDates(rows: WorkDateRow[], slots: string): string | undefin
     return '勤務日ごとの必要人数は募集人数以下にしてください。';
   }
 
+  // 勤務日は募集期間の中にする
+  if (periodStart !== '' && rows.some((row) => row.workDate < periodStart)) {
+    return '勤務日は募集開始日以降にしてください。';
+  }
+
+  if (periodEnd !== '' && rows.some((row) => row.workDate > periodEnd)) {
+    return '勤務日は募集終了日以前にしてください。';
+  }
+
   return undefined;
 }
 
 function validate(
   values: JobFormValues,
   rows: WorkDateRow[],
-  options: { status: JobWritableStatus; hiredCount: number; locked: boolean },
+  status: JobWritableStatus | null,
 ): FieldErrors {
-  // 応募がある求人は募集人数だけ変えられる
-  if (options.locked) {
-    if (!isCount(values.slots)) {
-      return { slots: '募集人数を1以上の半角数字で入力してください。' };
-    }
-
-    if (Number(values.slots) < options.hiredCount) {
-      return { slots: `採用済みの${options.hiredCount}人より少なくはできません。` };
-    }
-
-    const maxNeeded = Math.max(0, ...rows.map((row) => Number(row.neededCount)));
-
-    return Number(values.slots) < maxNeeded
-      ? { slots: `勤務日ごとの必要人数（最大${maxNeeded}人）より少なくはできません。` }
-      : {};
-  }
-
   const errors: FieldErrors = {
     title: validateRequiredText(values.title, 'タイトル', 100),
     workPlace: validateRequiredText(values.workPlace, '勤務地', 200),
@@ -269,35 +268,33 @@ function validate(
     requirements: validateLines(values.requirements, '応募条件'),
     belongings: validateLines(values.belongings, '持ち物'),
     notes: validateLines(values.notes, '注意事項'),
-    workDates: validateWorkDates(rows, values.slots),
+    workDates: validateWorkDates(rows, values),
   };
 
   if (values.prefectureId === '') {
     errors.prefectureId = '勤務地の都道府県を選んでください。';
   }
 
-  if (!isWholeNumber(values.payAmount)) {
-    errors.payAmount = '報酬を半角数字（円）で入力してください。';
+  if (!isWholeNumber(values.payAmount) || Number(values.payAmount) < 1) {
+    errors.payAmount = '報酬を1以上の半角数字（円）で入力してください。';
   }
 
   if (!isCount(values.slots)) {
     errors.slots = '募集人数を1以上の半角数字で入力してください。';
-  } else if (Number(values.slots) < options.hiredCount) {
-    errors.slots = `採用済みの${options.hiredCount}人より少なくはできません。`;
   }
 
   if (values.periodStart !== '' && values.periodEnd !== '' && values.periodStart > values.periodEnd) {
     errors.periodEnd = '募集終了日は募集開始日以降にしてください。';
   }
 
-  // 勤務日がある求人を公開するには、今日以降の勤務日が必要
+  // 単発・短期のお仕事を公開するには、今日以降の勤務日が1日以上必要
   if (
     errors.workDates === undefined &&
-    options.status === 'public' &&
-    rows.length > 0 &&
+    status === 'public' &&
+    values.termType !== 'long' &&
     !rows.some((row) => row.workDate >= todayInJapan())
   ) {
-    errors.workDates = '公開するには、今日以降の勤務日を1日以上追加してください。';
+    errors.workDates = '単発・短期のお仕事を公開するには、今日以降の勤務日を1日以上追加してください。';
   }
 
   return Object.fromEntries(
@@ -308,7 +305,7 @@ function validate(
 function toInput(
   values: JobFormValues,
   rows: WorkDateRow[],
-  coverImageKey: string | null,
+  coverImage: string | null,
   status: JobWritableStatus,
 ): JobInput {
   const optionalLines = (value: string) => {
@@ -333,7 +330,7 @@ function toInput(
     belongings: optionalLines(values.belongings),
     notes: optionalLines(values.notes),
     inexperiencedOk: values.inexperiencedOk,
-    coverImageKey,
+    coverImage,
     publishStatus: status,
     workDates: [...rows]
       .sort((a, b) => a.workDate.localeCompare(b.workDate))
@@ -353,35 +350,46 @@ function toFormField(apiField: string): FieldName | null {
     return 'workDates';
   }
 
-  if (name === 'coverImageKey') {
+  if (name === 'coverImage') {
     return 'coverImage';
   }
 
   return name in initialValues ? (name as FieldName) : null;
 }
 
+const NO_LOCKED_DATES: ReadonlySet<number> = new Set();
+
 type DashboardJobFormProps = {
   // 編集する求人（渡さない場合は新規登録）
   job?: DashboardJob;
-  // 保存処理（失敗時は ApiError を投げる）。応募がある求人の項目の絞り込みは呼び出し側で行う
+  // 応募者が希望している勤務日の ID（削除・日付の変更ができない）
+  lockedWorkDateIds?: ReadonlySet<number>;
+  // 保存処理（失敗時は ApiError を投げる）。
+  // 掲載停止中の求人は公開状態を変えられないため、呼び出し側で publishStatus を外して送る
   onSubmit: (input: JobInput) => Promise<void>;
   cancelTo: string;
 };
 
 // 求人の入力フォーム（写真・求人の情報・勤務条件・勤務日・応募条件と案内）
 // 新規登録は「下書きとして保存」「公開する」、編集は公開状態を選んで「変更を保存」
-// 応募がある求人は、募集条件を後から変えないよう、募集人数と公開状態以外を変更できない
-function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
+function DashboardJobForm({
+  job,
+  lockedWorkDateIds = NO_LOCKED_DATES,
+  onSubmit,
+  cancelTo,
+}: DashboardJobFormProps) {
   const isEdit = job !== undefined;
-  const isLocked = (job?.applicationCount ?? 0) > 0;
-  const hiredCount = job?.hiredCount ?? 0;
+  // 運営による掲載停止中は、内容は編集できるが公開状態は変えられない
+  const isSuspended = job?.publishStatus === 'suspended';
 
   const [values, setValues] = useState<JobFormValues>(() =>
     isEdit ? toFormValues(job) : initialValues,
   );
-  const [rows, setRows] = useState<WorkDateRow[]>(() => (isEdit ? toWorkDateRows(job) : []));
+  const [rows, setRows] = useState<WorkDateRow[]>(() =>
+    isEdit ? toWorkDateRows(job, lockedWorkDateIds) : [],
+  );
   const [cover, setCover] = useState<CoverImage | null>(() =>
-    job?.coverImageKey ? { kind: 'saved', key: job.coverImageKey } : null,
+    job?.coverImage ? { kind: 'saved', key: job.coverImage } : null,
   );
   const [publishStatus, setPublishStatus] = useState<JobWritableStatus>(
     job !== undefined && job.publishStatus !== 'suspended' ? job.publishStatus : 'draft',
@@ -421,7 +429,7 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
         workDate: '',
         // 1日の必要人数は、まず募集人数と同じにしておく
         neededCount: isCount(values.slots) ? values.slots : '1',
-        hiredCount: 0,
+        hasApplicants: false,
       },
     ]);
     setErrors((current) => ({ ...current, workDates: undefined }));
@@ -480,13 +488,12 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
   };
 
   const isUploading = cover?.kind === 'new' && cover.status === 'uploading';
-  const coverImageKey =
-    cover === null ? null : cover.kind === 'saved' ? cover.key : cover.key;
+  const coverImage = cover === null ? null : cover.key;
 
   const submit = async (status: JobWritableStatus) => {
     setFormError(null);
 
-    if (!isLocked && cover?.kind === 'new' && cover.status === 'error') {
+    if (cover?.kind === 'new' && cover.status === 'error') {
       setErrors((current) => ({
         ...current,
         coverImage: 'アップロードに失敗しました。写真を削除するか、選び直してください。',
@@ -495,7 +502,8 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
       return;
     }
 
-    const nextErrors = validate(values, rows, { status, hiredCount, locked: isLocked });
+    // 掲載停止中は公開状態を送らないため、公開の条件は確認しない
+    const nextErrors = validate(values, rows, isSuspended ? null : status);
     setErrors(nextErrors);
 
     const firstError = FIELD_ORDER.find((name) => nextErrors[name] !== undefined);
@@ -514,7 +522,7 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
     setSubmitting(status);
 
     try {
-      await onSubmit(toInput(values, rows, coverImageKey, status));
+      await onSubmit(toInput(values, rows, coverImage, status));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         window.location.replace('/signin');
@@ -566,7 +574,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           type="text"
           maxLength={maxLength}
           placeholder={placeholder}
-          disabled={isLocked}
           value={values[name]}
           onChange={(event) => setValue(name, event.target.value)}
           aria-invalid={errors[name] !== undefined}
@@ -592,7 +599,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           id={id}
           rows={4}
           placeholder={placeholder}
-          disabled={isLocked}
           value={values[name]}
           onChange={(event) => setValue(name, event.target.value)}
           aria-invalid={errors[name] !== undefined}
@@ -616,18 +622,12 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
         </p>
       )}
 
-      {isLocked ? (
+      {lockedWorkDateIds.size > 0 && (
         <p className="m-0 box-border rounded-2xl border border-solid border-marche-orange/40 bg-marche-orange/15 p-4 text-sm leading-relaxed">
-          <span className="font-bold">この求人には応募が{job?.applicationCount}件あります。</span>
-          応募者に案内済みの条件が変わらないよう、変更できるのは「募集人数」と「公開設定」だけです。
-          勤務日や報酬などを変えたい場合は、新しい求人として登録してください。
+          <span className="font-bold">応募者が希望している勤務日があります。</span>
+          その勤務日は、削除や日付の変更ができません（必要人数は変えられます）。
+          報酬や勤務時間などを変える場合は、応募者にも連絡してください。
         </p>
-      ) : (
-        isEdit && (
-          <p className="m-0 box-border rounded-2xl border border-solid border-marche-line bg-marche-canvas p-4 text-xs leading-relaxed text-marche-muted">
-            応募が1件でも入ると、募集人数と公開設定以外は変更できなくなります。公開前に内容をよく確認してください。
-          </p>
-        )
       )}
 
       <FormSection title="写真">
@@ -640,7 +640,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           <button
             id="job-coverImage"
             type="button"
-            disabled={isLocked}
             onClick={() => fileInputRef.current?.click()}
             aria-describedby={errors.coverImage === undefined ? undefined : 'job-coverImage-error'}
             className={`box-border flex aspect-[4/3] w-full max-w-xs cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-marche-canvas p-0 text-sm font-bold text-marche-green font-[inherit] hover:bg-marche-sage disabled:cursor-not-allowed disabled:opacity-50 ${errors.coverImage === undefined ? 'border-marche-green/40' : 'border-marche-red'}`}
@@ -673,22 +672,20 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
                 <span className="block break-all text-xs text-marche-muted">{cover.key}</span>
               </p>
             )}
-            {!isLocked && (
-              <div className="flex gap-2">
-                <DashboardButton
-                  id="job-coverImage"
-                  variant="secondary"
-                  size="sm"
-                  disabled={isUploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  写真を変更
-                </DashboardButton>
-                <DashboardButton variant="danger" size="sm" disabled={isUploading} onClick={removeCover}>
-                  削除
-                </DashboardButton>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <DashboardButton
+                id="job-coverImage"
+                variant="secondary"
+                size="sm"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                写真を変更
+              </DashboardButton>
+              <DashboardButton variant="danger" size="sm" disabled={isUploading} onClick={removeCover}>
+                削除
+              </DashboardButton>
+            </div>
           </div>
         )}
         <input
@@ -712,7 +709,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           <Field id="job-prefectureId" label="勤務地（都道府県）" required error={errors.prefectureId}>
             <select
               id="job-prefectureId"
-              disabled={isLocked}
               value={values.prefectureId}
               onChange={(event) => setValue('prefectureId', event.target.value)}
               aria-invalid={errors.prefectureId !== undefined}
@@ -742,7 +738,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
             id="job-description"
             rows={6}
             maxLength={10000}
-            disabled={isLocked}
             value={values.description}
             onChange={(event) => setValue('description', event.target.value)}
             aria-invalid={errors.description !== undefined}
@@ -759,13 +754,12 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
             {termTypes.map((termType) => (
               <label
                 key={termType}
-                className={`box-border flex cursor-pointer items-center gap-2 rounded-full border border-solid px-4 py-2 text-sm ${values.termType === termType ? 'border-marche-green bg-marche-sage font-bold' : 'border-marche-line bg-white'} ${isLocked ? 'cursor-not-allowed opacity-60' : ''}`}
+                className={`box-border flex cursor-pointer items-center gap-2 rounded-full border border-solid px-4 py-2 text-sm ${values.termType === termType ? 'border-marche-green bg-marche-sage font-bold' : 'border-marche-line bg-white'}`}
               >
                 <input
                   type="radio"
                   name="termType"
                   value={termType}
-                  disabled={isLocked}
                   checked={values.termType === termType}
                   onChange={() => setValue('termType', termType)}
                   className="m-0 size-4 accent-marche-green"
@@ -776,15 +770,13 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           </div>
         </fieldset>
 
-        {!isLocked && (
-          <CheckboxField
-            id="job-inexperiencedOk"
-            label="未経験OK"
-            description="はじめての方でも応募しやすいお仕事として表示します。"
-            checked={values.inexperiencedOk}
-            onChange={(checked) => setValue('inexperiencedOk', checked)}
-          />
-        )}
+        <CheckboxField
+          id="job-inexperiencedOk"
+          label="未経験OK"
+          description="はじめての方でも応募しやすいお仕事として表示します。"
+          checked={values.inexperiencedOk}
+          onChange={(checked) => setValue('inexperiencedOk', checked)}
+        />
       </FormSection>
 
       <FormSection title="勤務条件">
@@ -792,7 +784,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           <Field id="job-payUnit" label="報酬の種類" required>
             <select
               id="job-payUnit"
-              disabled={isLocked}
               value={values.payUnit}
               onChange={(event) => setValue('payUnit', event.target.value as JobPayUnit)}
               className={`${controlClassName} border-marche-line disabled:bg-marche-canvas disabled:text-marche-muted`}
@@ -812,7 +803,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
                 type="text"
                 inputMode="numeric"
                 placeholder="1200"
-                disabled={isLocked}
                 value={values.payAmount}
                 onChange={(event) => setValue('payAmount', event.target.value)}
                 aria-invalid={errors.payAmount !== undefined}
@@ -831,7 +821,7 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
             id="job-slots"
             label="募集人数"
             required
-            hint={hiredCount > 0 ? `採用済み ${hiredCount}人` : '求人全体で採用する人数です。'}
+            hint="求人全体で採用する人数です。"
             error={errors.slots}
           >
             <div className="flex items-center gap-2">
@@ -861,7 +851,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
             <input
               id="job-periodStart"
               type="date"
-              disabled={isLocked}
               value={values.periodStart}
               onChange={(event) => setValue('periodStart', event.target.value)}
               aria-invalid={errors.periodStart !== undefined}
@@ -878,7 +867,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
             <input
               id="job-periodEnd"
               type="date"
-              disabled={isLocked}
               value={values.periodEnd}
               onChange={(event) => setValue('periodEnd', event.target.value)}
               aria-invalid={errors.periodEnd !== undefined}
@@ -893,7 +881,9 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
         <p id="job-workDates-hint" className="m-0 text-sm">
           応募者が希望日を選べるよう、勤務日と1日に必要な人数を登録します（{JOB_MAX_WORK_DATES}日まで）。
           <span className="block text-xs text-marche-muted">
-            長期のお仕事など、日付を決めない場合は登録しなくてもかまいません。
+            {values.termType === 'long'
+              ? '長期のお仕事は勤務日を登録しません。'
+              : '単発・短期のお仕事を公開するには、今日以降の勤務日が1日以上必要です。'}
           </span>
         </p>
 
@@ -915,7 +905,7 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
                       id={dateId}
                       type="date"
                       min={row.originalDate === undefined ? today : undefined}
-                      disabled={isLocked || isPast}
+                      disabled={row.hasApplicants || isPast}
                       value={row.workDate}
                       onChange={(event) => updateRow(row.localId, { workDate: event.target.value })}
                       aria-invalid={errors.workDates !== undefined}
@@ -930,7 +920,6 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
                         id={countId}
                         type="text"
                         inputMode="numeric"
-                        disabled={isLocked}
                         value={row.neededCount}
                         onChange={(event) =>
                           updateRow(row.localId, { neededCount: event.target.value })
@@ -945,9 +934,9 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
                   <p className="m-0 pb-2.5 text-xs text-marche-muted">
                     {row.workDate !== '' && formatDate(row.workDate)}
                     {isPast && '（終了）'}
-                    {row.hiredCount > 0 && ` ・ 採用 ${row.hiredCount}人`}
+                    {row.hasApplicants && ' ・ 希望者あり'}
                   </p>
-                  {!isLocked && row.hiredCount === 0 && (
+                  {!row.hasApplicants && (
                     <DashboardButton
                       variant="secondary"
                       size="sm"
@@ -964,7 +953,7 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
           </ul>
         )}
 
-        {!isLocked && rows.length < JOB_MAX_WORK_DATES && (
+        {values.termType !== 'long' && rows.length < JOB_MAX_WORK_DATES && (
           <DashboardButton
             id="job-workDates"
             variant="secondary"
@@ -1001,14 +990,22 @@ function DashboardJobForm({ job, onSubmit, cancelTo }: DashboardJobFormProps) {
 
       {isEdit && (
         <FormSection title="公開設定">
-          <PublishStatusField
-            options={publishStatusOptions}
-            value={publishStatus}
-            onChange={setPublishStatus}
-          />
-          <p className="m-0 text-xs text-marche-muted">
-            非公開・下書きにしても、届いている応募の選考は続けられます。
-          </p>
+          {isSuspended ? (
+            <p className="m-0 text-sm">
+              運営により掲載停止中のため、公開状態は変更できません。内容の修正は保存できます。くわしくは運営にお問い合わせください。
+            </p>
+          ) : (
+            <>
+              <PublishStatusField
+                options={publishStatusOptions}
+                value={publishStatus}
+                onChange={setPublishStatus}
+              />
+              <p className="m-0 text-xs text-marche-muted">
+                非公開・下書きにしても、届いている応募の選考は続けられます。
+              </p>
+            </>
+          )}
         </FormSection>
       )}
 

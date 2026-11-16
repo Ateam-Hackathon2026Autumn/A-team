@@ -3,13 +3,18 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { useAtomValue } from 'jotai';
 
 import ApiError from '../../api/apiError';
-import { deleteJob, getDashboardJob, getDashboardJobs } from '../../api/dashboardJobApi';
+import { deleteJob, getDashboardJobs } from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
 import { PlusIcon } from '../../components/DashboardIcons';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { DashboardJobSummary, JobPublishStatus } from '../../types/dashboardJob';
 import { formatDateTime } from '../../utils/experienceFormat';
-import { publishStatusBadgeClassNames, publishStatusLabels } from '../../utils/jobFormat';
+import {
+  formatPay,
+  publishStatusBadgeClassNames,
+  publishStatusLabels,
+  termTypeLabels,
+} from '../../utils/jobFormat';
 
 const NEW_JOB_PATH = '/dashboard/jobs/new';
 
@@ -44,7 +49,6 @@ function JobRow({
 }) {
   const editPath = `/dashboard/jobs/${job.id}/edit`;
   const applicantsPath = `/dashboard/jobs/${job.id}/applicants`;
-  const isSuspended = job.publishStatus === 'suspended';
 
   return (
     <li className="box-border flex flex-col gap-4 rounded-2xl border border-solid border-marche-line bg-white p-5 lg:flex-row lg:items-center">
@@ -57,49 +61,44 @@ function JobRow({
           </span>
           <span className="text-xs text-marche-muted">更新 {formatDateTime(job.updatedAt)}</span>
         </p>
-        {isSuspended ? (
-          <p className="m-0 mt-1 font-bold">{job.title}</p>
-        ) : (
-          <Link
-            to={editPath}
-            className="mt-1 block font-bold text-marche-ink no-underline hover:underline"
-          >
-            {job.title}
-          </Link>
-        )}
+        <Link
+          to={editPath}
+          className="mt-1 block font-bold text-marche-ink no-underline hover:underline"
+        >
+          {job.title}
+        </Link>
+        {/* 一覧APIには応募件数・採用人数がないため、募集の条件を表示する（応募は「応募者を見る」から） */}
         <dl className="m-0 mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
           <div className="flex gap-1">
-            <dt className="text-marche-muted">応募</dt>
-            <dd className="m-0 font-bold">{job.applicationCount}件</dd>
+            <dt className="text-marche-muted">期間</dt>
+            <dd className="m-0 font-bold">{termTypeLabels[job.termType]}</dd>
           </div>
           <div className="flex gap-1">
-            <dt className="text-marche-muted">採用</dt>
-            <dd className="m-0 font-bold">
-              {job.hiredCount} / {job.slots}人
-            </dd>
+            <dt className="text-marche-muted">報酬</dt>
+            <dd className="m-0 font-bold">{formatPay(job.payUnit, job.payAmount)}</dd>
+          </div>
+          <div className="flex gap-1">
+            <dt className="text-marche-muted">募集</dt>
+            <dd className="m-0 font-bold">{job.slots}人</dd>
           </div>
         </dl>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {!isSuspended && (
-          <DashboardButton to={editPath} variant="secondary" size="sm">
-            編集
-          </DashboardButton>
-        )}
+        <DashboardButton to={editPath} variant="secondary" size="sm">
+          編集
+        </DashboardButton>
         <DashboardButton to={applicantsPath} variant="secondary" size="sm">
           応募者を見る
         </DashboardButton>
-        {!isSuspended && (
-          <DashboardButton
-            variant="danger"
-            size="sm"
-            disabled={isPending}
-            onClick={() => onDelete(job)}
-          >
-            {isPending ? '削除中…' : '削除'}
-          </DashboardButton>
-        )}
+        <DashboardButton
+          variant="danger"
+          size="sm"
+          disabled={isPending}
+          onClick={() => onDelete(job)}
+        >
+          {isPending ? '削除中…' : '削除'}
+        </DashboardButton>
       </div>
     </li>
   );
@@ -205,9 +204,7 @@ function DashboardJobListPage() {
     setPendingId(job.id);
 
     try {
-      // 削除の If-Match に求人の ETag が必要（一覧には含まれないため詳細から取る）
-      const { etag } = await getDashboardJob(job.id);
-      await deleteJob(job.id, etag);
+      await deleteJob(job.id);
 
       setNotice(`「${job.title}」を削除しました。`);
       // 取り直すまでの間も削除した求人が残らないよう、先に一覧から外す
@@ -222,10 +219,10 @@ function DashboardJobListPage() {
 
       if (error instanceof ApiError && error.status === 409) {
         setActionError(
-          `「${job.title}」は新着・選考中・採用の応募が残っているため削除できません。選考を終えるか、非公開にしてください。`,
+          `「${job.title}」は応募されたことがあるため削除できません。募集をやめる場合は、編集画面で非公開にしてください。`,
         );
-      } else if (error instanceof ApiError && (error.status === 404 || error.status === 412)) {
-        setActionError('他の画面で求人が更新・削除されていたため、最新の内容を読み込み直しました。');
+      } else if (error instanceof ApiError && error.status === 404) {
+        setActionError('他の画面で求人が削除されていたため、最新の内容を読み込み直しました。');
         reload();
       } else if (error instanceof ApiError) {
         setActionError(error.message);
