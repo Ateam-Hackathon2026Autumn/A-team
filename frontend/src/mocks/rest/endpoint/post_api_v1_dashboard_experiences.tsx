@@ -1,9 +1,10 @@
 import type { RestMock } from '../../types';
-import { hoursFromNow } from '../../helpers';
+import { createExperience } from '../store/dashboardExperiences';
 
 // 体験登録API POST /api/v1/dashboard/experiences
 //
-// 作成された体験の ID と公開状態だけを返す（予約枠は予約枠登録APIで別途作成する）
+// 作成された体験の ID と公開状態だけを返す（ETag はヘッダー。予約枠は予約枠登録APIで別途作成する）
+// 同じ Idempotency-Key で同じ内容を再送した場合は、前回作成した体験を返す（二重登録しない）
 //
 // 入力内容に誤りがある場合（status: 400）:
 //   {
@@ -18,13 +19,7 @@ const dashboardExperienceCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/dashboard/experiences',
   status: 201,
-  body: {
-    id: 5,
-    producerId: 1,
-    publishStatus: 'draft',
-    createdAt: hoursFromNow(0),
-    updatedAt: hoursFromNow(0),
-  },
+  handler: (_url, init) => createExperience(init),
 };
 
 export { dashboardExperienceCreate };

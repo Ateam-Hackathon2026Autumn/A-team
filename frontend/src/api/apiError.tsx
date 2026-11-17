@@ -1,6 +1,7 @@
 // API呼び出し失敗時に投げる独自エラー
 class ApiError extends Error {
   status: number;
+  errorCode?: string;
   // 入力不正（400）のときの項目ごとのメッセージ（例: { name: ['商品名を入力してください。'] }）
   details: Record<string, string[]>;
 
@@ -8,11 +9,13 @@ class ApiError extends Error {
     status: number,
     message: string,
     details: Record<string, string[]> = {},
+    errorCode?: string,
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.details = details;
+    this.errorCode = errorCode;
   }
 }
 
@@ -23,12 +26,13 @@ async function toApiError(
   fallback: string,
 ): Promise<ApiError> {
   try {
-    const { errorMsg, details } = (await response.json()) as {
+    const { errorMsg, details, errorCode } = (await response.json()) as {
       errorMsg?: string;
+      errorCode?: string;
       details?: Record<string, string[]>;
     };
 
-    return new ApiError(response.status, errorMsg ?? fallback, details);
+    return new ApiError(response.status, errorMsg ?? fallback, details, errorCode);
   } catch {
     return new ApiError(response.status, fallback);
   }

@@ -93,13 +93,21 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
 ]
 
-# 画像・書類、アップロードしたファイルの保存先を S3 にする設定
+# 画像・書類、アップロードしたファイルの保存先
+# - 本番：S3。バケット名を環境変数 AWS_STORAGE_BUCKET_NAME で渡す
+# - 開発：バケット名を渡さなければ、backend/media/ に保存する（AWS の設定がなくても画像を登録できる）。
+#   表示用のURLは MEDIA_URL から作り、DEBUG のときだけ Django が /media/ を返す（config/urls.py）
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+USE_S3 = bool(AWS_STORAGE_BUCKET_NAME)
 STORAGES = {
-    "default": {"BACKEND": "storages.backends.s3.S3Storage"},
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage" if USE_S3 else "django.core.files.storage.FileSystemStorage"
+    },
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
-# 保存先の S3 バケット名。"..." は仮の値なので、実際に作ったバケット名を環境変数で渡す
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "...")
+MEDIA_ROOT = BASE_DIR / "media"
+# ブラウザは frontend（localhost:5173）を開いているので、画像は backend（localhost:8000）のURLで返す
+MEDIA_URL = os.getenv("DJANGO_MEDIA_URL", "http://localhost:8000/media/")
 AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-northeast-1")
 
 # 公開用の画像（商品・農園・体験など）は署名なしのURLで返す。

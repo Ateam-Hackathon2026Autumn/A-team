@@ -100,4 +100,14 @@ const jobsList: RestMock = {
   },
 };
 
+// エラーメッセージ確認用
+// const jobsList: RestMock ={
+//   method: 'GET',
+//   path: '/api/v1/jobs',
+//   status: 500,
+//   body: {
+//   errorMsg: 'テスト用の取得エラーです。'
+//   },
+// };
+
 export { jobsList };

@@ -14,6 +14,7 @@ from rest_framework import serializers
 
 from marche.models import ProducerStory, PublishStatus
 
+from ...common.exceptions import Conflict
 from ...common.serializers import StrictSerializer
 
 STORY_TEXT_FIELDS = ["craft", "method", "process", "environment", "reason", "goal"]
@@ -49,5 +50,5 @@ class StoryPutSerializer(StrictSerializer):
         for field in STORY_TEXT_FIELDS:
             attrs[field] = attrs[field] or None
         if attrs["publish_status"] == PublishStatus.PUBLIC and not any(attrs[f] for f in STORY_TEXT_FIELDS):
-            raise serializers.ValidationError({"publish_status": ["公開するには本文を1項目以上入力してください。"]})
+            raise Conflict("STORY_NOT_PUBLISHABLE", "公開するには本文を1項目以上入力してください。")
         return attrs

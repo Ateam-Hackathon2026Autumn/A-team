@@ -8,6 +8,8 @@ type Props = {
   onChange: (value: string) => void;
   type?: HTMLInputTypeAttribute;
   error?: string;
+  describedBy?: string;
+  invalid?: boolean;
   placeholder?: string;
   autoComplete?: string;
   maxLength?: number;
@@ -23,6 +25,8 @@ export default function FormField({
   onChange,
   type = "text",
   error,
+  describedBy,
+  invalid = false,
   required = true,
   ...rest
 }: Props) {
@@ -51,13 +55,13 @@ export default function FormField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           required={required}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${name}-error` : undefined}
+          aria-invalid={Boolean(error) || invalid}
+          aria-describedby={[error ? `${name}-error` : '', describedBy].filter(Boolean).join(' ') || undefined}
           className={[
             "font-sans",
             "block h-12 w-full min-w-0 rounded-lg border bg-white px-3",
             "text-base text-marche-ink",
-            error ? "border-red-700" : "border-[#b8c3b5]",
+            error || invalid ? "border-red-700" : "border-[#b8c3b5]",
             isPassword ? "pr-16" : "",
           ].join(" ")}
         />

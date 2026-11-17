@@ -225,7 +225,7 @@ function DashboardHomePage() {
     <div className="flex flex-col gap-8">
       <header>
         <p className="m-0 text-sm text-marche-muted">{formatToday(now)}</p>
-        <h1 className="m-0 mt-1 text-2xl font-bold">
+        <h1 className="m-0 font-serif mt-1 text-2xl font-bold">
           {greetingFor(now)}
           {userInfo !== null && `、${userInfo.lastName}さん`}
         </h1>
@@ -233,7 +233,7 @@ function DashboardHomePage() {
 
       <section aria-labelledby="dashboard-summary-heading">
         <div className="flex items-baseline justify-between gap-4">
-          <h2 id="dashboard-summary-heading" className="m-0 text-lg font-bold">
+          <h2 id="dashboard-summary-heading" className="m-0 font-serif text-lg font-bold">
             いまの状況
           </h2>
           {summary !== null && (
@@ -277,7 +277,7 @@ function DashboardHomePage() {
       </section>
 
       <section aria-labelledby="dashboard-actions-heading">
-        <h2 id="dashboard-actions-heading" className="m-0 text-lg font-bold">
+        <h2 id="dashboard-actions-heading" className="m-0 font-serif text-lg font-bold">
           新しく登録する
         </h2>
         <div className="mt-4 grid grid-cols-3 gap-3">

@@ -4,7 +4,6 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
-  type ReactNode,
 } from 'react';
 
 import ApiError from '../api/apiError';
@@ -17,6 +16,16 @@ import type {
   TemperatureZone,
 } from '../types/product';
 import DashboardButton from './DashboardButton';
+import {
+  CheckboxField,
+  Field,
+  FormSection,
+  PublishStatusField,
+  controlBorder,
+  controlClassName,
+  describedBy,
+  type PublishStatusOption,
+} from './DashboardFormParts';
 import { PlusIcon } from './DashboardIcons';
 
 // API の仕様に合わせた上限
@@ -57,7 +66,7 @@ type ImageItem = {
 // 保存するときの公開状態
 type SubmitStatus = 'draft' | 'public' | 'private';
 
-const publishStatusOptions: { value: SubmitStatus; label: string; description: string }[] = [
+const publishStatusOptions: PublishStatusOption<SubmitStatus>[] = [
   { value: 'public', label: '公開', description: 'お客さまの画面に表示し、購入できるようにします。' },
   { value: 'private', label: '非公開', description: 'お客さまの画面には表示しません。' },
   { value: 'draft', label: '下書き', description: '作成中として保存します。' },
@@ -261,106 +270,6 @@ function toCreateInput(
     imageKeys: [...new Set(imageKeys)],
     stock: values.stock === '' ? null : Number(values.stock),
   };
-}
-
-// ---------------------------------------------------------------------------
-// 入力欄の部品
-// ---------------------------------------------------------------------------
-
-const controlClassName =
-  'box-border block w-full rounded-lg border border-solid bg-white px-3 py-2.5 text-base text-marche-ink [font-family:inherit]';
-
-function controlBorder(error: string | undefined) {
-  return error === undefined ? 'border-marche-line' : 'border-marche-red';
-}
-
-type FieldProps = {
-  id: string;
-  label: string;
-  required?: boolean;
-  hint?: string;
-  error?: string;
-  children: ReactNode;
-};
-
-function Field({ id, label, required = false, hint, error, children }: FieldProps) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-bold">
-        {label}
-        <span
-          className={`ml-2 text-xs font-normal ${required ? 'text-marche-red' : 'text-marche-muted'}`}
-        >
-          {required ? '必須' : '任意'}
-        </span>
-      </label>
-      {hint !== undefined && (
-        <p id={`${id}-hint`} className="m-0 mt-1 text-xs text-marche-muted">
-          {hint}
-        </p>
-      )}
-      <div className="mt-2">{children}</div>
-      {error !== undefined && (
-        <p
-          id={`${id}-error`}
-          className="m-0 mt-1 text-xs font-bold text-marche-red"
-        >
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// aria-describedby（補足とエラーを読み上げる）
-function describedBy(id: string, hint: boolean, error: string | undefined) {
-  const ids = [hint ? `${id}-hint` : '', error !== undefined ? `${id}-error` : '']
-    .filter(Boolean)
-    .join(' ');
-
-  return ids === '' ? undefined : ids;
-}
-
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="box-border flex flex-col gap-5 rounded-2xl border border-solid border-marche-line bg-white p-5 md:p-6">
-      <h2 className="m-0 text-lg font-bold">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function CheckboxField({
-  id,
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 rounded-xl bg-marche-canvas px-4 py-3"
-    >
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="m-0 mt-1 size-4 shrink-0 accent-marche-green"
-      />
-      <span>
-        <span className="block text-sm font-bold">{label}</span>
-        <span className="block text-xs text-marche-muted">{description}</span>
-      </span>
-    </label>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -873,32 +782,11 @@ function DashboardProductForm({
 
       {isEdit && (
         <FormSection title="公開設定">
-          <fieldset className="m-0 min-w-0 border-0 p-0">
-            <legend className="sr-only">公開状態</legend>
-            <div className="flex flex-col gap-2">
-              {publishStatusOptions.map(({ value, label, description }) => (
-                <label
-                  key={value}
-                  className={`box-border flex cursor-pointer items-start gap-3 rounded-xl border border-solid px-4 py-3 ${publishStatus === value ? 'border-marche-green bg-marche-sage' : 'border-marche-line bg-white'}`}
-                >
-                  <input
-                    type="radio"
-                    name="publishStatus"
-                    value={value}
-                    checked={publishStatus === value}
-                    onChange={() => setPublishStatus(value)}
-                    className="m-0 mt-1 size-4 shrink-0 accent-marche-green"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold">{label}</span>
-                    <span className="block text-xs text-marche-muted">
-                      {description}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <PublishStatusField
+            options={publishStatusOptions}
+            value={publishStatus}
+            onChange={setPublishStatus}
+          />
         </FormSection>
       )}
 

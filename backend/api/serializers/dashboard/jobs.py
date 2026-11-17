@@ -168,6 +168,11 @@ class JobListSerializer(serializers.Serializer):
 
     publish_status = serializers.CharField()
 
+    # 応募の数（取り下げは除く）と採用済みの数（採用・勤務完了）。view の with_counts() で付ける
+    application_count = serializers.IntegerField()
+
+    hired_count = serializers.IntegerField()
+
     created_at = serializers.DateTimeField()
 
     updated_at = serializers.DateTimeField()
@@ -502,6 +507,24 @@ class JobCreateSerializer(StrictSerializer):
 # GET /api/v1/dashboard/jobs/:jobId
 # ============================================================
 
+class JobWorkDateResponseSerializer(serializers.Serializer):
+    """勤務日1件のレスポンス。hired_count は view の get_job_for_response() で付ける"""
+
+    id = serializers.IntegerField()
+
+    work_date = serializers.DateField()
+
+    needed_count = serializers.IntegerField()
+
+    # その日を希望して採用された人数と、残りの人数（0 より小さくはしない）
+    hired_count = serializers.IntegerField()
+
+    remaining_count = serializers.SerializerMethodField()
+
+    def get_remaining_count(self, work_date):
+        return max(work_date.needed_count - work_date.hired_count, 0)
+
+
 class JobDetailSerializer(JobListSerializer):
     """求人詳細のレスポンス"""
 
@@ -521,7 +544,7 @@ class JobDetailSerializer(JobListSerializer):
         allow_null=True,
     )
 
-    work_dates = JobWorkDateSerializer(
+    work_dates = JobWorkDateResponseSerializer(
         many=True,
         source="job_work_dates",
     )

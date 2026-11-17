@@ -38,7 +38,7 @@ class ImageUploadTests(ApiTestCase):
         self.signin(self.user.email)
 
     def test_upload_jpeg_strips_location_and_applies_orientation(self):
-        res = self.post_multipart(URL, {"image": image_file(exif=gps_exif())})
+        res = self.post_multipart(URL, {"file": image_file(exif=gps_exif())})
         self.assertEqual(res.status_code, 201)
         body = res.json()
         self.assertRegex(body["key"], rf"^images/{self.user.id}/[0-9a-f]{{32}}\.jpg$")
@@ -49,7 +49,7 @@ class ImageUploadTests(ApiTestCase):
             self.assertEqual(len(image.getexif()), 0)  # 位置情報などは消えている
 
     def test_upload_png(self):
-        res = self.post_multipart(URL, {"image": image_file("logo.png", "PNG")})
+        res = self.post_multipart(URL, {"file": image_file("logo.png", "PNG")})
         self.assertEqual(res.status_code, 201)
         self.assertTrue(res.json()["key"].endswith(".png"))
 
@@ -57,20 +57,20 @@ class ImageUploadTests(ApiTestCase):
         gif = image_file("anim.gif", "GIF")
         fake = SimpleUploadedFile("fake.jpg", b"not an image", content_type="image/jpeg")
         big = SimpleUploadedFile("big.jpg", b"0" * (5 * 1024 * 1024 + 1), content_type="image/jpeg")
-        for data in [{"image": gif}, {"image": fake}, {"image": big}, {}, {"image": image_file(), "foo": "1"}]:
+        for data in [{"file": gif}, {"file": fake}, {"file": big}, {}, {"file": image_file(), "foo": "1"}]:
             with self.subTest(data=list(data)):
                 res = self.post_multipart(URL, data)
                 self.assertEqual((res.status_code, res.json()["errorCode"]), (400, "VALIDATION_ERROR"))
 
     def test_login_and_csrf_required(self):
-        res = self.post_multipart(URL, {"image": image_file()}, csrf=False)
+        res = self.post_multipart(URL, {"file": image_file()}, csrf=False)
         self.assertEqual((res.status_code, res.json()["errorCode"]), (403, "CSRF_FAILED"))
         self.post_json("/api/v1/auth/signout")
-        res = self.post_multipart(URL, {"image": image_file()})
+        res = self.post_multipart(URL, {"file": image_file()})
         self.assertEqual(res.status_code, 401)
 
     def test_validate_image_keys(self):
-        mine = self.post_multipart(URL, {"image": image_file()}).json()["key"]
+        mine = self.post_multipart(URL, {"file": image_file()}).json()["key"]
         other = make_user(email="other@example.com")
         self.assertEqual(validate_image_keys(self.user, [mine]), [mine])
         for key in [f"images/{other.id}/x.jpg", f"images/{self.user.id}/missing.jpg",
