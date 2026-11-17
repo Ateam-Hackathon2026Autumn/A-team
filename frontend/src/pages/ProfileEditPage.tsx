@@ -32,6 +32,10 @@ function ProfileForm({ account }: { account: ConsumerAccount }) {
       setError("姓と名を入力してください。");
       return;
     }
+    if ([...values.lastName.trim()].length > 10 || [...values.firstName.trim()].length > 10) {
+      setError("姓と名はそれぞれ10文字以内で入力してください。");
+      return;
+    }
     if (!/^0\d{9,10}$/.test(values.phone.replace(/-/g, ""))) {
       setError("電話番号は0から始まる10〜11桁の半角数字で入力してください。");
       return;
@@ -74,7 +78,7 @@ function ProfileForm({ account }: { account: ConsumerAccount }) {
               <input
                 autoComplete={i === 0 ? "family-name" : "given-name"}
                 required
-                maxLength={50}
+                maxLength={10}
                 className={`${fieldClass} mt-2`}
                 value={values[name]}
                 onChange={(e) => {

@@ -1,14 +1,16 @@
 import type { RestMock } from '../../types';
-import type { Cart } from '../../../types/cart';
+import type { Cart, CartShipment } from '../../../types/cart';
+import type { ProductDetail } from '../../../types/publicProduct';
 import { productSamples } from './get_api_v1_products';
+import { productDetail } from './get_api_v1_products_productId';
 
 // カート取得API GET /api/v1/cart
 //
 // 商品1「安曇野ふじ」×1 と 商品6「あじの開き干し」×2 が入っている状態。
-// itemsTotal は商品小計の合計で、送料は含めない（送料は注文時に確定）
+// 実APIと同じく、shipments・shippingTotal・totalにサーバー側の見積りを返す。
 //
 // カートが空:
-//   { items: [], itemsTotal: 0, canCheckout: false, quoteToken: 'mock-quote-token-empty' }
+//   { items: [], shipments: [], itemsTotal: 0, shippingTotal: 0, total: 0, canCheckout: false }
 //
 // 購入できない明細がある場合（canCheckout: false）の明細例:
 //   { id: 3, productId: 3, productName: null, quantity: 1, unitPrice: null, subtotal: null,
@@ -41,8 +43,10 @@ const cartSnapshot = {
       },
     ],
     itemsTotal: 11200,
+    shipments: [],
+    shippingTotal: 0,
+    total: 11200,
     canCheckout: true,
-    quoteToken: 'mock-quote-token-cart-v1',
   },
 };
 
@@ -70,7 +74,7 @@ function restoreCart(): Cart | null {
         productName: null, unitPrice: null, subtotal: null, purchasable: false, unavailableReason: null });
     }
     revision = Number(saved.revision);
-    return { items, itemsTotal: 0, canCheckout: false, quoteToken: '' };
+    return { items, shipments: [], itemsTotal: 0, shippingTotal: 0, total: 0, canCheckout: false };
   } catch {
     // 保存領域を利用できない場合や破損時も、メモリー上でデモを利用できる。
     return null;
@@ -96,13 +100,31 @@ export function refreshMockCart(changed = false): Cart {
     item.productName = product?.name ?? null;
     item.unitPrice = product?.salePrice ?? null;
     item.subtotal = product ? product.salePrice * item.quantity : null;
-    item.purchasable = Boolean(product && product.stock >= item.quantity);
+    item.purchasable = Boolean(product && (product.stock === null || product.stock >= item.quantity));
     item.unavailableReason = !product ? 'PRODUCT_UNAVAILABLE' : !item.purchasable ? 'INSUFFICIENT_STOCK' : null;
   }
-  mockCartBody.itemsTotal = mockCartBody.items.reduce((sum, item) => sum + (item.subtotal ?? 0), 0);
+  // モックサーバー側で見積りを作る。画面はこの結果をそのまま使用する。
+  const boxes = new Map<string, CartShipment>();
+  for (const item of mockCartBody.items.filter(line => line.purchasable)) {
+    const product = productDetail.handler!(new URL(`/api/v1/products/${item.productId}`, 'https://mock.local')).body as ProductDetail;
+    const key = `${product.producer.id}:${product.shipping.temperatureZone}`;
+    const box = boxes.get(key) ?? {
+      producerId: product.producer.id, producerName: product.producer.businessName,
+      temperatureZone: product.shipping.temperatureZone, itemIds: [], itemsTotal: 0,
+      shippingFee: product.shipping.shippingFee, freeShippingThreshold: product.shipping.freeShippingThreshold,
+    };
+    box.itemIds.push(item.id);
+    box.itemsTotal += item.subtotal ?? 0;
+    boxes.set(key, box);
+  }
+  mockCartBody.shipments = [...boxes.values()].map(box => ({ ...box,
+    shippingFee: box.freeShippingThreshold !== null && box.itemsTotal >= box.freeShippingThreshold ? 0 : box.shippingFee,
+  }));
+  mockCartBody.itemsTotal = mockCartBody.shipments.reduce((sum, box) => sum + box.itemsTotal, 0);
+  mockCartBody.shippingTotal = mockCartBody.shipments.reduce((sum, box) => sum + box.shippingFee, 0);
+  mockCartBody.total = mockCartBody.itemsTotal + mockCartBody.shippingTotal;
   mockCartBody.canCheckout = mockCartBody.items.length > 0 && mockCartBody.items.every((item) => item.purchasable);
   if (changed) revision += 1;
-  mockCartBody.quoteToken = `mock-quote-token-cart-v${revision}`;
   try {
     // 金額や購入可否は保存値を信用せず、商品データから毎回計算する。
     window.sessionStorage.setItem(storageKey, JSON.stringify({

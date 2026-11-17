@@ -29,7 +29,7 @@ export default function ProducerProfilePage() {
   const relatedLoader = useCallback(
     async (signal: AbortSignal) => {
       if (!producer) return null;
-      const results = await Promise.allSettled([getProducts({ producerId: producer.id, pageSize: 6 }, signal), getExperiences(signal), getJobs(signal), producer.hasPublicStory ? contentJson<Story>(`/api/v1/producers/${producer.id}/story`, signal) : Promise.resolve(null)]);
+      const results = await Promise.allSettled([getProducts({ producerId: producer.id, pageSize: 6 }, signal), getExperiences(signal, { producerId: producer.id }), getJobs(signal, { producerId: producer.id }), producer.hasPublicStory ? contentJson<Story>(`/api/v1/producers/${producer.id}/story`, signal) : Promise.resolve(null)]);
       return { products: results[0], experiences: results[1], jobs: results[2], story: results[3] };
     },
     [producer],
@@ -85,9 +85,13 @@ export default function ProducerProfilePage() {
               ))}
             </div>
             <p className="whitespace-pre-line">{producer.intro}</p>
-            <p className="text-sm text-marche-muted">
-              創業 {producer.foundedYear}年 · {producer.careerStartYear}年から生産に従事
-            </p>
+            {(producer.foundedYear !== null || producer.careerStartYear !== null) &&
+              <p className="text-sm text-marche-muted">
+                {[
+                  producer.foundedYear !== null ? `創業 ${producer.foundedYear}年` : null,
+                  producer.careerStartYear !== null ? `${producer.careerStartYear}年から生産に従事` : null,
+                ].filter(Boolean).join(" · ")}
+              </p>}
             <Button
               disabled
               variant="outline"
@@ -153,11 +157,9 @@ export default function ProducerProfilePage() {
           >
             <h2 className="font-serif text-2xl">産地で体験する</h2>
             {related.data?.experiences.status === "fulfilled" ? (
-              related.data.experiences.value.filter((e) => e.producer.id === producer.id).length ? (
+              related.data.experiences.value.length ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {related.data.experiences.value
-                    .filter((e) => e.producer.id === producer.id)
-                    .map((experience) => (
+                  {related.data.experiences.value.map((experience) => (
                       <ExperienceCard
                         key={experience.id}
                         experience={experience}
@@ -187,11 +189,9 @@ export default function ProducerProfilePage() {
           >
             <h2 className="font-serif text-2xl">一緒に働く</h2>
             {related.data?.jobs.status === "fulfilled" ? (
-              related.data.jobs.value.filter((j) => j.producer.id === producer.id).length ? (
+              related.data.jobs.value.length ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {related.data.jobs.value
-                    .filter((j) => j.producer.id === producer.id)
-                    .map((job) => (
+                  {related.data.jobs.value.map((job) => (
                       <JobCard
                         key={job.id}
                         job={job}

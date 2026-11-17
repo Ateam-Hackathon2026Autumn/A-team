@@ -9,9 +9,21 @@ export type CartItem = {
   unavailableReason: string | null;
 };
 
+export type CartShipment = {
+  producerId: number;
+  producerName: string;
+  temperatureZone: string;
+  itemIds: number[];
+  itemsTotal: number;
+  shippingFee: number;
+  freeShippingThreshold: number | null;
+};
+
 export type Cart = {
   items: CartItem[];
+  shipments: CartShipment[];
   itemsTotal: number;
+  shippingTotal: number;
+  total: number;
   canCheckout: boolean;
-  quoteToken: string;
 };

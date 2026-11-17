@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { getConsumerOrders } from "../api/consumerOrderApi";
 import { usePublicContent } from "../hooks/usePublicContent";
 import { ContentPage, ContentStatus, EmptyContent, dateLabel, yen, panelClass, linkClass } from "../components/ui/ContentPage";
 import MyPageNavigation from "../components/mypage/MyPageNavigation";
 import { PaymentBadge, paymentLabels, shipmentLabels } from "../components/mypage/ConsumerOrderParts";
+import Button from "../components/ui/Button";
+import type { OrderQuery, PaymentStatus } from "../types/consumerOrder";
 
 export default function OrderHistoryPage() {
-  const state = usePublicContent(getConsumerOrders);
-  const [filter, setFilter] = useState("all");
-  const orders = state.data?.filter((order) => filter === "all" || order.paymentStatus === filter);
+  const [query, setQuery] = useState<OrderQuery>({ page: 1 });
+  const loader = useCallback((signal: AbortSignal) => getConsumerOrders(query, signal), [query]);
+  const state = usePublicContent(loader);
+  const orders = state.data?.items;
+  const currentPage = state.data?.page ?? query.page ?? 1;
   return (
     <ContentPage
       eyebrow="ORDERS"
@@ -20,8 +24,8 @@ export default function OrderHistoryPage() {
       <label className="mb-6 flex flex-wrap items-center gap-3 text-sm font-bold">
         支払い状況
         <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          value={query.paymentStatus ?? "all"}
+          onChange={(e) => setQuery({ page: 1, paymentStatus: e.target.value === "all" ? undefined : e.target.value as PaymentStatus })}
           className="min-h-11 rounded-xl border border-solid border-marche-line bg-white px-4 font-sans text-base"
         >
           <option value="all">すべて</option>
@@ -84,6 +88,13 @@ export default function OrderHistoryPage() {
           </article>
         ))}
       </div>
+      {state.data && state.data.totalPages > 1 && (
+        <nav aria-label="注文履歴のページ移動" className="mt-6 flex items-center justify-center gap-4">
+          <Button variant="outline" disabled={state.loading || currentPage <= 1} onClick={() => setQuery({ ...query, page: currentPage - 1 })}>前へ</Button>
+          <span className="text-sm">{currentPage} / {state.data.totalPages}</span>
+          <Button variant="outline" disabled={state.loading || currentPage >= state.data.totalPages} onClick={() => setQuery({ ...query, page: currentPage + 1 })}>次へ</Button>
+        </nav>
+      )}
     </ContentPage>
   );
 }

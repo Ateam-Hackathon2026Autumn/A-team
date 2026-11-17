@@ -2,13 +2,12 @@ import { useRef, useState, type FormEvent } from "react";
 import { useAtomValue } from "jotai";
 import { Link, useNavigate } from "react-router";
 import { getCart } from "../api/cartApi";
-import { getProduct } from "../api/productApi";
+import ApiError from "../api/apiError";
 import { createConsumerOrder } from "../api/consumerOrderApi";
 import { usePublicContent } from "../hooks/usePublicContent";
 import { loginStatusAtom, userInfoAtom } from "../stores/userAtom";
 import { USE_MOCK } from "../config/env";
 import { PREFECTURES } from "../utils/prefectures";
-import { consumerShippingGroups } from "../utils/consumerCheckout";
 import type { ShippingAddress } from "../types/consumerOrder";
 import { ContentPage, ContentStatus, EmptyContent, fieldClass, panelClass, textLinkClass, yen, linkClass } from "../components/ui/ContentPage";
 import { OrderTotals, temperatureLabels } from "../components/mypage/ConsumerOrderParts";
@@ -16,10 +15,7 @@ import Button from "../components/ui/Button";
 
 async function loadCheckout(signal: AbortSignal) {
   const cart = await getCart(signal);
-  if (!cart.canCheckout) return { cart, groups: [], shippingTotal: 0 };
-  const products = await Promise.all(cart.items.map((item) => getProduct(item.productId, signal)));
-  const groups = consumerShippingGroups(cart, products);
-  return { cart, groups, shippingTotal: groups.reduce((sum, group) => sum + group.shippingFee, 0) };
+  return cart;
 }
 
 const addressFields: { key: keyof ShippingAddress; label: string; autoComplete: string; maxLength: number; pattern?: string; type?: string }[] = [
@@ -45,7 +41,7 @@ export default function CheckoutPage() {
   const locked = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const data = state.data;
-  const grandTotal = data ? data.cart.itemsTotal + data.shippingTotal : 0;
+  const grandTotal = data?.total ?? 0;
   function changeStep(next: number) {
     setStep(next);
     setError("");
@@ -53,7 +49,7 @@ export default function CheckoutPage() {
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (locked.current || !data || !data.cart.canCheckout) return;
+    if (locked.current || !data || !data.canCheckout) return;
     if (step === 1) {
       if (!/^0\d{9,10}$/.test(address.phone.replace(/-/g, ""))) {
         setError("電話番号は0から始まる10〜11桁で入力してください。");
@@ -71,11 +67,20 @@ export default function CheckoutPage() {
     setError("");
     try {
       key.current ??= crypto.randomUUID();
-      const receipt = await createConsumerOrder({ shippingAddress: address, paymentMethod: "card", expectedGrandTotal: grandTotal, quoteToken: data.cart.quoteToken }, key.current);
-      navigate(`/checkout/complete?orderId=${receipt.id}`, { replace: true });
+      const receipt = await createConsumerOrder({ shippingAddress: address, paymentMethod: "card", expectedGrandTotal: data.total }, key.current);
+      if (USE_MOCK) {
+        navigate(receipt.checkoutUrl, { replace: true });
+      } else {
+        window.location.assign(receipt.checkoutUrl);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "注文を受け付けられませんでした。");
-    } finally {
+      if (cause instanceof ApiError && cause.status === 409) {
+        state.retry();
+        setStep(1);
+        key.current = null;
+      }
+      // 受付成功後は遷移が完了するまで再送できないようにする。
       locked.current = false;
       setBusy(false);
     }
@@ -115,9 +120,9 @@ export default function CheckoutPage() {
         <>
           <ContentStatus {...state} />
           {data &&
-            (!data.cart.canCheckout ? (
+            (!data.canCheckout ? (
               <EmptyContent>
-                <p>{data.cart.items.length === 0 ? "カートは空です。" : "購入できない商品が含まれています。カートをご確認ください。"}</p>
+                <p>{data.items.length === 0 ? "カートは空です。" : "購入できない商品が含まれています。カートをご確認ください。"}</p>
                 <Link
                   to="/cart"
                   className={linkClass}
@@ -213,13 +218,13 @@ export default function CheckoutPage() {
                     <h2 className="mt-0 font-serif text-xl">配送・お支払い</h2>
                     <p className="text-sm">生産者・配送温度帯ごとに産地から直送します。配送日時は指定できません。</p>
                     <p className="text-sm">お支払い：クレジットカード</p>
-                    <p className="mb-0 text-sm text-marche-muted">{USE_MOCK ? "デモ注文です。カード情報の入力や実際のお支払いは行いません。" : "送料見積り・決済連携は準備中です。現在は注文できません。"}</p>
+                    <p className="mb-0 text-sm text-marche-muted">{USE_MOCK ? "デモ注文です。カード情報の入力や実際のお支払いは行いません。" : "注文受付後、決済画面へ進みます。カード情報は決済画面で入力してください。"}</p>
                   </section>
                 </div>
                 <aside className={panelClass}>
                   <h2 className="mt-0 font-serif text-xl">ご注文内容</h2>
                   <ul className="list-none space-y-3 p-0 text-sm">
-                    {data.cart.items.map((item) => (
+                    {data.items.map((item) => (
                       <li
                         key={item.id}
                         className="flex justify-between gap-3"
@@ -234,18 +239,17 @@ export default function CheckoutPage() {
                     ))}
                   </ul>
                   <ul className="my-5 list-none space-y-2 border-t border-solid border-marche-line p-0 pt-4 text-xs text-marche-muted">
-                    {data.groups.map((group) => (
+                    {data.shipments.map((group) => (
                       <li key={`${group.producerId}:${group.temperatureZone}`}>
                         {group.producerName} · {temperatureLabels[group.temperatureZone] ?? group.temperatureZone}便：{yen(group.shippingFee)}
                       </li>
                     ))}
                   </ul>
                   <OrderTotals
-                    itemsTotal={data.cart.itemsTotal}
+                    itemsTotal={data.itemsTotal}
                     shippingTotal={data.shippingTotal}
                     grandTotal={grandTotal}
                   />
-                  {!USE_MOCK && <p className="text-xs text-marche-muted">送料・合計は参考表示です。正式見積り後に確定します。</p>}
                   {error && (
                     <p
                       role="alert"
@@ -257,9 +261,9 @@ export default function CheckoutPage() {
                   <Button
                     type="submit"
                     block
-                    disabled={busy || (step === 2 && !USE_MOCK)}
+                    disabled={busy}
                   >
-                    {busy ? "注文を送信中…" : step === 1 ? "注文内容を確認する" : USE_MOCK ? "デモ注文を受け付ける" : "注文受付（準備中）"}
+                    {busy ? "注文を送信中…" : step === 1 ? "注文内容を確認する" : USE_MOCK ? "デモ注文を受け付ける" : "注文してお支払いへ進む"}
                   </Button>
                   {step === 2 && (
                     <Button

@@ -9,12 +9,15 @@ export async function contentJson<T>(path: string, signal?: AbortSignal): Promis
   return response.json() as Promise<T>;
 }
 
-// 一覧APIの全ページを取得。絞り込みは取得済みデータに対して行う。
-export async function contentItems<T>(path: string, signal?: AbortSignal): Promise<T[]> {
-  const first = await contentJson<PageResult<T>>(`${path}?page=1&pageSize=20`, signal);
+// 絞り込み条件をサーバーに渡し、その条件に一致する全ページを取得する。
+export async function contentItems<T>(path: string, signal?: AbortSignal, query: Record<string, string | number> = {}): Promise<T[]> {
+  const params = new URLSearchParams({ page: '1', pageSize: '20' });
+  for (const [key, value] of Object.entries(query)) params.set(key, String(value));
+  const first = await contentJson<PageResult<T>>(`${path}?${params}`, signal);
   const items = [...first.items];
   for (let page = 2; page <= first.totalPages; page++) {
-    items.push(...(await contentJson<PageResult<T>>(`${path}?page=${page}&pageSize=20`, signal)).items);
+    params.set('page', String(page));
+    items.push(...(await contentJson<PageResult<T>>(`${path}?${params}`, signal)).items);
   }
   return items;
 }

@@ -46,6 +46,7 @@ usersMeUpdate.handler = (_url, init) => {
  let input: ConsumerProfileInput;
  try { input = JSON.parse(String(init?.body)) as ConsumerProfileInput; } catch { return { status: 400, body: { errorMsg: '入力内容を確認してください。' } }; }
  if (!input || typeof input.lastName !== 'string' || typeof input.firstName !== 'string' || typeof input.phone !== 'string' || !input.lastName?.trim() || !input.firstName?.trim() || !input.phone || !/^0[0-9]{9,10}$/.test(input.phone) || !input.birthDate || !Array.isArray(input.interests)) return { status: 400, body: { errorMsg: 'プロフィールの入力内容を確認してください。' } };
+ if ([...input.lastName.trim()].length > 10 || [...input.firstName.trim()].length > 10) return { status: 400, body: { errorMsg: '姓と名はそれぞれ10文字以内で入力してください。' } };
  const current = usersMe.body as ConsumerAccount;
  const { lastName, firstName, ...profile } = input;
  const account: ConsumerAccount = { user: { ...current.user, lastName, firstName }, profile };

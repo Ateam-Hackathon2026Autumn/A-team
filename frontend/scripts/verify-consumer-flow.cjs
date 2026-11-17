@@ -17,8 +17,6 @@ const source = (name) => require(path.join(__dirname, '../src', name));
 const saved = new Map();
 global.window = { sessionStorage: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) } };
 const { refreshMockCart, resetMockCart, mockCartBody } = source('mocks/rest/endpoint/get_api_v1_cart.tsx');
-const { productDetail } = source('mocks/rest/endpoint/get_api_v1_products_productId.tsx');
-const { consumerShippingGroups } = source('utils/consumerCheckout.ts');
 const { createDemoConsumerOrder, consumerDemoOrders } = source('mocks/rest/store/consumerOrders.ts');
 const { myOrdersList } = source('mocks/rest/endpoint/get_api_v1_users_me_orders.tsx');
 const { myOrderDetail } = source('mocks/rest/endpoint/get_api_v1_users_me_orders_orderId.tsx');
@@ -31,17 +29,18 @@ const post = (input, key = crypto.randomUUID()) => createDemoConsumerOrder(url, 
 });
 resetMockCart();
 const cart = structuredClone(refreshMockCart());
-const products = cart.items.map(item => productDetail.handler(new URL(`https://mock.local/api/v1/products/${item.productId}`)).body);
-const shipping = consumerShippingGroups(cart, products);
+const shipping = cart.shipments;
 assert.equal(shipping.length, 2, 'Group by producer and temperature zone');
 const input = {
   shippingAddress: { lastName: 'Test', firstName: 'User', postalCode: '123-4567', prefecture: '東京都', city: 'テスト市', addressLine1: '1-2-3', addressLine2: '', phone: '09012345678' },
-  paymentMethod: 'card', quoteToken: cart.quoteToken,
-  expectedGrandTotal: cart.itemsTotal + shipping.reduce((sum, box) => sum + box.shippingFee, 0),
+  paymentMethod: 'card', expectedGrandTotal: cart.total,
 };
 assert.equal(post(null).status, 400, 'Reject malformed input');
 assert.equal(post({ ...input, expectedGrandTotal: 1 }).status, 409, 'Reject changed price');
-assert.equal(post({ ...input, quoteToken: 'old' }).status, 409, 'Reject stale cart');
+assert.equal(post({ ...input, quoteToken: 'old' }).status, 400, 'Reject undefined request fields');
+mockCartBody.items[0].quantity += 1;
+assert.equal(post(input).status, 409, 'Reject changed totals after cart changes');
+resetMockCart();
 assert.equal(consumerDemoOrders.length, 0, 'Failed requests create no orders');
 const key = crypto.randomUUID();
 const receipt = post(input, key);
@@ -63,6 +62,7 @@ const updated = { ...usersMe.body.profile, lastName: '更新', firstName: '確�
 assert.equal(usersMeUpdate.handler(url, { body: JSON.stringify(updated) }).status, 200);
 assert.equal(usersMe.body.user.lastName, '更新', 'Profile changes appear in the next GET');
 assert.equal(usersMeUpdate.handler(url, { body: 'null' }).status, 400);
+assert.equal(usersMeUpdate.handler(url, { body: JSON.stringify({ ...updated, lastName: 'あ'.repeat(11) }) }).status, 400);
 // The tests run in an isolated process; no browser session or real order is modified.
 assert.equal(mockCartBody.items.length, 0);
 console.log('Consumer flow checks passed: price/stale-cart rejection, idempotency, order history/detail, producer IDs, profile updates.');

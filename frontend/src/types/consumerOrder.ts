@@ -16,7 +16,12 @@ export type OrderDetail = Omit<OrderSummary, 'shipments'> & {
   shippingAddress: { name: string; postalCode: string; prefecture: string; city: string; addressLine1: string; addressLine2: string | null; phone: string };
   shipments: OrderShipment[];
 };
-export type OrderInput = { shippingAddress: ShippingAddress; paymentMethod: 'card' | 'konbini'; expectedGrandTotal: number; quoteToken: string };
+export type PaymentStatus = 'pending' | 'paid' | 'failed';
+export type OrderQuery = { page?: number; paymentStatus?: PaymentStatus };
+export type OrderInput = ({ shippingAddress: ShippingAddress; addressId?: never } | { addressId: number; shippingAddress?: never }) & {
+  paymentMethod: 'card' | 'konbini';
+  expectedGrandTotal: number;
+};
 export type OrderReceipt = {
   id: number; orderNo: string; paymentStatus: string; itemsTotal: number;
   shippingTotal: number; grandTotal: number; checkoutUrl: string; expiresAt: string;

@@ -1,19 +1,26 @@
-import { contentItems, contentJson } from './publicContentApi';
+import { contentJson } from './publicContentApi';
 import { apiFetch } from './client';
 import { toApiError } from './apiError';
 import { getCsrfToken } from './authApi';
-import { USE_MOCK } from '../config/env';
-import type { OrderSummary, OrderDetail, OrderInput, OrderReceipt } from '../types/consumerOrder';
+import type { OrderSummary, OrderDetail, OrderInput, OrderReceipt, OrderQuery } from '../types/consumerOrder';
+import type { PageResult } from '../types/experience';
 
-export const getConsumerOrders = (signal?: AbortSignal) => contentItems<OrderSummary>('/api/v1/users/me/orders', signal);
+export function getConsumerOrders(query: OrderQuery = {}, signal?: AbortSignal) {
+  const params = new URLSearchParams({ page: String(query.page ?? 1), pageSize: '20' });
+  if (query.paymentStatus) params.set('paymentStatus', query.paymentStatus);
+  return contentJson<PageResult<OrderSummary>>(`/api/v1/users/me/orders?${params}`, signal);
+}
 export const getConsumerOrder = (id: number, signal?: AbortSignal) => contentJson<OrderDetail>(`/api/v1/users/me/orders/${id}`, signal);
 
 export async function createConsumerOrder(input: OrderInput, key: string): Promise<OrderReceipt> {
-  // 現行カートAPIには配送先別の正式見積りがない。確認金額を保証できるモックのみ送信する。
-  if (!USE_MOCK) throw new Error('送料見積りの接続準備中のため、現在は注文できません。');
   const response = await apiFetch('/api/v1/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': await getCsrfToken(), 'Idempotency-Key': key },
-    body: JSON.stringify(input),
+    // StrictSerializerが受け付ける項目のみ送る。
+    body: JSON.stringify({
+      ...(input.shippingAddress ? { shippingAddress: input.shippingAddress } : { addressId: input.addressId }),
+      paymentMethod: input.paymentMethod,
+      expectedGrandTotal: input.expectedGrandTotal,
+    }),
   });
   if (!response.ok) throw await toApiError(response, '注文を受け付けられませんでした。カートをご確認ください。');
   return response.json() as Promise<OrderReceipt>;

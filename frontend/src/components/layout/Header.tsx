@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { Link, useLocation } from "react-router";
-import { loginStatusAtom } from "../../stores/userAtom";
+import { loginStatusAtom, userInfoAtom } from "../../stores/userAtom";
 
 const links = [
   { href: "#products", label: "買う" },
@@ -18,6 +18,8 @@ export default function Header() {
   const isHome = useLocation().pathname === "/";
   const loginStatus = useAtomValue(loginStatusAtom);
   const isLoggedIn = loginStatus === "loggedIn";
+  const user = useAtomValue(userInfoAtom);
+  const canUseDashboard = isLoggedIn && (user?.isProducer === true || user?.producerApplicationStatus === "pending");
 
   return (
     <>
@@ -95,11 +97,12 @@ export default function Header() {
                 </Link>
               </>
             )}
-            <div role="group" aria-label="利用画面の切り替え" className="flex flex-wrap items-center gap-1 rounded-2xl bg-marche-sage p-1">
-              <Link to="/dashboard" className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white">生産者</Link>
-              <Link to="/" className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white">消費者</Link>
-              <button type="button" disabled title="管理者画面は準備中です" className="min-h-11 cursor-not-allowed rounded-xl border-0 bg-transparent px-3 py-2 font-sans text-xs font-bold text-marche-muted">管理者（準備中）</button>
-            </div>
+            {canUseDashboard && (
+              <div role="group" aria-label="利用画面の切り替え" className="flex flex-wrap items-center gap-1 rounded-2xl bg-marche-sage p-1">
+                <Link to="/dashboard" className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white">生産者</Link>
+                <Link to="/" className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white">消費者</Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
