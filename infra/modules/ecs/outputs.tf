@@ -9,8 +9,13 @@ output "service_name" {
 }
 
 output "task_definition_arn" {
-  description = "デプロイと単発の DB migration に使用するタスク定義 ARN。"
+  description = "バックエンドの ECS サービスに使用するタスク定義 ARN。"
   value       = aws_ecs_task_definition.backend.arn
+}
+
+output "migration" {
+  description = "DB migration の単発タスク実行に使う非機密設定。run_migration.py へ渡します。"
+  value       = local.migration_config
 }
 
 output "network_configuration" {
@@ -39,3 +44,7 @@ output "task_role_arn" {
   value       = aws_iam_role.ecs_task.arn
 }
 
+output "django_secret_recovery_window_in_days" {
+  description = "Django Secret 削除時の復旧期間。0 は復旧なしで削除します。"
+  value       = aws_secretsmanager_secret.django.recovery_window_in_days
+}

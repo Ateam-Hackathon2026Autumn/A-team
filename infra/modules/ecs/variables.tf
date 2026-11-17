@@ -59,12 +59,47 @@ variable "image_prefixes" {
 variable "database" {
   description = "RDS モジュールから受け取る DB 接続情報と、パスワードを格納する Secrets Manager の ARN。"
   type = object({
-    host       = string
-    port       = number
-    name       = string
-    username   = string
-    secret_arn = string
+    host        = string
+    port        = number
+    name        = string
+    username    = string
+    secret_arn  = string
+    resource_id = string
   })
+}
+
+variable "image_digest" {
+  description = "push 済み ECR イメージの digest。指定時はタグでなく digest に固定します。"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.image_digest == null ? true : can(regex("^sha256:[a-f0-9]{64}$", var.image_digest))
+    error_message = "image_digest は sha256: と64文字の小文字16進数で指定してください。"
+  }
+}
+
+variable "deployment_aws_profile" {
+  description = "apply 内の AWS CLI に渡すプロファイル。null は apply 元の AWS 認証環境を引き継ぎます。"
+  type        = string
+  default     = null
+}
+
+variable "migration_load_initial_data" {
+  description = "migrate 成功後に初期マスターを投入します。通常のリリースは false にします。"
+  type        = bool
+  default     = false
+}
+
+variable "migration_timeout_seconds" {
+  description = "単発 migration の完了待ち秒数。"
+  type        = number
+  default     = 900
+
+  validation {
+    condition     = var.migration_timeout_seconds > 0 && floor(var.migration_timeout_seconds) == var.migration_timeout_seconds
+    error_message = "migration_timeout_seconds は正の整数にしてください。"
+  }
 }
 
 variable "aws_region" {
@@ -93,7 +128,7 @@ variable "container_port" {
 }
 
 variable "image_tag" {
-  description = "バックエンドの ECR イメージタグ（上書き不可）。desired_count を増やす前に、このタグのイメージを push します。"
+  description = "バックエンドの ECR イメージタグ。環境の plan / apply より先に bootstrap 管理の ECR へ push し、通常は解決済みの image_digest で起動します。"
   type        = string
 
   validation {
@@ -103,7 +138,7 @@ variable "image_tag" {
 }
 
 variable "desired_count" {
-  description = "ECS タスクの起動数。初回は 0 とし、イメージと Django のシークレットを登録してから 1 以上にします。"
+  description = "ECS タスクの起動数。1以上では apply 内の Secret 準備・migration 成功後に起動します。0 は基盤準備・停止用です。"
   type        = number
 
   validation {
@@ -115,4 +150,48 @@ variable "desired_count" {
 variable "django_allowed_hosts" {
   description = "Django が許可するホスト名の一覧。ALB のヘルスチェックはターゲットの private IP を Host にするため、dev の初期値は * です。"
   type        = list(string)
+}
+
+variable "application_parameter_arns" {
+  description = "Parameter Store モジュールの output。ECS 起動時に、同名の環境変数として注入します。"
+  type = object({
+    AWS_STORAGE_BUCKET_NAME     = string
+    FRONTEND_BASE_URL           = string
+    DJANGO_CSRF_TRUSTED_ORIGINS = string
+    DJANGO_COOKIE_SECURE        = string
+  })
+
+  validation {
+    condition = alltrue([
+      for arn in values(var.application_parameter_arns) :
+      startswith(arn, "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter/")
+    ])
+    error_message = "application_parameter_arns は、同じアカウント・リージョンの SSM パラメータ ARN を指定してください。"
+  }
+}
+
+variable "application_config_revision" {
+  description = "設定モジュールが出力する非機密設定の SHA-256。変更時に実行中のタスクを入れ替えます。"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-f0-9]{64}$", var.application_config_revision))
+    error_message = "application_config_revision は設定値から計算した SHA-256 を指定してください。"
+  }
+}
+
+variable "django_secret_recovery_window_in_days" {
+  description = "Django Secret 削除時の復旧期間。0 は復旧なしの削除、7〜30 は復旧可能な日数です。dev だけ0を使用します。"
+  type        = number
+  default     = 7
+
+  validation {
+    condition = (
+      var.django_secret_recovery_window_in_days == 0 ||
+      (var.django_secret_recovery_window_in_days >= 7 &&
+        var.django_secret_recovery_window_in_days <= 30 &&
+      floor(var.django_secret_recovery_window_in_days) == var.django_secret_recovery_window_in_days)
+    )
+    error_message = "django_secret_recovery_window_in_days は0、または7〜30の整数にしてください。"
+  }
 }

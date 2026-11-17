@@ -23,12 +23,6 @@ module "alb" {
   deletion_protection = var.deletion_protection
 }
 
-module "ecr" {
-  source = "../../modules/ecr"
-
-  name = local.name
-}
-
 module "rds" {
   source = "../../modules/rds"
 
@@ -48,21 +42,31 @@ module "rds" {
 module "ecs" {
   source = "../../modules/ecs"
 
-  name                = local.name
-  aws_region          = var.aws_region
-  aws_account_id      = var.aws_account_id
-  subnet_ids          = module.network.app_subnet_ids
-  security_group_id   = module.network.ecs_security_group_id
-  target_group_arn    = module.alb.target_group_arn
-  ecr_repository      = module.ecr.repository
+  name              = local.name
+  aws_region        = var.aws_region
+  aws_account_id    = var.aws_account_id
+  subnet_ids        = module.network.app_subnet_ids
+  security_group_id = module.network.ecs_security_group_id
+  target_group_arn  = module.alb.target_group_arn
+  ecr_repository = {
+    url = data.aws_ecr_repository.backend.repository_url
+    arn = data.aws_ecr_repository.backend.arn
+  }
+  image_digest        = data.aws_ecr_image.backend.image_digest
   uploads_bucket_name = var.uploads_bucket_name
   image_prefixes = {
     input  = var.image_compression.input_prefix
     output = var.image_compression.output_prefix
   }
-  database             = module.rds.connection
-  container_port       = var.container_port
-  image_tag            = var.image_tag
-  desired_count        = var.desired_count
-  django_allowed_hosts = var.django_allowed_hosts
+  database                              = module.rds.connection
+  container_port                        = var.container_port
+  image_tag                             = var.image_tag
+  deployment_aws_profile                = var.deployment_aws_profile
+  migration_load_initial_data           = var.migration_load_initial_data
+  migration_timeout_seconds             = var.migration_timeout_seconds
+  desired_count                         = var.desired_count
+  django_allowed_hosts                  = var.django_allowed_hosts
+  application_parameter_arns            = module.application_config.parameter_arns
+  application_config_revision           = module.application_config.revision
+  django_secret_recovery_window_in_days = var.django_secret_recovery_window_in_days
 }

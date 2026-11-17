@@ -46,4 +46,15 @@ terraform.rc
 !.terraform-version
 !.terraform.lock.hcl
 
+scripts/
+
+DEPLOYMENT_TODO.md
+
+bootstrap/ECR_MIGRATION.md
+bootstrap/FRONTEND_STORAGE_MIGRATION.md
+
+environments/USAGE.md
+
+
+
 README.md

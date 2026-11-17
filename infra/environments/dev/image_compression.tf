@@ -8,6 +8,7 @@ module "image_compression" {
   package_path   = var.image_compression_package_path != null ? abspath(var.image_compression_package_path) : abspath("${path.module}/../../lambda/image_compression/dist/image_compression.zip")
 }
 
+# reserved_concurrency = -1 は予約なし。アカウント内の未予約同時実行枠を共有する。
 variable "image_compression" {
   description = "画像圧縮の設定。保存先 prefix・形式・品質・最大寸法など、変更する項目だけ terraform.tfvars で指定します。"
   type = object({
@@ -21,7 +22,7 @@ variable "image_compression" {
     max_input_pixels     = optional(number, 25000000)
     memory_size          = optional(number, 1024)
     timeout              = optional(number, 60)
-    reserved_concurrency = optional(number, 5)
+    reserved_concurrency = optional(number, -1)
   })
   default  = {}
   nullable = false

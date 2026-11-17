@@ -75,9 +75,25 @@ variable "certificate_arn" {
 }
 
 variable "deletion_protection" {
-  description = "ALB と RDS の削除保護。dev を削除する前に false に変更して apply します。"
+  description = "ALB と RDS の削除保護。作成・削除を繰り返す dev の既定値は false です。"
   type        = bool
-  default     = true
+  default     = false
+}
+
+variable "django_secret_recovery_window_in_days" {
+  description = "dev の Django Secret は復旧期間なしで削除し、同名で作り直せるようにします。"
+  type        = number
+  default     = 0
+
+  validation {
+    condition = (
+      var.django_secret_recovery_window_in_days == 0 ||
+      (var.django_secret_recovery_window_in_days >= 7 &&
+        var.django_secret_recovery_window_in_days <= 30 &&
+      floor(var.django_secret_recovery_window_in_days) == var.django_secret_recovery_window_in_days)
+    )
+    error_message = "django_secret_recovery_window_in_days は0、または7〜30の整数にしてください。"
+  }
 }
 
 variable "container_port" {
@@ -92,7 +108,7 @@ variable "container_port" {
 }
 
 variable "image_tag" {
-  description = "バックエンドの ECR イメージタグ（上書き不可）。desired_count を増やす前に、このタグのイメージを push します。"
+  description = "バックエンドの ECR イメージタグ（dev は同じタグの上書き可）。push 後の plan で digest を解決し、migration とサービスを同じイメージに固定します。"
   type        = string
   default     = "initial"
 
@@ -103,9 +119,9 @@ variable "image_tag" {
 }
 
 variable "desired_count" {
-  description = "ECS タスクの起動数。初回は 0 とし、イメージと Django のシークレットを登録してから 1 以上にします。"
+  description = "ECS タスクの起動数。1以上では apply 内で Secret 準備と migration を完了してからサービスを作成・更新します。0 は基盤のみの準備・停止用です。"
   type        = number
-  default     = 0
+  default     = 1
 
   validation {
     condition     = var.desired_count >= 0 && floor(var.desired_count) == var.desired_count
@@ -155,9 +171,9 @@ variable "db_multi_az" {
 }
 
 variable "db_skip_final_snapshot" {
-  description = "DB 削除時に最終スナップショットを作成する場合は false にします。"
+  description = "dev の既定値は true。DB 削除時に最終スナップショットを残さず、データをリセットします。"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "db_final_snapshot_identifier" {

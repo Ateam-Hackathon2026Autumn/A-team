@@ -21,51 +21,7 @@ resource "aws_ecs_task_definition" "backend" {
     cpu_architecture        = "X86_64"
   }
 
-  container_definitions = jsonencode([{
-    name      = "backend"
-    image     = "${var.ecr_repository.url}:${var.image_tag}"
-    essential = true
-
-    portMappings = [{
-      containerPort = var.container_port
-      hostPort      = var.container_port
-      protocol      = "tcp"
-    }]
-
-    environment = [
-      { name = "DJANGO_DEBUG", value = "false" },
-      { name = "DJANGO_ALLOWED_HOSTS", value = join(",", var.django_allowed_hosts) },
-      { name = "AWS_DEFAULT_REGION", value = var.aws_region },
-      { name = "UPLOADS_BUCKET_NAME", value = var.uploads_bucket_name },
-      { name = "UPLOADS_PREFIX", value = "uploads/" },
-      { name = "IMAGE_INPUT_PREFIX", value = var.image_prefixes.input },
-      { name = "IMAGE_OUTPUT_PREFIX", value = var.image_prefixes.output },
-      { name = "DB_HOST", value = var.database.host },
-      { name = "DB_PORT", value = tostring(var.database.port) },
-      { name = "DB_NAME", value = var.database.name },
-      { name = "DB_USER", value = var.database.username },
-    ]
-
-    secrets = [
-      {
-        name      = "DB_PASSWORD"
-        valueFrom = "${var.database.secret_arn}:password::"
-      },
-      {
-        name      = "DJANGO_SECRET_KEY"
-        valueFrom = aws_secretsmanager_secret.django.arn
-      },
-    ]
-
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = aws_cloudwatch_log_group.backend.name
-        awslogs-region        = var.aws_region
-        awslogs-stream-prefix = "ecs"
-      }
-    }
-  }])
+  container_definitions = jsonencode([local.backend_container])
 }
 
 resource "aws_ecs_service" "backend" {
@@ -80,8 +36,14 @@ resource "aws_ecs_service" "backend" {
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
   wait_for_steady_state              = true
-  enable_ecs_managed_tags            = true
-  propagate_tags                     = "SERVICE"
+  # ARN が同じままパラメータの値だけ変わった場合も、新しい値でタスクを起動し直す。
+  # 時刻ではなく設定値のハッシュなので、変更のない apply では再デプロイしない。
+  force_new_deployment = true
+  triggers = {
+    application_config_revision = var.application_config_revision
+  }
+  enable_ecs_managed_tags = true
+  propagate_tags          = "SERVICE"
 
   deployment_circuit_breaker {
     enable   = true
@@ -101,5 +63,5 @@ resource "aws_ecs_service" "backend" {
   }
 
   # Network and listener readiness is carried by the input outputs.
-  depends_on = [aws_iam_role_policy.ecs_execution, aws_iam_role_policy.ecs_uploads]
+  depends_on = [aws_iam_role_policy.ecs_execution, aws_iam_role_policy.ecs_uploads, terraform_data.migration]
 }

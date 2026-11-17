@@ -51,6 +51,12 @@ data "aws_iam_policy_document" "ecs_execution" {
       aws_secretsmanager_secret.django.arn,
     ]
   }
+
+  statement {
+    sid       = "ReadApplicationParameters"
+    actions   = ["ssm:GetParameters"]
+    resources = values(var.application_parameter_arns)
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_execution" {

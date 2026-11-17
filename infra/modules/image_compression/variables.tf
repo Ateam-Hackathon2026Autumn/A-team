@@ -19,7 +19,7 @@ variable "package_path" {
 }
 
 variable "config" {
-  description = "入力・出力 prefix、画質・サイズ、実行リソースの設定。prefix の変更は通知・IAM・環境変数へ一括反映します。"
+  description = "入力・出力 prefix、画質・サイズ、実行リソースの設定。reserved_concurrency は -1 で予約なし、正の整数で予約あり。prefix の変更は通知・IAM・環境変数へ一括反映します。"
   type = object({
     input_prefix         = string
     output_prefix        = string
@@ -56,13 +56,15 @@ variable "config" {
       var.config.quality >= 1 && var.config.quality <= 95 &&
       alltrue([for value in [var.config.quality, var.config.max_width, var.config.max_height,
         var.config.max_input_bytes, var.config.max_input_pixels, var.config.memory_size,
-      var.config.timeout, var.config.reserved_concurrency] : value == floor(value) && value > 0]) &&
+      var.config.timeout] : value == floor(value) && value > 0]) &&
+      var.config.reserved_concurrency == floor(var.config.reserved_concurrency) &&
+      (var.config.reserved_concurrency == -1 || var.config.reserved_concurrency > 0) &&
       var.config.max_width <= 8192 && var.config.max_height <= 8192 &&
       var.config.max_input_bytes <= 100 * 1024 * 1024 &&
       var.config.max_input_pixels <= 40000000 &&
       var.config.memory_size >= 1024 && var.config.memory_size <= 10240 &&
       var.config.timeout <= 900
     )
-    error_message = "形式は webp/jpeg/png、品質は 1〜95、寸法は 1〜8192、入力は最大 100 MiB / 4000 万画素、メモリは 1024〜10240 MiB、タイムアウトは 1〜900 秒、同時実行数は正の整数にしてください。"
+    error_message = "形式は webp/jpeg/png、品質は 1〜95、寸法は 1〜8192、入力は最大 100 MiB / 4000 万画素、メモリは 1024〜10240 MiB、タイムアウトは 1〜900 秒、予約同時実行数は -1（予約なし）または正の整数にしてください。"
   }
 }

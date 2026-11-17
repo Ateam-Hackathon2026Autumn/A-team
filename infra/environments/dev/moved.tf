@@ -147,16 +147,6 @@ moved {
 }
 
 moved {
-  from = aws_ecr_repository.backend
-  to   = module.ecr.aws_ecr_repository.backend
-}
-
-moved {
-  from = aws_ecr_lifecycle_policy.backend
-  to   = module.ecr.aws_ecr_lifecycle_policy.backend
-}
-
-moved {
   from = aws_db_subnet_group.main
   to   = module.rds.aws_db_subnet_group.main
 }
