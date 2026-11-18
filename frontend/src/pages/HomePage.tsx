@@ -7,12 +7,13 @@ import { getCategories, getProducts } from "../api/productApi";
 import { getProducers } from "../api/producerApi";
 import { getExperiences } from "../api/experienceApi";
 import { getJobs } from "../api/jobApi";
-import { getStories } from "../api/storyApi";
+import { getStories, storyLead } from "../api/storyApi";
 import { usePublicContent } from "../hooks/usePublicContent";
 import { USE_MOCK } from "../config/env";
 import ProductCard from "../components/products/ProductCard";
 import ExperienceCard from "../components/experiences/ExperienceCard";
 import JobCard from "../components/jobs/JobCard";
+import { producerGenres } from "../components/producers/ProducerSummaryCard";
 import { ContentImage, ContentStatus, fieldClass, linkClass, textLinkClass } from "../components/ui/ContentPage";
 import type { ProductSort } from "../types/publicProduct";
 
@@ -96,5 +97,5 @@ function HomeJobs() {
 function HomeStories() {
   const state = usePublicContent(getStories);
   const story = state.data?.[0];
-  return <HomeSection id="learn" eyebrow="THE STORY BEHIND FOOD" title="つくる人の物語" to="/learn"><ContentStatus {...state} />{state.data && (story ? <article className="mt-6 grid overflow-hidden rounded-3xl bg-marche-sage md:grid-cols-2"><ContentImage src={story.producer.coverImageUrl} alt={story.producer.businessName} className="aspect-[4/3] h-full" /><div className="p-6 sm:p-10"><p className="text-sm font-bold text-marche-green">{story.category.name}</p><h3 className="font-serif text-2xl leading-relaxed"><Link to={`/learn/${story.id}`} className="text-inherit no-underline hover:underline">{story.title}</Link></h3><p>{story.reason ?? story.method}</p><p className="text-sm text-marche-muted">{story.producer.businessName} ／ {story.producer.prefectureName}</p><Link to={`/learn/${story.id}`} className={textLinkClass}>ストーリーを読む →</Link></div></article> : <p className="mt-5 text-marche-muted">公開中のストーリーは現在ありません。</p>)}</HomeSection>;
+  return <HomeSection id="learn" eyebrow="THE STORY BEHIND FOOD" title="つくる人の物語" to="/learn"><ContentStatus {...state} />{state.data && (story ? <article className="mt-6 grid overflow-hidden rounded-3xl bg-marche-sage md:grid-cols-2"><ContentImage src={story.producer.coverImageUrl} alt={story.producer.businessName} className="aspect-[4/3] h-full" /><div className="p-6 sm:p-10"><p className="text-sm font-bold text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p><h3 className="font-serif text-2xl leading-relaxed"><Link to={`/learn/${story.id}`} className="text-inherit no-underline hover:underline">{story.producer.businessName}</Link></h3><p className="line-clamp-4 whitespace-pre-line">{storyLead(story)}</p><p className="text-sm text-marche-muted">{story.producer.businessName} ／ {story.producer.prefectureName}</p><Link to={`/learn/${story.id}`} className={textLinkClass}>ストーリーを読む →</Link></div></article> : <p className="mt-5 text-marche-muted">公開中のストーリーは現在ありません。</p>)}</HomeSection>;
 }
