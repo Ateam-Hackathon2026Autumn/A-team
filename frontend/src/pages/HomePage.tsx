@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useAtomValue } from "jotai";
@@ -22,16 +22,39 @@ const pillClass = "min-h-11 cursor-pointer rounded-full border border-marche-lin
 
 export default function HomePage() {
   const isGuest = useAtomValue(loginStatusAtom) === "loggedOut";
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const [shouldAutoPlay] = useState(() => typeof window === "undefined" || typeof window.matchMedia !== "function" || !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [isHeroVideoPlaying, setIsHeroVideoPlaying] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const pauseForReducedMotion = (event: MediaQueryListEvent) => {
+      if (event.matches) heroVideoRef.current?.pause();
+    };
+    motionPreference.addEventListener("change", pauseForReducedMotion);
+    return () => motionPreference.removeEventListener("change", pauseForReducedMotion);
+  }, []);
+
+  const toggleHeroVideo = () => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play().catch(() => setIsHeroVideoPlaying(false));
+    else video.pause();
+  };
+
   return <>
-    <section className="overflow-hidden bg-marche-green text-white">
-      <div className={`${pageWidth} grid gap-8 py-14 lg:grid-cols-2 lg:items-center lg:py-20`}>
+    <section className="relative overflow-hidden bg-marche-green text-white">
+      <video ref={heroVideoRef} className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay={shouldAutoPlay} muted loop playsInline preload="metadata" poster="/videos/home-hero-poster.jpg" aria-hidden="true" onPlay={() => setIsHeroVideoPlaying(true)} onPause={() => setIsHeroVideoPlaying(false)}><source src="/videos/home-hero.webm" type="video/webm" onError={() => setIsHeroVideoPlaying(false)} /></video>
+      <div aria-hidden="true" className="absolute inset-0 bg-marche-green-dark/80 lg:bg-transparent lg:bg-linear-to-r lg:from-marche-green-dark/90 lg:via-marche-green-dark/55 lg:to-marche-green-dark/10" />
+      <div className={`${pageWidth} relative z-10 py-14 pb-24 lg:py-20`}>
         <div><p className="m-0 text-xs font-bold tracking-[0.18em] text-white/80">FROM THE FIELD TO YOUR LIFE</p>
           <h1 className="mb-0 mt-5 font-serif text-4xl font-bold leading-snug sm:text-5xl">つくる人と、<br />つながる暮らし。</h1>
           <p className="mb-0 mt-6 text-sm leading-8 text-white/90">おいしい出会い。新しい体験。未来につながる仕事。<br />生産者と、あなたの「やってみたい」を結ぶ場所。</p>
           <div className="mt-7 flex flex-wrap gap-3"><Link to="/products" className="inline-flex min-h-12 items-center rounded-full bg-marche-ivory px-6 py-3 text-sm font-bold text-marche-green no-underline">旬の食材を探す →</Link><Link to="/experiences" className="inline-flex min-h-12 items-center rounded-full border border-white px-6 py-3 text-sm font-bold text-white no-underline">体験を探す →</Link>{isGuest && <Link to="/signup" className="inline-flex min-h-12 items-center px-3 text-sm font-bold text-white">はじめての方はこちら</Link>}</div>
         </div>
-        <div aria-hidden="true" className="flex flex-wrap items-center justify-center gap-5 rounded-[40px] bg-white/10 p-8 text-6xl sm:text-7xl"><span>🍅</span><span>🥕</span><span>🌽</span><span>🍇</span><span>🍃</span></div>
       </div>
+      <button type="button" onClick={toggleHeroVideo} aria-label={isHeroVideoPlaying ? "背景動画を一時停止" : "背景動画を再生"} className="absolute bottom-4 right-5 z-20 grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-full border border-white/70 bg-marche-green-dark p-2 text-xl text-white sm:right-8">{isHeroVideoPlaying ? <span aria-hidden="true">Ⅱ</span> : <span aria-hidden="true">▶</span>}</button>
     </section>
     <div className={pageWidth}>
       {USE_MOCK && <p className="mt-6 rounded-xl bg-marche-sage px-4 py-3 text-sm text-marche-muted">デモ表示：掲載情報は開発用モックです。実際の予約・応募・決済は行いません。</p>}
