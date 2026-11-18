@@ -45,7 +45,7 @@ export default function HomePage() {
 
   return <>
     <section className="relative overflow-hidden bg-marche-green text-white">
-      <video ref={heroVideoRef} className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay={shouldAutoPlay} muted loop playsInline preload="metadata" poster="/videos/home-hero-poster.jpg" aria-hidden="true" onPlay={() => setIsHeroVideoPlaying(true)} onPause={() => setIsHeroVideoPlaying(false)}><source src="/videos/home-hero.webm" type="video/webm" onError={() => setIsHeroVideoPlaying(false)} /></video>
+      <video ref={heroVideoRef} className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay={shouldAutoPlay} muted loop playsInline preload="metadata" poster="/videos/home-hero-poster.jpg" aria-hidden="true" onPlay={() => setIsHeroVideoPlaying(true)} onPause={() => setIsHeroVideoPlaying(false)}><source src="/videos/home-hero.webm" type="video/webm" /><source src="/videos/home-hero.mp4" type="video/mp4" onError={() => setIsHeroVideoPlaying(false)} /></video>
       <div aria-hidden="true" className="absolute inset-0 bg-marche-green-dark/80 lg:bg-transparent lg:bg-linear-to-r lg:from-marche-green-dark/90 lg:via-marche-green-dark/55 lg:to-marche-green-dark/10" />
       <div className={`${pageWidth} relative z-10 py-14 pb-24 lg:py-20`}>
         <div><p className="m-0 text-xs font-bold tracking-[0.18em] text-white/80">FROM THE FIELD TO YOUR LIFE</p>
