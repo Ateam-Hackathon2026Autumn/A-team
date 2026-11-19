@@ -8,10 +8,12 @@
         ・multipart/form-data の file。jpg・png だけ（中身で判定）、5MB まで
         ・位置情報などのメタデータを消してから images/{user_id}/ランダム に保存 → services/storage.py
         ・201 で {key, url}。DB には書かない（キーを受け取る商品登録などのAPIで「自分の画像か」を確かめる）
+        ・同じユーザーは1時間60回まで（超えたら 429 RATE_LIMITED）。S3 に大量に置かれるのを防ぐ
 """
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from ...common.images import image_url
@@ -19,10 +21,17 @@ from ...serializers.public.uploads import ImageUploadResponseSerializer, ImageUp
 from ...services.storage import save_public_image
 
 
+class ImageUploadThrottle(UserRateThrottle):
+    """同じユーザーは1時間60回まで（settings の DEFAULT_THROTTLE_RATES["image_upload"]）"""
+
+    scope = "image_upload"
+
+
 class ImageUploadView(APIView):
     """POST /api/v1/uploads/images"""
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ImageUploadThrottle]
 
     def post(self, request):
         data = {key: request.data[key] for key in request.data}  # QueryDict → dict（未知の項目は 400 にする）

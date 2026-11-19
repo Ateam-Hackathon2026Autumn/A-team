@@ -142,3 +142,33 @@ class JobConflictTests(ApiTestCase):
         self.assertEqual(res.status_code, 409, res.content)
         self.assertEqual(res.json(), {"errorCode": "INVALID_APPLICATION_STATUS_TRANSITION",
                                       "errorMsg": "現在の応募状態から指定された状態には変更できません。"})
+
+
+
+class SuspendedProducerApplicationTests(ApiTestCase):
+    """掲載停止中の生産者は、応募のステータスをどれも変えられない"""
+
+    def setUp(self):
+        super().setUp()
+        self.producer = make_producer()
+        self.job = make_job(self.producer, publish_status=PublishStatus.PRIVATE, term_type="long")
+        day = make_work_date(self.job, days=5)
+        self.application = make_job_application(self.job, user=make_user(), work_dates=[day])
+        self.hired = make_job_application(self.job, user=make_user(email="hired@example.com"), status="hired")
+        self.signin(self.producer.user.email)
+        self.producer.publish_status = PublishStatus.SUSPENDED
+        self.producer.save(update_fields=["publish_status"])
+
+    def url(self, application):
+        return f"{detail_url(self.job.id)}/applications/{application.id}"
+
+    def test_every_status_change_is_409(self):
+        cases = [(self.application, "screening"), (self.application, "hired"),
+                 (self.application, "rejected"), (self.hired, "completed")]
+        for application, new_status in cases:
+            with self.subTest(status=new_status):
+                res = self.patch_json(self.url(application), {"status": new_status})
+                self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "PRODUCER_SUSPENDED"))
+        self.application.refresh_from_db()
+        self.hired.refresh_from_db()
+        self.assertEqual((self.application.status, self.hired.status), ("applied", "hired"))

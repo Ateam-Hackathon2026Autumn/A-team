@@ -15,10 +15,7 @@ urlpatterns = [
     path("auth/signin", auth.SigninView.as_view(), name="auth-signin"),
     path("auth/session", auth.SessionView.as_view(), name="auth-session"),
     path("auth/signout", auth.SignoutView.as_view(), name="auth-signout"),
-    path("auth/email-verification/resend", auth.EmailVerificationResendView.as_view(),
-        name="auth-email-verification-resend"),
-    path("auth/email-verification/confirm", auth.EmailVerificationConfirmView.as_view(),
-        name="auth-email-verification-confirm"),
+    # メール認証（auth/email-verification/resend・confirm）は拡張。views/public/auth.py のコードは残してある
     path("auth/password-reset", auth.PasswordResetView.as_view(), name="auth-password-reset"),
     path("auth/password-reset/confirm", auth.PasswordResetConfirmView.as_view(), name="auth-password-reset-confirm"),
     path("users", users.SignupView.as_view(), name="users-signup"),

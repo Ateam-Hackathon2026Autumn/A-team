@@ -194,7 +194,7 @@ class AdminOrderRefundView(APIView):
                                  detail={"shipment_id": shipment.id, "method": method, "refunded_amount": amount})
 
         if method == "stripe":
-            # Stripe の呼び出し中は DB のロックを持たない（トランザクションの外で呼ぶ）
+            # 箱のロックは refund_by_stripe の中で取り直す（Stripe を呼んで記録するまで持つ）
             try:
                 refunded = refund_by_stripe(shipment.id)
             except RefundNotAvailable as exc:

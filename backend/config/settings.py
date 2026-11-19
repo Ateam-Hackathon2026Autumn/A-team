@@ -1,14 +1,29 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
+
+def env(name, default=""):
+    """環境変数を読む。空文字（compose.yaml の ${VAR:-} など）は「設定なし」として既定値にする"""
+    value = os.getenv(name, "").strip()
+    return value or default
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret-key")
-DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
+SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-only-secret-key")
+DEBUG = env("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
+
+# 本番（DJANGO_DEBUG=false）なのに、開発用や短すぎる SECRET_KEY のままなら起動しない。
+# ローカルは compose.yaml で DJANGO_DEBUG=true を渡すので、このチェックは働かない
+DEV_SECRET_KEYS = {"dev-only-secret-key", "hackathon_secret_key"}
+if not DEBUG and (SECRET_KEY in DEV_SECRET_KEYS or len(SECRET_KEY) < 32):
+    raise ImproperlyConfigured(
+        "DJANGO_DEBUG=false のときは、本番用の DJANGO_SECRET_KEY（32文字以上のランダムな文字列）を設定してください。")
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv(
+    for host in env(
         "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,backend"
     ).split(",")
     if host.strip()
@@ -18,7 +33,7 @@ ALLOWED_HOSTS = [
 # ブラウザが送る Origin（http://localhost:5173）を信頼する。これがないと POST が CSRF で 403 になる
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
+    for origin in env(
         "DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
     ).split(",")
     if origin.strip()
@@ -40,6 +55,8 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "marche.User"
 
 MIDDLEWARE = [
+    # ALB のヘルスチェック（/api/health/）は ALLOWED_HOSTS の確認より前に 200 を返す（api/common/middleware.py）
+    "api.common.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -76,11 +93,11 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": os.getenv("DB_NAME", "hackathon"),
-        "USER": os.getenv("DB_USER", "hackathon"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "hackathon_password"),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "3306"),
+        "NAME": env("DB_NAME", "hackathon"),
+        "USER": env("DB_USER", "hackathon"),
+        "PASSWORD": env("DB_PASSWORD", "hackathon_password"),
+        "HOST": env("DB_HOST", "127.0.0.1"),
+        "PORT": env("DB_PORT", "3306"),
         "OPTIONS": {"charset": "utf8mb4"},
     }
 }
@@ -97,7 +114,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # - 本番：S3。バケット名を環境変数 AWS_STORAGE_BUCKET_NAME で渡す
 # - 開発：バケット名を渡さなければ、backend/media/ に保存する（AWS の設定がなくても画像を登録できる）。
 #   表示用のURLは MEDIA_URL から作り、DEBUG のときだけ Django が /media/ を返す（config/urls.py）
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", "")
 USE_S3 = bool(AWS_STORAGE_BUCKET_NAME)
 STORAGES = {
     "default": {
@@ -107,8 +124,10 @@ STORAGES = {
 }
 MEDIA_ROOT = BASE_DIR / "media"
 # ブラウザは frontend（localhost:5173）を開いているので、画像は backend（localhost:8000）のURLで返す
-MEDIA_URL = os.getenv("DJANGO_MEDIA_URL", "http://localhost:8000/media/")
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-northeast-1")
+MEDIA_URL = env("DJANGO_MEDIA_URL", "http://localhost:8000/media/")
+AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "ap-northeast-1")
+# CloudFront から画像を配信するときのドメイン（例: d123.cloudfront.net）。空なら S3 の URL を返す
+AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN") or None
 
 # 公開用の画像（商品・農園・体験など）は署名なしのURLで返す。
 # 申請書類・チャット添付など非公開のファイルは、表示のたびに期限付きURLを個別に発行する（api-spec「ファイル」）
@@ -152,6 +171,8 @@ REST_FRAMEWORK = {
         "email_verification_resend": "10/hour",
         "email_verification_resend_minute": "1/min",
         "email_verification_resend_hour": "5/hour",
+        # 画像アップロード（同じユーザー。api/views/public/uploads.py）
+        "image_upload": "60/hour",
     },
 }
 
@@ -167,7 +188,7 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 # Secure 属性は本番（https）だけ有効にする。http のローカル環境では Cookie が保存されないことがあるため
-COOKIE_SECURE = os.getenv("DJANGO_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
+COOKIE_SECURE = env("DJANGO_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
 SESSION_COOKIE_SECURE = COOKIE_SECURE
 CSRF_COOKIE_SECURE = COOKIE_SECURE
 # メール認証リンクの有効期限（秒）
@@ -177,20 +198,47 @@ PASSWORD_RESET_TIMEOUT = 60 * 60
 
 # --- 規約 ---------------------------------------------------------------------
 # 現行の版。新規登録で送られた版と違えば 409 POLICY_VERSION_MISMATCH。フロントの表示と合わせて更新する
-TERMS_VERSION = os.getenv("TERMS_VERSION", "2026-10-01")
-PRIVACY_POLICY_VERSION = os.getenv("PRIVACY_POLICY_VERSION", "2026-10-01")
+TERMS_VERSION = env("TERMS_VERSION", "2026-10-01")
+PRIVACY_POLICY_VERSION = env("PRIVACY_POLICY_VERSION", "2026-10-01")
 
 # --- メール -------------------------------------------------------------------
 # 開発中はメールを送らずコンソール（docker compose logs backend）に出す
-EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = os.getenv("DJANGO_DEFAULT_FROM_EMAIL", "no-reply@example.com")
+EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", "no-reply@example.com")
 # メール本文のリンク（パスワード再設定・ゲストの注文確認など）に使うフロントのURL
-FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:5173")
 
 # --- Stripe -------------------------------------------------------------------
 # api/services/payments.py で使う。キーはコミットせず環境変数で渡す
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", "")
+
+# --- 本番（AWS）-----------------------------------------------------------------
+# ALB で HTTPS を外して http で受けるので、ALB が付ける X-Forwarded-Proto で HTTPS かどうかを判定する。
+# ローカル（DEBUG）では使わない
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# --- ログ ---------------------------------------------------------------------
+# すべて標準出力に出す（docker compose logs・CloudWatch Logs で見る）。
+# Django の既定では DEBUG=false のとき 500 エラーの詳細がどこにも出ないので、django.request の ERROR も出す
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["console"], "level": env("DJANGO_LOG_LEVEL", "INFO")},
+    "loggers": {
+        # runserver のアクセスログ・SQL などは今までどおり（Django の既定）にする
+        "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}
 
 LANGUAGE_CODE = "ja"
 TIME_ZONE = "Asia/Tokyo"
