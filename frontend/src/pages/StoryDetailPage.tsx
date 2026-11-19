@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import { getStory } from '../api/storyApi';
 import { getProducts } from '../api/productApi';
 import ProductCard from '../components/products/ProductCard';
+import { producerGenres } from '../components/producers/ProducerSummaryCard';
 import { ContentImage, ContentPage, ContentSection, ContentStatus, dateLabel, panelClass, textLinkClass } from '../components/ui/ContentPage';
 import { usePublicContent } from '../hooks/usePublicContent';
 export default function StoryDetailPage() {
@@ -10,13 +11,14 @@ export default function StoryDetailPage() {
   const loader = useCallback((signal: AbortSignal) => getStory(Number(storyId), signal), [storyId]);
   const state = usePublicContent(loader);
   const story = state.data;
-  return <ContentPage eyebrow="STORY" title={story?.title ?? 'ストーリー詳細'}>
+  return <ContentPage eyebrow="STORY" title={story ? `${story.producer.businessName}のストーリー` : 'ストーリー詳細'}>
     <Link to="/learn" className={textLinkClass}>← 記事一覧</Link><ContentStatus {...state} notFoundTo="/learn" />
     {story && <article className="mx-auto mt-5 max-w-4xl">
       <ContentImage src={story.producer.coverImageUrl} alt={story.producer.businessName} className="aspect-[16/9] rounded-2xl" />
-      <div className="mx-auto max-w-2xl"><p className="mt-6 text-sm font-bold text-marche-green">{story.category.name}</p><p>{story.producer.businessName} ／ {story.producer.prefectureName} {story.producer.city}</p><p className="text-xs text-marche-muted">更新：{dateLabel(story.updatedAt)}</p>
+      <div className="mx-auto max-w-2xl"><p className="mt-6 text-sm font-bold text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p><p>{story.producer.businessName} ／ {story.producer.prefectureName} {story.producer.city}</p><p className="text-xs text-marche-muted">更新：{dateLabel(story.updatedAt)}</p>
+        <ContentSection title="生産へのこだわり" text={story.craft} />
         <ContentSection title="この仕事を選んだ理由" text={story.reason} />
-        <ContentSection title="栽培・生産で大切にしていること" text={story.method} />
+        <ContentSection title="栽培・飼育・漁の方法" text={story.method} />
         <ContentSection title="ものができるまで" text={story.process} />
         <ContentSection title="環境への取り組み" text={story.environment} />
         <ContentSection title="これからの目標" text={story.goal} />

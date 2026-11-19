@@ -1,13 +1,16 @@
 import { Link, useSearchParams } from "react-router";
-import { getStories } from "../api/storyApi";
+import { getStories, storyLead } from "../api/storyApi";
+import { producerGenres } from "../components/producers/ProducerSummaryCard";
 import { ContentImage, ContentPage, ContentStatus, EmptyContent, panelClass, textLinkClass } from "../components/ui/ContentPage";
 import { usePublicContent } from "../hooks/usePublicContent";
 export default function LearnPage() {
   const state = usePublicContent(getStories);
   const [params, setParams] = useSearchParams();
-  const category = params.get("category") ?? "";
-  const categories = [...new Map((state.data ?? []).map((story) => [String(story.category.id), story.category.name])).entries()];
-  const articles = (state.data ?? []).filter((story) => !category || String(story.category.id) === category);
+  // テーマは生産者のジャンル（農業・漁業・畜産など）。ストーリーのある生産者のジャンルだけボタンにする
+  const genre = params.get("genre") ?? "";
+  const genres = [...new Set((state.data ?? []).map((story) => story.producer.genre))]
+    .map((value) => [value, producerGenres[value] ?? value]);
+  const articles = (state.data ?? []).filter((story) => !genre || story.producer.genre === genre);
   const featured = articles[0];
   return (
     <ContentPage
@@ -22,13 +25,13 @@ export default function LearnPage() {
             aria-label="ストーリーのテーマ"
             className="mb-8 flex flex-wrap gap-3"
           >
-            {[["", "すべて"], ...categories].map(([id, name]) => (
+            {[["", "すべて"], ...genres].map(([id, name]) => (
               <button
                 key={id}
                 type="button"
-                aria-pressed={category === id}
-                onClick={() => setParams(id ? { category: id } : {})}
-                className={`min-h-11 cursor-pointer rounded-full border border-marche-green px-5 py-2 font-sans text-sm font-bold ${category === id ? "bg-marche-green text-white" : "bg-white text-marche-green hover:bg-marche-sage"}`}
+                aria-pressed={genre === id}
+                onClick={() => setParams(id ? { genre: id } : {})}
+                className={`min-h-11 cursor-pointer rounded-full border border-marche-green px-5 py-2 font-sans text-sm font-bold ${genre === id ? "bg-marche-green text-white" : "bg-white text-marche-green hover:bg-marche-sage"}`}
               >
                 {name}
               </button>
@@ -43,18 +46,18 @@ export default function LearnPage() {
                   className="aspect-[4/3] h-full"
                 />
                 <div className="p-6 sm:p-10">
-                  <p className="text-sm font-bold text-marche-green">特集 ・ {featured.category.name}</p>
+                  <p className="text-sm font-bold text-marche-green">特集 ・ {producerGenres[featured.producer.genre] ?? featured.producer.genre}</p>
                   <h2 className="font-serif text-2xl leading-relaxed">
                     <Link
                       to={`/learn/${featured.id}`}
                       className="text-marche-ink no-underline hover:underline"
                     >
-                      {featured.title}
+                      {featured.producer.businessName}
                     </Link>
                   </h2>
-                  <p>{featured.reason ?? featured.method}</p>
+                  <p className="line-clamp-4 whitespace-pre-line">{storyLead(featured)}</p>
                   <p className="text-sm text-marche-muted">
-                    {featured.producer.businessName} ・ {featured.producer.prefectureName}
+                    {featured.producer.prefectureName} {featured.producer.city}
                   </p>
                   <Link
                     to={`/learn/${featured.id}`}
@@ -76,16 +79,16 @@ export default function LearnPage() {
                         alt={story.producer.businessName}
                         className="aspect-[4/3] rounded-xl"
                       />
-                      <p className="text-sm text-marche-green">{story.category.name}</p>
+                      <p className="text-sm text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p>
                       <h2 className="font-serif text-xl">
                         <Link
                           to={`/learn/${story.id}`}
                           className={textLinkClass}
                         >
-                          {story.title}
+                          {story.producer.businessName}
                         </Link>
                       </h2>
-                      <p>{story.producer.businessName}</p>
+                      <p className="line-clamp-3">{storyLead(story)}</p>
                     </article>
                   ))}
                 </div>

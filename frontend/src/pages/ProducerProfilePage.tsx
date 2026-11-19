@@ -7,6 +7,7 @@ import { getExperiences } from "../api/experienceApi";
 import { getJobs } from "../api/jobApi";
 import { contentJson } from "../api/publicContentApi";
 import type { Story } from "../types/story";
+import { storyLead } from "../api/storyApi";
 import { usePublicContent } from "../hooks/usePublicContent";
 import { ContentPage, ContentStatus, ContentImage, EmptyContent, panelClass, textLinkClass } from "../components/ui/ContentPage";
 import ProductCard from "../components/products/ProductCard";
@@ -224,7 +225,7 @@ export default function ProducerProfilePage() {
             {related.data?.story.status === "fulfilled" ? (
               related.data.story.value ? (
                 <>
-                  <h3 className="font-serif text-xl">{related.data.story.value.title}</h3>
+                  <p className="line-clamp-4 whitespace-pre-line">{storyLead(related.data.story.value)}</p>
                   <Link
                     to={`/learn/${related.data.story.value.id}`}
                     className={textLinkClass}
