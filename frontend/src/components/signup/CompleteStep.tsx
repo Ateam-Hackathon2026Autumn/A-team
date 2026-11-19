@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { Purpose } from "../../types/authForm";
+import { CheckIcon } from "../Icons";
 
 type Props = {
   purpose: Purpose;
@@ -10,9 +11,9 @@ export default function CompleteStep({ purpose }: Props) {
     <div className="text-center">
       <div
         aria-hidden="true"
-        className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-3xl text-marche-green"
+        className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-marche-green"
       >
-        ✓
+        <CheckIcon className="size-9" />
       </div>
 
       <p className="m-0 text-xs font-bold tracking-widest text-marche-green">

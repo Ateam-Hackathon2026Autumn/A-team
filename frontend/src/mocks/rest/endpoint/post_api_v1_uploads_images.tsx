@@ -3,7 +3,7 @@ import { registerUploadedImage } from '../store/common';
 
 // 画像アップロードAPI POST /api/v1/uploads/images
 //
-// multipart/form-data の image に画像（JPEG・PNG、5MB 以下）を入れて送る。DB には書き込まない
+// multipart/form-data の file に画像（JPEG・PNG、5MB 以下）を入れて送る。DB には書き込まない
 //   key : S3 のキー（images/{userId}/{UUID}.jpg|png）。
 //         商品登録の imageKeys、生産者プロフィール更新の profileImage / coverImage などにそのまま渡す
 //   url : プレビュー表示用の URL
@@ -29,7 +29,29 @@ const uploadsImageCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/uploads/images',
   status: 201,
-  handler: () => {
+  handler: (_url, init) => {
+    const form = init?.body instanceof FormData ? init.body : null;
+    const file = form?.get('file');
+    if (!(file instanceof File) || [...(form?.keys() ?? [])].some((key) => key !== 'file')) {
+      return {
+        status: 400,
+        body: {
+          errorCode: 'VALIDATION_ERROR',
+          errorMsg: '入力内容に誤りがあります。',
+          details: { file: ['画像を選んでください。'] },
+        },
+      };
+    }
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      return {
+        status: 400,
+        body: {
+          errorCode: 'VALIDATION_ERROR',
+          errorMsg: '入力内容に誤りがあります。',
+          details: { file: ['JPEGまたはPNGの画像を選択してください。'] },
+        },
+      };
+    }
     const uuid = crypto.randomUUID();
     const image = {
       key: `images/1/${uuid}.jpg`,

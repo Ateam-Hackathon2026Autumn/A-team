@@ -365,10 +365,13 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
   };
 
   const handleStatusChange = (slot: ExperienceSlot, status: ExperienceSlotStatus) => {
+    const reservationWarning = slot.reservedCount > 0
+      ? `予約人数は${slot.reservedCount}人です。申込中・確定済みの予約はキャンセルされ、予約者に通知とメールが送られます。`
+      : '';
     if (
       status === 'canceled' &&
       !window.confirm(
-        `${formatDateTime(slot.startAt)} の予約枠を中止します。中止した枠は元に戻せません。よろしいですか？`,
+        `${formatDateTime(slot.startAt)} の予約枠を中止します。${reservationWarning}中止した枠は元に戻せません。よろしいですか？`,
       )
     ) {
       return;
@@ -503,7 +506,7 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
                 </DashboardButton>
               )
             )}
-            {!hasReservations && !past && (
+            {!past && (
               <DashboardButton
                 variant="danger"
                 size="sm"
@@ -513,14 +516,11 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
                 中止
               </DashboardButton>
             )}
-            <DashboardButton
-              variant="danger"
-              size="sm"
-              disabled={isPending}
-              onClick={() => handleDelete(slot)}
-            >
-              削除
-            </DashboardButton>
+            {!hasReservations && !past && (
+              <DashboardButton variant="danger" size="sm" disabled={isPending} onClick={() => handleDelete(slot)}>
+                削除
+              </DashboardButton>
+            )}
           </div>
         )}
       </li>

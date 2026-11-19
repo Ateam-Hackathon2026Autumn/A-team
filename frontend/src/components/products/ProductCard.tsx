@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { Product } from "../../types/publicProduct";
+import { StarIcon } from "../Icons";
 
 export const yen = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
 
@@ -27,7 +28,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <p className="m-0 mt-2 text-xs text-marche-muted">{product.producer.businessName}</p>
           <p className="m-0 mt-3 text-xl font-bold">{yen(product.salePrice)} <span className="text-xs font-normal">税込</span></p>
           <p className="m-0 text-xs text-marche-muted">{product.volume}</p>
-          <p className="m-0 mt-2 text-xs text-marche-muted">{product.ratingAvg === null ? "レビューはまだありません" : `★ ${product.ratingAvg.toFixed(1)}（${product.reviewCount}件）`}</p>
+          <p className="m-0 mt-2 text-xs text-marche-muted">{product.ratingAvg === null ? "レビューはまだありません" : <><span className="sr-only">評価 </span><StarIcon className="mr-1 inline-block size-3.5 align-[-0.125em]" />{product.ratingAvg.toFixed(1)}（{product.reviewCount}件）</>}</p>
         </div>
       </Link>
     </article>

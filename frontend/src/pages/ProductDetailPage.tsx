@@ -6,6 +6,7 @@ import { getProduct, getProducts } from "../api/productApi";
 import { addCartItem } from "../api/cartApi";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
 import ProductCard, { ProductImage, yen } from "../components/products/ProductCard";
+import { StarIcon } from "../components/Icons";
 import Button from "../components/ui/Button";
 import { USE_MOCK } from "../config/env";
 import { loginStatusAtom } from "../stores/userAtom";
@@ -201,7 +202,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               {product.producer.businessName}
             </Link>
           </p>
-          <p className="m-0 mt-3 text-sm text-marche-muted">{product.ratingAvg === null ? "レビューはまだありません" : `★ ${product.ratingAvg.toFixed(1)}（${product.reviewCount}件）`}</p>
+          <p className="m-0 mt-3 text-sm text-marche-muted">{product.ratingAvg === null ? "レビューはまだありません" : <><span className="sr-only">評価 </span><StarIcon className="mr-1 inline-block size-4 align-[-0.125em]" />{product.ratingAvg.toFixed(1)}（{product.reviewCount}件）</>}</p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-marche-green">
             {[product.isSubscription && "定期購入対応", product.isPreorder && "予約商品", product.acceptsDeliveryDate && "お届け日時指定OK"].filter(Boolean).map((tag) => (
               <span

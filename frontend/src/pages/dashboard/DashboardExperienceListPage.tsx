@@ -71,16 +71,12 @@ function ExperienceRow({
             {prefectureName(experience.prefectureId)}
           </span>
         </p>
-        {isSuspended ? (
-          <p className="m-0 mt-1 font-bold">{experience.title}</p>
-        ) : (
-          <Link
-            to={editPath}
-            className="mt-1 block font-bold text-marche-ink no-underline hover:underline"
-          >
-            {experience.title}
-          </Link>
-        )}
+        <Link
+          to={editPath}
+          className="mt-1 block font-bold text-marche-ink no-underline hover:underline"
+        >
+          {experience.title}
+        </Link>
         <p className="m-0 mt-1 text-sm text-marche-muted">
           大人 {formatYen(experience.priceAdult)}
           {experience.priceChild !== null && ` ・ 子ども ${formatYen(experience.priceChild)}`}
@@ -104,11 +100,9 @@ function ExperienceRow({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {!isSuspended && (
-          <DashboardButton to={editPath} variant="secondary" size="sm">
-            編集・予約枠
-          </DashboardButton>
-        )}
+        <DashboardButton to={editPath} variant="secondary" size="sm">
+          編集・予約枠
+        </DashboardButton>
         <DashboardButton to={participantsPath} variant="secondary" size="sm">
           申込者を見る
         </DashboardButton>
@@ -255,9 +249,9 @@ function DashboardExperienceListPage() {
         return;
       }
 
-      if (error instanceof ApiError && error.status === 409) {
+      if (error instanceof ApiError && error.errorCode === 'HAS_RESERVATIONS') {
         setActionError(
-          `「${experience.title}」は申込中・確定の予約が残っているため削除できません。予約が終わってから削除するか、非公開にしてください。`,
+          `「${experience.title}」は予約履歴があるため削除できません。非公開にしてください。`,
         );
       } else if (error instanceof ApiError && (error.status === 404 || error.status === 412)) {
         setActionError(
