@@ -5,7 +5,8 @@
 Notion から変えたもの（api-spec「7. 実装で決めたこと」）:
   - etag・If-Match は使わない
   - stock の null は「在庫管理しない（購入できる）」。公開中でも null にできる
-  - 公開の条件は「画像1枚以上・割引後の価格が1円以上」。満たさないときは 400（details.publishStatus）
+  - 公開の条件は「画像1枚以上・割引後の価格が1円以上・商品説明あり」。満たさないときは 409 PRODUCT_NOT_PUBLISHABLE
+    （errorMsg に理由。確かめるのは view の ensure_publishable）
 """
 from rest_framework import serializers
 
@@ -36,6 +37,7 @@ class ProductWriteSerializer(StrictSerializer):
     """POST（登録）と PATCH（更新）の本文。更新は partial=True で使う
 
     - 文字列は前後の空白を除く。必須の文字列は空・null 不可
+    - description: 下書き・非公開なら省略・null・空でもよい（空文字で保存）。公開には必要
     - imageKeys: 最大10件・重複不可。配列の順が sort_order（0がメイン）。指定したら全部置き換え（[] で画像なし）
     - stock: 登録のときだけ受け付ける（更新は在庫更新APIで）
     - category・配送設定・画像キーの存在と持ち主は view で確かめる
@@ -48,7 +50,7 @@ class ProductWriteSerializer(StrictSerializer):
     price = serializers.IntegerField(min_value=1, max_value=MAX_INT)
     tax_rate = serializers.ChoiceField(choices=[8, 10], required=False)
     discount_rate = serializers.IntegerField(min_value=1, max_value=99, required=False, allow_null=True)
-    description = serializers.CharField()
+    description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     method = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     is_subscription = serializers.BooleanField(required=False)
     is_preorder = serializers.BooleanField(required=False)
@@ -62,6 +64,9 @@ class ProductWriteSerializer(StrictSerializer):
         if len(value) != len(set(value)):
             raise serializers.ValidationError("同じ画像を複数指定することはできません。")
         return value
+
+    def validate_description(self, value):
+        return value or ""  # DB の列は NOT NULL なので、空は空文字で保存する
 
     def validate_method(self, value):
         return value or None  # 空なら null（商品詳細に表示しない）

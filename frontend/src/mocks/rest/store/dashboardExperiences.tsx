@@ -1046,7 +1046,21 @@ function listApplications(url: URL): MockResult {
     : { status: 200, body: page };
 }
 
+// ダッシュボード集計（GET /api/v1/dashboard/summary）用。公開中の体験数と、全状態の申込件数
+// （体験を削除すると申込も消えるため、残っている申込をすべて数える）
+function summarizeExperiences(): { publishedCount: number; applicationCount: number } {
+  const current = getState();
+
+  return {
+    publishedCount: current.experiences.filter(
+      (experience) => experience.publishStatus === 'public',
+    ).length,
+    applicationCount: current.applications.length,
+  };
+}
+
 export {
+  summarizeExperiences,
   createExperience,
   createSlot,
   deleteExperience,
