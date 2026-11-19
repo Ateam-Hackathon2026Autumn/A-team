@@ -52,16 +52,6 @@ const SLOT_NOT_FOUND = '対象の予約枠が見つかりません。';
 // 予約人数・削除可否に数える申込の状態
 const ACTIVE_STATUSES = ['applied', 'confirmed', 'attended'];
 
-// 予約があると変更できない体験の項目（参加者に案内済みの内容）
-const LOCKED_FIELDS = [
-  'title',
-  'description',
-  'prefectureId',
-  'place',
-  'priceAdult',
-  'priceChild',
-] as const;
-
 type StoredSlot = Omit<ExperienceSlot, 'reservedCount' | 'remainingCapacity'> & {
   // 申込履歴がある枠は、申込者一覧に表示するため削除後も残す
   deleted: boolean;
@@ -115,11 +105,11 @@ function seedState(): State {
         familyOk: true,
         beginnerOk: true,
         flow: [
-          '10:00 集合・農園の紹介',
-          '10:20 りんごの収穫体験',
-          '11:30 アップルパイづくり',
-          '12:30 試食・休憩',
-          '13:00 解散',
+          { time: '10:00', text: '集合・農園の紹介' },
+          { time: '10:20', text: 'りんごの収穫体験' },
+          { time: '11:30', text: 'アップルパイづくり' },
+          { time: '12:30', text: '試食・休憩' },
+          { time: '13:00', text: '解散' },
         ],
         belongings: ['汚れてもよい服装', '軍手', '飲み物', 'エプロン'],
         notes: [
@@ -165,7 +155,12 @@ function seedState(): State {
         ageCondition: '中学生以上',
         familyOk: false,
         beginnerOk: true,
-        flow: ['10:00 集合', '10:15 剪定の見学・説明', '12:00 昼ごはん', '13:00 解散'],
+        flow: [
+          { time: '10:00', text: '集合' },
+          { time: '10:15', text: '剪定の見学・説明' },
+          { time: '12:00', text: '昼ごはん' },
+          { time: '13:00', text: '解散' },
+        ],
         belongings: ['防寒着', '長靴'],
         notes: ['雪の状況により、見学場所を変更する場合があります。'],
         cancelPolicy:
@@ -386,7 +381,17 @@ let state: State | null = null;
 
 // 最初に使われたときに、保存内容（なければ初期データ）を読み込む
 function getState(): State {
-  state ??= loadState(STORAGE_KEY, isState) ?? seedState();
+  if (state === null) {
+    state = loadState(STORAGE_KEY, isState) ?? seedState();
+    // 以前のモックが保存した文字列形式の flow を現行 API の形式に直す。
+    for (const experience of state.experiences) {
+      experience.flow = experience.flow?.map((item) => {
+        if (typeof item !== 'string') return item;
+        const match = /^([01]\d|2[0-3]):[0-5]\d\s+(.+)$/.exec(item);
+        return match === null ? { time: '00:00', text: item } : { time: match[1], text: match[2] };
+      }) ?? null;
+    }
+  }
 
   return state;
 }
@@ -507,7 +512,7 @@ function toImages(keys: string[], current: ExperienceImage[]): ExperienceImage[]
 
 type ExperienceFields = Partial<
   Omit<DashboardExperience, 'id' | 'producerId' | 'images' | 'createdAt' | 'updatedAt'>
-> & { images?: { imageKey: string }[] };
+> & { imageKeys?: string[] };
 
 const isText = (value: unknown, max: number) =>
   typeof value === 'string' && value.trim() !== '' && value.length <= max;
@@ -521,6 +526,13 @@ const isLines = (value: unknown) =>
       (line) =>
         typeof line === 'string' && line !== '' && line.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH,
     ));
+const isFlow = (value: unknown) =>
+  value === null ||
+  (Array.isArray(value) && value.length <= EXPERIENCE_MAX_LIST_ITEMS &&
+    value.every((item) => isObject(item) &&
+      typeof item.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) &&
+      typeof item.text === 'string' && item.text.trim() !== '' &&
+      item.text.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH));
 
 const experienceChecks: Record<keyof ExperienceFields, (value: unknown) => boolean> = {
   title: (value) => isText(value, 100),
@@ -532,18 +544,16 @@ const experienceChecks: Record<keyof ExperienceFields, (value: unknown) => boole
   ageCondition: (value) => value === null || (typeof value === 'string' && value.length <= 50),
   familyOk: (value) => typeof value === 'boolean',
   beginnerOk: (value) => typeof value === 'boolean',
-  flow: isLines,
+  flow: isFlow,
   belongings: isLines,
   notes: isLines,
   cancelPolicy: (value) => isText(value, 10000),
   publishStatus: (value) => value === 'draft' || value === 'public' || value === 'private',
-  images: (value) =>
+  imageKeys: (value) =>
     Array.isArray(value) &&
     value.length <= EXPERIENCE_MAX_IMAGES &&
-    value.every(
-      (image) => isObject(image) && typeof image.imageKey === 'string' && image.imageKey !== '',
-    ) &&
-    new Set(value.map((image) => (image as { imageKey: string }).imageKey)).size === value.length,
+    value.every((key) => typeof key === 'string' && key.trim() !== '' && key.length <= 500) &&
+    new Set(value).size === value.length,
 };
 
 type ParseResult<T> = { ok: true; fields: T } | { ok: false; errors: Record<string, string[]> };
@@ -662,7 +672,10 @@ function createExperience(init?: RequestInit): MockResult {
     return validationError(parsed.errors);
   }
 
-  const { images = [], ...fields } = parsed.fields;
+  const { imageKeys = [], ...fields } = parsed.fields;
+  if (fields.publishStatus === 'public' && imageKeys.length === 0) {
+    return conflict('IMAGE_REQUIRED', '公開するには画像を1枚以上登録してください。');
+  }
   const experiences = getState().experiences;
   const id = nextId(experiences);
   const now = nowIso();
@@ -684,10 +697,7 @@ function createExperience(init?: RequestInit): MockResult {
     cancelPolicy: '',
     publishStatus: 'draft',
     ...fields,
-    images: toImages(
-      images.map((image) => image.imageKey),
-      [],
-    ),
+    images: toImages(imageKeys, []),
     createdAt: now,
     updatedAt: now,
   };
@@ -700,7 +710,7 @@ function createExperience(init?: RequestInit): MockResult {
   return { status: 201, body: writeResult(experience), headers: etagHeader(experience) };
 }
 
-// PATCH /api/v1/dashboard/experiences/:experienceId（送った項目だけ更新。images は送った内容で置き換え）
+// PATCH /api/v1/dashboard/experiences/:experienceId（送った項目だけ更新。imageKeys は送った内容で置き換え）
 function updateExperience(url: URL, init?: RequestInit): MockResult {
   const experience = findExperience(idFromPath(url));
 
@@ -712,35 +722,24 @@ function updateExperience(url: URL, init?: RequestInit): MockResult {
     return preconditionFailed();
   }
 
-  if (experience.publishStatus === 'suspended') {
-    return conflict('CONFLICT', '掲載停止中の体験は変更できません。');
-  }
-
   const parsed = parseFields<ExperienceFields>(readJsonBody(init), experienceChecks, []);
 
   if (!parsed.ok) {
     return validationError(parsed.errors);
   }
 
-  const { images, ...fields } = parsed.fields;
-  const hasActiveReservations = applicationsOf({ experienceId: experience.id }).some(isActive);
-
-  // 予約がある体験は、参加者に案内済みの内容（タイトル・説明・開催地・料金）を変えられない
-  // （フォームは全項目を送るため、値が変わった場合だけ 409 にする）
-  if (
-    hasActiveReservations &&
-    LOCKED_FIELDS.some((name) => name in fields && fields[name] !== experience[name])
-  ) {
-    return conflict('ACTIVE_RESERVATIONS_EXIST', '予約があるため、この項目は変更できません。');
+  const { imageKeys, ...fields } = parsed.fields;
+  if (experience.publishStatus === 'suspended' && fields.publishStatus !== undefined && fields.publishStatus !== 'suspended') {
+    return conflict('CONTENT_SUSPENDED', '運営により掲載停止中のため、公開状態は変更できません。');
   }
-
+  if ((fields.publishStatus ?? experience.publishStatus) === 'public' &&
+      (imageKeys?.length ?? experience.images.length) === 0) {
+    return conflict('IMAGE_REQUIRED', '公開するには画像を1枚以上登録してください。');
+  }
   Object.assign(experience, fields);
 
-  if (images !== undefined) {
-    experience.images = toImages(
-      images.map((image) => image.imageKey),
-      experience.images,
-    );
+  if (imageKeys !== undefined) {
+    experience.images = toImages(imageKeys, experience.images);
   }
 
   touchExperience(experience, nowIso());
@@ -761,8 +760,8 @@ function deleteExperience(url: URL, init?: RequestInit): MockResult {
     return preconditionFailed();
   }
 
-  if (applicationsOf({ experienceId: experience.id }).some(isActive)) {
-    return conflict('ACTIVE_RESERVATIONS_EXIST', '予約が残っているため削除できません。');
+  if (applicationsOf({ experienceId: experience.id }).length > 0) {
+    return conflict('HAS_RESERVATIONS', '予約されたことがある体験は削除できません。非公開にしてください。');
   }
 
   const current = getState();
@@ -927,8 +926,12 @@ function updateSlot(url: URL, init?: RequestInit): MockResult {
     changesStart || (fields.durationMin !== undefined && fields.durationMin !== slot.durationMin);
 
   // 申込履歴（キャンセル済みを含む）がある枠は、日時・所要時間を変えられない
+  if (slot.status === 'canceled' || Date.parse(slot.startAt) <= Date.now()) {
+    return conflict('SLOT_NOT_EDITABLE', '開始済み・中止済みの予約枠は変更できません。');
+  }
+
   if (changesTime && applicationsOf({ slotId: slot.id }).length > 0) {
-    return conflict('HAS_RESERVATION_HISTORY', '予約がある枠の日時は変更できません。');
+    return conflict('SLOT_TIME_LOCKED', '予約がある予約枠は、開催日時・所要時間を変更できません。');
   }
 
   if (changesStart && fields.startAt !== undefined) {
@@ -942,10 +945,17 @@ function updateSlot(url: URL, init?: RequestInit): MockResult {
   }
 
   if (fields.capacity !== undefined && fields.capacity < toSlot(slot).reservedCount) {
-    return conflict('CAPACITY_CONFLICT', '定員は予約人数以上にしてください。');
+    return conflict('CAPACITY_BELOW_RESERVED', '定員は現在の予約人数より少なくできません。');
   }
 
   const now = nowIso();
+  if (fields.status === 'canceled') {
+    for (const application of applicationsOf({ slotId: slot.id })) {
+      if (application.status === 'applied' || application.status === 'confirmed') {
+        application.status = 'canceled';
+      }
+    }
+  }
   Object.assign(slot, fields, { updatedAt: now, etag: nextEtag('slot', slot.id, slot.etag) });
   touchExperience(experience, now);
   save();
@@ -967,18 +977,16 @@ function deleteSlot(url: URL, init?: RequestInit): MockResult {
 
   const applications = applicationsOf({ slotId: slot.id });
 
-  if (applications.some(isActive)) {
-    return conflict('ACTIVE_RESERVATIONS_EXIST', '予約が残っているため削除できません。');
+  if (Date.parse(slot.startAt) <= Date.now()) {
+    return conflict('SLOT_NOT_EDITABLE', '開始済みの予約枠は削除できません。');
+  }
+  if (applications.length > 0) {
+    return conflict('HAS_RESERVATIONS', '予約されたことがある予約枠は削除できません。中止にしてください。');
   }
 
   const current = getState();
 
-  // キャンセル済みの申込がある枠は、申込者一覧に表示するため削除済みとして残す
-  if (applications.length > 0) {
-    slot.deleted = true;
-  } else {
-    current.slots = current.slots.filter((item) => item.id !== slot.id);
-  }
+  current.slots = current.slots.filter((item) => item.id !== slot.id);
 
   touchExperience(experience, nowIso());
   save();

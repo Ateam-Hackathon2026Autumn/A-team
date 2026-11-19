@@ -462,16 +462,6 @@ function GalleryField({
         ))}
         {items.length < MAX_GALLERY && (
           <li>
-            <input
-              ref={inputRef}
-              id={id}
-              type="file"
-              multiple
-              accept="image/jpeg,image/png"
-              onChange={handleChange}
-              aria-describedby={describedBy(id, true, error)}
-              className="sr-only"
-            />
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -482,6 +472,16 @@ function GalleryField({
           </li>
         )}
       </ul>
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png"
+        onChange={handleChange}
+        aria-describedby={describedBy(id, true, error)}
+        className="sr-only"
+      />
       <p className="m-0 mt-1 text-right text-xs text-marche-muted">
         {items.length} / {MAX_GALLERY}枚
       </p>

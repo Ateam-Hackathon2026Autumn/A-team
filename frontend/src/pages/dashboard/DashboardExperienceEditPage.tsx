@@ -130,7 +130,12 @@ function DashboardExperienceEditPage() {
     setNotice(null);
 
     try {
-      await updateExperience(experienceId, input, etag);
+      const { publishStatus: _publishStatus, ...content } = input;
+      await updateExperience(
+        experienceId,
+        experience?.publishStatus === 'suspended' ? content : input,
+        etag,
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 412) {
         setNotice(STALE_MESSAGE);
@@ -194,19 +199,6 @@ function DashboardExperienceEditPage() {
             />
           ))}
         </div>
-      );
-    }
-
-    // 運営による掲載停止中は、生産者は変更できない
-    if (experience.publishStatus === 'suspended') {
-      return (
-        <Notice>
-          <p className="m-0 font-bold">この体験は運営により掲載停止中のため、編集できません。</p>
-          <p className="m-0 mt-1 text-marche-muted">くわしくは運営にお問い合わせください。</p>
-          <DashboardButton to={EXPERIENCE_LIST_PATH} variant="secondary" className="mt-4">
-            体験管理に戻る
-          </DashboardButton>
-        </Notice>
       );
     }
 

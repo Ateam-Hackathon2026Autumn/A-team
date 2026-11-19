@@ -39,6 +39,8 @@ type ExperienceImage = {
   sortOrder: number;
 };
 
+type ExperienceFlowItem = { time: string; text: string };
+
 // 体験詳細（編集画面用）
 type DashboardExperience = {
   id: number;
@@ -53,7 +55,7 @@ type DashboardExperience = {
   // false の場合、子ども・未就学児は申し込めない
   familyOk: boolean;
   beginnerOk: boolean;
-  flow: string[] | null;
+  flow: ExperienceFlowItem[] | null;
   belongings: string[] | null;
   notes: string[] | null;
   cancelPolicy: string;
@@ -74,13 +76,13 @@ type ExperienceInput = {
   ageCondition: string | null;
   familyOk: boolean;
   beginnerOk: boolean;
-  flow: string[] | null;
+  flow: ExperienceFlowItem[] | null;
   belongings: string[] | null;
   notes: string[] | null;
   cancelPolicy: string;
   publishStatus: ExperienceWritableStatus;
-  // 画像アップロードAPIで受け取ったキー（最大20件、先頭がメイン画像）
-  images: { imageKey: string }[];
+  // 画像アップロードAPIで受け取ったキー（最大10件、先頭がメイン画像）
+  imageKeys: string[];
 };
 
 // 体験の登録・更新APIのレスポンス（詳細全体ではない）
@@ -187,6 +189,7 @@ export type {
   ExperienceApplicationStatus,
   ExperienceImage,
   ExperienceInput,
+  ExperienceFlowItem,
   ExperiencePublishStatus,
   ExperienceSlot,
   ExperienceSlotInput,

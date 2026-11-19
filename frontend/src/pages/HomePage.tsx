@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useAtomValue } from "jotai";
@@ -11,6 +11,7 @@ import { getStories, storyLead } from "../api/storyApi";
 import { usePublicContent } from "../hooks/usePublicContent";
 import { USE_MOCK } from "../config/env";
 import ProductCard from "../components/products/ProductCard";
+import { BackgroundVideo, PlayPauseButton, useBackgroundVideo } from "../components/BackgroundVideo";
 import ExperienceCard from "../components/experiences/ExperienceCard";
 import JobCard from "../components/jobs/JobCard";
 import { producerGenres } from "../components/producers/ProducerSummaryCard";
@@ -23,30 +24,11 @@ const pillClass = "min-h-11 cursor-pointer rounded-full border border-marche-lin
 
 export default function HomePage() {
   const isGuest = useAtomValue(loginStatusAtom) === "loggedOut";
-  const heroVideoRef = useRef<HTMLVideoElement>(null);
-  const [shouldAutoPlay] = useState(() => typeof window === "undefined" || typeof window.matchMedia !== "function" || !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const [isHeroVideoPlaying, setIsHeroVideoPlaying] = useState(false);
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const pauseForReducedMotion = (event: MediaQueryListEvent) => {
-      if (event.matches) heroVideoRef.current?.pause();
-    };
-    motionPreference.addEventListener("change", pauseForReducedMotion);
-    return () => motionPreference.removeEventListener("change", pauseForReducedMotion);
-  }, []);
-
-  const toggleHeroVideo = () => {
-    const video = heroVideoRef.current;
-    if (!video) return;
-    if (video.paused) void video.play().catch(() => setIsHeroVideoPlaying(false));
-    else video.pause();
-  };
+  const heroVideo = useBackgroundVideo();
 
   return <>
     <section className="relative overflow-hidden bg-marche-green text-white">
-      <video ref={heroVideoRef} className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay={shouldAutoPlay} muted loop playsInline preload="metadata" poster="/videos/home-hero-poster.jpg" aria-hidden="true" onPlay={() => setIsHeroVideoPlaying(true)} onPause={() => setIsHeroVideoPlaying(false)}><source src="/videos/home-hero.webm" type="video/webm" /><source src="/videos/home-hero.mp4" type="video/mp4" onError={() => setIsHeroVideoPlaying(false)} /></video>
+      <BackgroundVideo control={heroVideo} />
       <div aria-hidden="true" className="absolute inset-0 bg-marche-green-dark/80 lg:bg-transparent lg:bg-linear-to-r lg:from-marche-green-dark/90 lg:via-marche-green-dark/55 lg:to-marche-green-dark/10" />
       <div className={`${pageWidth} relative z-10 py-14 pb-24 lg:py-20`}>
         <div><p className="m-0 text-xs font-bold tracking-[0.18em] text-white/80">FROM THE FIELD TO YOUR LIFE</p>
@@ -55,17 +37,17 @@ export default function HomePage() {
           <div className="mt-7 flex flex-wrap gap-3"><Link to="/products" className="inline-flex min-h-12 items-center rounded-full bg-marche-ivory px-6 py-3 text-sm font-bold text-marche-green no-underline">旬の食材を探す →</Link><Link to="/experiences" className="inline-flex min-h-12 items-center rounded-full border border-white px-6 py-3 text-sm font-bold text-white no-underline">体験を探す →</Link>{isGuest && <Link to="/signup" className="inline-flex min-h-12 items-center px-3 text-sm font-bold text-white">はじめての方はこちら</Link>}</div>
         </div>
       </div>
-      <button type="button" onClick={toggleHeroVideo} aria-label={isHeroVideoPlaying ? "背景動画を一時停止" : "背景動画を再生"} className="absolute bottom-4 right-5 z-20 grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-full border border-white/70 bg-marche-green-dark p-2 text-xl text-white sm:right-8">{isHeroVideoPlaying ? <span aria-hidden="true">Ⅱ</span> : <span aria-hidden="true">▶</span>}</button>
+      <PlayPauseButton control={heroVideo} className="absolute bottom-4 right-5 z-20 grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-full border border-white/70 bg-marche-green-dark p-2 text-white sm:right-8" />
     </section>
     <div className={pageWidth}>
       {USE_MOCK && <p className="mt-6 rounded-xl bg-marche-sage px-4 py-3 text-sm text-marche-muted">デモ表示：掲載情報は開発用モックです。実際の予約・応募・決済は行いません。</p>}
       <section className="py-10 sm:py-14"><p className="text-xs font-bold tracking-[0.18em] text-marche-green">FIND YOUR WAY</p><h2 className="font-serif text-2xl sm:text-3xl">つながり方を見つける</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
-          ["/products", "🧺", "買う", "生産者から届く、産地の味を楽しもう"],
-          ["/experiences", "🌱", "体験する", "農業・漁業の現場で、新しい発見を"],
-          ["/jobs", "🤝", "働く", "地域とつながる、一日からのお仕事"],
-          ["/learn", "📖", "学ぶ", "生産者のこだわりや想いを知る"],
-        ].map(([to, icon, title, description]) => <Link key={to} to={to} className="rounded-2xl border border-marche-line bg-white p-6 text-inherit no-underline transition-colors hover:bg-marche-sage"><span aria-hidden="true" className="text-4xl">{icon}</span><h3 className="mb-0 mt-3 text-lg font-bold">{title}</h3><p className="mb-0 mt-2 text-sm text-marche-muted">{description}</p></Link>)}</div>
+          { to: "/products", image: "/images/categories/buy.webp", title: "買う", description: "生産者から届く、産地の味を楽しもう" },
+          { to: "/experiences", image: "/images/categories/experience.webp", title: "体験する", description: "農業・漁業の現場で、新しい発見を" },
+          { to: "/jobs", image: "/images/categories/work.webp", title: "働く", description: "地域とつながる、一日からのお仕事" },
+          { to: "/learn", image: "/images/categories/learn.webp", title: "学ぶ", description: "生産者のこだわりや想いを知る" },
+        ].map(({ to, image, title, description }) => <Link key={to} to={to} className="group rounded-2xl border border-marche-line bg-white p-6 text-inherit no-underline transition-colors hover:bg-marche-sage"><img src={image} width={512} height={512} loading="lazy" decoding="async" alt="" className="size-24 rounded-2xl object-cover sm:size-28" /><h3 className="mb-0 mt-3 text-lg font-bold">{title}</h3><p className="mb-0 mt-2 text-sm text-marche-muted">{description}</p></Link>)}</div>
       </section>
       <HomeProducers />
       <HomeProducts />

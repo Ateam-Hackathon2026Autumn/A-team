@@ -114,12 +114,11 @@ function DashboardProductEditPage() {
     const { product } = data;
     const { stock, ...fields } = input;
     const stockChanged = stock !== product.stock;
-    // 在庫と内容（価格・公開状態など）は別々のAPIで保存するため、途中で失敗しても
-    // 「旧価格のまま在庫だけ補充されて販売できる」状態にならない順で更新する
-    // - 原則は内容が先（価格を変えてから在庫を補充する）
-    // - 在庫が未設定（null）の商品は公開できないため、そのときだけ在庫を先に設定する
-    //   （未設定の商品は公開中ではないので、在庫を先に入れても販売は始まらない）
-    const updateStockFirst = stockChanged && product.stock === null;
+    // 掲載停止中は内容だけ保存し、公開状態は送らない
+    const updateFields = product.publishStatus === 'suspended'
+      ? (({ publishStatus: _status, ...content }) => content)(fields)
+      : fields;
+    const updateStockFirst = stockChanged && product.publishStatus !== 'public';
     // 1つ目の更新が成功したか（2つ目で失敗したときに一部だけ保存されたことを伝える）
     let firstSaved = false;
 
@@ -129,11 +128,10 @@ function DashboardProductEditPage() {
       if (updateStockFirst) {
         const { etag } = await updateProductStock(product.id, stock, product.etag);
         firstSaved = true;
-        await updateProduct(product.id, fields, etag);
+        await updateProduct(product.id, updateFields, etag);
       } else {
-        const updated = await updateProduct(product.id, fields, product.etag);
+        const updated = await updateProduct(product.id, updateFields, product.etag);
         firstSaved = true;
-
         if (stockChanged) {
           await updateProductStock(product.id, stock, updated.etag);
         }
@@ -228,23 +226,6 @@ function DashboardProductEditPage() {
             />
           ))}
         </div>
-      );
-    }
-
-    // 運営による掲載停止中は、生産者は変更できない
-    if (data.product.publishStatus === 'suspended') {
-      return (
-        <Notice>
-          <p className="m-0 font-bold">
-            この商品は運営により掲載停止中のため、編集できません。
-          </p>
-          <p className="m-0 mt-1 text-marche-muted">
-            くわしくは運営にお問い合わせください。
-          </p>
-          <DashboardButton to={PRODUCT_LIST_PATH} variant="secondary" className="mt-4">
-            商品管理に戻る
-          </DashboardButton>
-        </Notice>
       );
     }
 
