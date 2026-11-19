@@ -404,11 +404,16 @@ function DashboardStoryEditPage() {
     setErrors({});
     setSubmitError(null);
 
+    // 送信した時点の入力。保存中も入力できるので、応答までに書き足された内容を消さないために使う
+    const submittedValues = values;
+
     try {
-      const saved = await updateDashboardStory(toInput(values));
+      const saved = await updateDashboardStory(toInput(submittedValues));
 
       setStory(saved);
-      setValues(toFormValues(saved));
+      // 送信後に入力が変わっていなければ、サーバーの値（前後の空白を除いたもの）にそろえる。
+      // 変わっていれば入力をそのまま残し、「保存していない変更があります」と表示する
+      setValues((current) => (current === submittedValues ? toFormValues(saved) : current));
       setToast(
         saved.publishStatus === 'public' ? 'ストーリーを保存して公開しました。' : 'ストーリーを保存しました。',
       );
