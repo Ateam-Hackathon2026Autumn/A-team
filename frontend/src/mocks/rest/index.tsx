@@ -1,3 +1,4 @@
+import { myOrderDetail } from './endpoint/get_api_v1_users_me_orders_orderId';
 import type { RestMock } from '../types';
 import { cartItemDelete } from './endpoint/delete_api_v1_cart_items_itemId';
 import { dashboardExperienceDelete } from './endpoint/delete_api_v1_dashboard_experiences_experienceId';
@@ -148,6 +149,7 @@ const restMocks: RestMock[] = [
   myJobApplications,
   myJobApplicationWithdraw,
   myOrdersList,
+  myOrderDetail,
 ];
 
 export { restMocks };
