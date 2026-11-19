@@ -611,6 +611,12 @@ function DashboardProfileEditPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  // 最新の入力。保存の応答を待つ間に変わった項目を見分けるために使う
+  const latestRef = useRef({ values, profileImage, coverImage, gallery });
+
+  useEffect(() => {
+    latestRef.current = { values, profileImage, coverImage, gallery };
+  });
 
   const resetForm = (next: DashboardProfile) => {
     setProfile(next);
@@ -849,11 +855,37 @@ function DashboardProfileEditPage() {
     setErrors({});
     setSubmitError(null);
 
+    // 送信した時点の入力。保存中も入力や画像の操作ができるので、応答までの変更を消さないために使う
+    const submitted = { values, profileImage, coverImage, gallery };
+
     try {
       const saved = await updateDashboardProfile(patch);
+      const latest = latestRef.current;
 
-      [profileImage, coverImage, ...gallery].forEach(releasePreview);
-      resetForm(saved);
+      // 送信後に変わっていない項目だけ、サーバーの値にそろえる。
+      // 保存中に変えた項目はそのまま残し、「保存していない変更があります」と表示する
+      setProfile(saved);
+      setErrors({});
+
+      if (latest.values === submitted.values) {
+        setValues(toFormValues(saved));
+      }
+
+      if (latest.profileImage === submitted.profileImage) {
+        releasePreview(submitted.profileImage);
+        setProfileImage(singleImage(saved.profileImage, saved.profileImageUrl));
+      }
+
+      if (latest.coverImage === submitted.coverImage) {
+        releasePreview(submitted.coverImage);
+        setCoverImage(singleImage(saved.coverImage, saved.coverImageUrl));
+      }
+
+      if (latest.gallery === submitted.gallery) {
+        submitted.gallery.forEach(releasePreview);
+        setGallery(toGallery(saved));
+      }
+
       setToast('プロフィールを保存しました。');
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
