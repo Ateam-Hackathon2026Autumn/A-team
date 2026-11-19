@@ -3,7 +3,7 @@ import { registerUploadedImage } from '../store/common';
 
 // 画像アップロードAPI POST /api/v1/uploads/images
 //
-// multipart/form-data の file に画像（JPEG・PNG、5MB 以下）を入れて送る。DB には書き込まない
+// multipart/form-data の image に画像（JPEG・PNG、5MB 以下）を入れて送る。DB には書き込まない
 //   key : S3 のキー（images/{userId}/{UUID}.jpg|png）。
 //         商品登録の imageKeys、生産者プロフィール更新の profileImage / coverImage などにそのまま渡す
 //   url : プレビュー表示用の URL
