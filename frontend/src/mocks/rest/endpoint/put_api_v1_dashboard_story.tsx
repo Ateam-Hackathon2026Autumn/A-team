@@ -1,39 +1,28 @@
 import type { RestMock } from '../../types';
-import { hoursFromNow } from '../../helpers';
+import { putStory } from '../store/dashboardStory';
 
-// ストーリー登録・更新API PUT /api/v1/dashboard/story
+// ストーリー保存API PUT /api/v1/dashboard/story
 //
-// 全項目を置き換えて、保存後のストーリーを返す。更新は 200、初回登録は 201（status を 201 に変える）
+// 実API: backend/api/views/dashboard/story.py・serializers/dashboard/story.py
+// 本文は7項目すべて必須で、全体を置き換える（ETag・If-Match は使わない。初回も 200）:
+//   {craft, method, process, environment, reason, goal, publishStatus}
+//   本文6項目は null か2,000文字までの文字列（前後の空白を除き、空なら null）
+//   publishStatus は 'draft' | 'public' | 'private'
+// 保存後のストーリーを GET と同じ形で返す。処理は store/dashboardStory.tsx
 //
-// 公開条件を満たさない（本文5項目がすべて空など）（409）:
-//   { errorCode: 'CONFLICT', errorMsg: '公開するには本文を1項目以上入力してください。' }
-//
-// 他の画面で先に更新されていた（412）:
-//   { errorCode: 'PRECONDITION_FAILED', errorMsg: '他の操作で更新されています。画面を再読み込みしてください。' }
+// 入力エラー（400）:
+//   { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。',
+//     details: { craft: ['この項目が2000文字より長くならないようにしてください。'] } }
+//   公開に本文が足りない: details: { publishStatus: ['公開するには本文を1項目以上入力してください。'] }
+// 生産者が掲載停止中（409）:
+//   { errorCode: 'PRODUCER_SUSPENDED', errorMsg: '掲載停止中のため、この操作はできません。運営にお問い合わせください。' }
+// 運営がストーリーを掲載停止中（409）:
+//   { errorCode: 'STORY_SUSPENDED', errorMsg: 'このストーリーは運営により掲載停止中です。運営にお問い合わせください。' }
 const dashboardStoryUpsert: RestMock = {
   method: 'PUT',
   path: '/api/v1/dashboard/story',
   status: 200,
-  body: {
-    id: 1,
-    producerId: 1,
-    storyCategoryId: 1,
-    title: '北アルプスの雪どけ水で育てる、蜜たっぷりのりんご',
-    method:
-      '草生栽培・減農薬（県基準の50%以下）。草生栽培で土の力を引き出し、農薬は県基準の半分以下。樹上で完熟させてから収穫します。',
-    process:
-      '春の摘花・摘果から秋の収穫まで、1本ずつ手作業で手入れしています。収穫したりんごはその日のうちに選果して出荷します。',
-    environment:
-      '園地の下草は刈り取って土に戻し、化学肥料に頼らない土づくりを続けています。',
-    reason: '祖父の代から続く園地を、次の世代にも残したいと思い会社を辞めて戻りました。',
-    goal: '収穫体験と短期スタッフ受け入れで、りんご産地の担い手を増やしたい。',
-    publishStatus: 'public',
-    category: {
-      id: 1,
-      name: '栽培方法',
-    },
-    updatedAt: hoursFromNow(0),
-  },
+  handler: (_url, init) => putStory(init),
 };
 
 export { dashboardStoryUpsert };
