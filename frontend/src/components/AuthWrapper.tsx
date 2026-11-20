@@ -21,6 +21,7 @@ const guestOnlyPaths = ['/signin', '/signup'];
 
 // ログインしていないとアクセスできないページ
 const memberOnlyPaths = [
+  '/signup/complete',
   '/mypage/*',
   '/jobs/:jobId/apply',
   '/experiences/:experienceId/apply',

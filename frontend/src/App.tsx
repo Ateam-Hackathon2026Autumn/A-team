@@ -34,6 +34,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import ProductListPage from './pages/ProductListPage';
 import ProfileEditPage from './pages/ProfileEditPage';
 import SigninPage from './pages/SigninPage';
+import CompleteStep from './components/signup/CompleteStep';
 import SignupPage from './pages/SignupPage';
 import StoryDetailPage from './pages/StoryDetailPage';
 
@@ -78,6 +79,7 @@ function App() {
           <Route element={<AuthLayout />}>
             <Route path="/signin" element={<SigninPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/signup/complete" element={<CompleteStep />} />
           </Route>
           
           <Route path="/" element={<HomePage />} />
