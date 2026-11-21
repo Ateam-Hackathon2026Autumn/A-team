@@ -132,7 +132,7 @@ export default function SignupPage() {
                     : "border-marche-line"
                 }`}
               >
-                {completed ? "✓" : number}
+                {completed ? <><span className="sr-only">完了: </span><CheckIcon className="size-4" /></> : number}
               </span>
               {title}
             </li>

@@ -217,7 +217,7 @@ function DashboardJobListPage() {
         return;
       }
 
-      if (error instanceof ApiError && error.status === 409) {
+      if (error instanceof ApiError && error.errorCode === 'JOB_HAS_APPLICATIONS') {
         setActionError(
           `「${job.title}」は応募されたことがあるため削除できません。募集をやめる場合は、編集画面で非公開にしてください。`,
         );

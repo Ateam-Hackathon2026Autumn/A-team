@@ -242,7 +242,7 @@ const fieldChecks: Record<FieldName, (value: unknown) => boolean> = {
   volume: (value) => isText(value, 50),
   categoryId: isId,
   shippingSettingId: isId,
-  price: isCount,
+  price: (value) => isCount(value) && Number(value) >= 1,
   taxRate: (value) => value === 8 || value === 10,
   discountRate: (value) =>
     value === null || (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 99),
@@ -296,20 +296,12 @@ function publishConflict(product: DashboardProduct): MockResult | null {
     product.publishStatus === 'public' &&
     (product.images.length === 0 ||
       (product.description ?? '').trim() === '' ||
-      product.stock === null ||
       product.salePrice <= 0)
   ) {
-    return conflict('PRODUCT_STATE_CONFLICT', '公開するには画像・商品説明・在庫数が必要です。');
+    return conflict('PRODUCT_NOT_PUBLISHABLE', '公開するには画像・商品説明・割引後の価格が必要です。');
   }
 
   return null;
-}
-
-// 掲載停止中（運営が停止）の商品は生産者が変更できない
-function suspendedConflict(product: DashboardProduct): MockResult | null {
-  return product.publishStatus === 'suspended'
-    ? conflict('PRODUCT_STATE_CONFLICT', '掲載停止中の商品は変更できません。')
-    : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -404,20 +396,18 @@ function updateProduct(url: URL, init?: RequestInit): MockResult {
     return notFound(NOT_FOUND_MESSAGE);
   }
 
-  if (isStale(init, product.etag)) {
+  if (isStale(init, product.etag ?? '')) {
     return preconditionFailed();
-  }
-
-  const stateError = suspendedConflict(product);
-
-  if (stateError !== null) {
-    return stateError;
   }
 
   const parsed = parseFields(readJsonBody(init), []);
 
   if (!parsed.ok) {
     return validationError(parsed.errors);
+  }
+
+  if (product.publishStatus === 'suspended' && parsed.fields.publishStatus !== undefined) {
+    return conflict('CONTENT_SUSPENDED', '運営により掲載停止中のため、公開状態は変更できません。');
   }
 
   // 在庫は在庫更新APIで変える（この API では受け付けない）
@@ -451,24 +441,14 @@ function updateStock(url: URL, init?: RequestInit): MockResult {
     return notFound(NOT_FOUND_MESSAGE);
   }
 
-  if (isStale(init, product.etag)) {
+  if (isStale(init, product.etag ?? '')) {
     return preconditionFailed();
-  }
-
-  const stateError = suspendedConflict(product);
-
-  if (stateError !== null) {
-    return stateError;
   }
 
   const input = readJsonBody(init);
 
   if (!isObject(input) || !(input.stock === null || isCount(input.stock))) {
     return validationError({ stock: ['在庫数は0以上の整数で指定してください。'] });
-  }
-
-  if (input.stock === null && product.publishStatus === 'public') {
-    return conflict('STOCK_STATE_CONFLICT', '公開中の商品は在庫数を未設定にできません。');
   }
 
   product.stock = input.stock as number | null;
@@ -495,7 +475,7 @@ function deleteProduct(url: URL, init?: RequestInit): MockResult {
     return notFound(NOT_FOUND_MESSAGE);
   }
 
-  if (isStale(init, product.etag)) {
+  if (isStale(init, product.etag ?? '')) {
     return preconditionFailed();
   }
 

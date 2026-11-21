@@ -15,9 +15,9 @@ export default function CompleteStep() {
     <div className="text-center">
       <div
         aria-hidden="true"
-        className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-3xl text-marche-green"
+        className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-marche-green"
       >
-        ✓
+        <CheckIcon className="size-9" />
       </div>
       <p className="m-0 text-xs font-bold tracking-widest text-marche-green">REGISTRATION COMPLETED</p>
       <h1 className="m-0 mt-3 font-serif text-2xl font-bold sm:text-3xl">登録が完了しました！</h1>

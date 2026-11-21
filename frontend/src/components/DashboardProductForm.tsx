@@ -203,8 +203,8 @@ function validate(
     errors.shippingSettingId = '配送方法を選んでください。';
   }
 
-  if (!isWholeNumber(values.price)) {
-    errors.price = '価格を半角数字（円）で入力してください。';
+  if (!isWholeNumber(values.price) || Number(values.price) < 1) {
+    errors.price = '価格を1以上の半角数字（円）で入力してください。';
   }
 
   if (
@@ -228,10 +228,6 @@ function validate(
 
     if (values.description.trim() === '') {
       errors.description = '公開するには商品説明が必要です。';
-    }
-
-    if (values.stock === '') {
-      errors.stock = '公開するには在庫数が必要です。';
     }
 
     const salePrice = calcSalePrice(values);
@@ -303,7 +299,8 @@ function DashboardProductForm({
   const [images, setImages] = useState<ImageItem[]>(() =>
     isEdit ? toImageItems(product) : [],
   );
-  // 編集時の公開状態（掲載停止中の商品は編集画面でフォームを出さない）
+  const isSuspended = product?.publishStatus === 'suspended';
+  // 掲載停止中は公開状態を変更できない
   const [publishStatus, setPublishStatus] = useState<SubmitStatus>(
     product !== undefined && product.publishStatus !== 'suspended'
       ? product.publishStatus
@@ -483,7 +480,7 @@ function DashboardProductForm({
           </p>
         </div>
 
-        <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-5">
+        <ul id="product-images" tabIndex={-1} className="m-0 grid list-none grid-cols-3 gap-3 p-0 outline-none sm:grid-cols-5">
           {images.map((image, index) => (
             <li key={image.localId} className="relative">
               <img
@@ -518,7 +515,6 @@ function DashboardProductForm({
           {images.length < MAX_IMAGES && (
             <li>
               <button
-                id="product-images"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 aria-describedby={errors.images === undefined ? undefined : 'product-images-error'}
@@ -706,7 +702,7 @@ function DashboardProductForm({
           <Field
             id="product-stock"
             label="在庫数"
-            hint="公開するには必要です。0 は売り切れ。"
+            hint="空欄は在庫管理なし。0 は売り切れ。"
             error={errors.stock}
           >
             <input
@@ -782,11 +778,15 @@ function DashboardProductForm({
 
       {isEdit && (
         <FormSection title="公開設定">
-          <PublishStatusField
-            options={publishStatusOptions}
-            value={publishStatus}
-            onChange={setPublishStatus}
-          />
+          {isSuspended ? (
+            <p className="m-0 text-sm text-marche-red">運営により掲載停止中です。内容は編集できますが、公開状態は変更できません。</p>
+          ) : (
+            <PublishStatusField
+              options={publishStatusOptions}
+              value={publishStatus}
+              onChange={setPublishStatus}
+            />
+          )}
         </FormSection>
       )}
 

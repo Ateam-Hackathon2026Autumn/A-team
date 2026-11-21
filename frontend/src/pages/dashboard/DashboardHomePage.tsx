@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useAtomValue } from 'jotai';
 
 import { getDashboardSummary } from '../../api/dashboardApi';
+import ApiError from '../../api/apiError';
 import DashboardButton from '../../components/DashboardButton';
 import {
   ChevronRightIcon,
@@ -182,6 +183,7 @@ function StatCardSkeleton() {
 
 function DashboardHomePage() {
   const userInfo = useAtomValue(userInfoAtom);
+  const canManage = userInfo?.isProducer === true;
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [hasError, setHasError] = useState(false);
@@ -189,6 +191,7 @@ function DashboardHomePage() {
   const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
+    if (!canManage) return;
     // 画面を離れた後に結果が返ってきても state を更新しない
     let isActive = true;
 
@@ -199,7 +202,11 @@ function DashboardHomePage() {
         if (isActive) {
           setSummary(data);
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          window.location.replace('/signin');
+          return;
+        }
         if (isActive) {
           setHasError(true);
         }
@@ -211,7 +218,7 @@ function DashboardHomePage() {
     return () => {
       isActive = false;
     };
-  }, [reloadCount]);
+  }, [canManage, reloadCount]);
 
   const handleReload = () => {
     setHasError(false);
@@ -243,7 +250,9 @@ function DashboardHomePage() {
           )}
         </div>
 
-        {hasError ? (
+        {!canManage ? (
+          <p className="mt-4 rounded-2xl border border-marche-line bg-white p-5 text-sm">生産者登録が承認されると集計を確認できます。</p>
+        ) : hasError ? (
           <div
             role="alert"
             className="mt-4 box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
@@ -276,7 +285,7 @@ function DashboardHomePage() {
         )}
       </section>
 
-      <section aria-labelledby="dashboard-actions-heading">
+      {canManage && <section aria-labelledby="dashboard-actions-heading">
         <h2 id="dashboard-actions-heading" className="m-0 font-serif text-lg font-bold">
           新しく登録する
         </h2>
@@ -292,7 +301,7 @@ function DashboardHomePage() {
             </Link>
           ))}
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

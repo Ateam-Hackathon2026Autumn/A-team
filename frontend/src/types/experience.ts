@@ -6,9 +6,10 @@ export type Experience = {
   producer: { id: number; businessName: string; city: string };
 };
 export type PublicExperienceSlot = { id: number; startAt: string; durationMin: number; capacity: number; remainingCapacity: number; quoteToken: string };
+export type PublicExperienceFlowItem = { time: string; text: string };
 export type ExperienceDetail = Experience & {
   description: string; images: { id: number; url: string; sortOrder: number }[];
-  place: string; ageCondition: string; flow: string[]; belongings: string[]; notes: string[];
+  place: string; ageCondition: string; flow: PublicExperienceFlowItem[] | null; belongings: string[]; notes: string[];
   cancelPolicy: string; slots: PageResult<PublicExperienceSlot>;
 };
 export type ExperienceApplyInput = {
