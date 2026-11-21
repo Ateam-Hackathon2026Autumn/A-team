@@ -22,6 +22,7 @@ S3 には接続しない（override_settings で STORAGES を FileSystemStorage 
 """
 from marche.models import Job, JobApplication, JobWorkDate, PublishStatus
 
+from ..public.test_uploads import image_file
 from ..utils import ApiTestCase, make_job, make_job_application, make_producer, make_user, make_work_date
 
 LIST_URL = "/api/v1/dashboard/jobs"
@@ -44,6 +45,68 @@ class SuspendedJobTests(ApiTestCase):
         res = self.patch_json(f"/api/v1/dashboard/jobs/{job.id}", {"title": "直した求人"})
         self.assertEqual(res.status_code, 200, res.json())
         self.assertEqual(Job.objects.get().title, "直した求人")
+
+
+class JobCoverImageTests(ApiTestCase):
+    """カバー画像：キー（coverImage）と表示用の URL（coverImageUrl）を返す。キーは自分のアップロードだけ"""
+
+    def setUp(self):
+        super().setUp()
+        self.producer = make_producer()
+        self.signin(self.producer.user.email)
+
+    def upload(self):
+        return self.post_multipart("/api/v1/uploads/images", {"file": image_file()}).json()["key"]
+
+    def body(self, **overrides):
+        data = {"title": "収穫スタッフ", "termType": "long", "payUnit": "monthly", "payAmount": 200000,
+                "workHours": "8:00〜17:00", "workPlace": "山田農園", "slots": 1, "description": "収穫の仕事です",
+                "inexperiencedOk": True}
+        data.update(overrides)
+        return data
+
+    def test_create_list_detail_return_url(self):
+        key = self.upload()
+        res = self.post_json(LIST_URL, self.body(coverImage=key))
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual((res.json()["coverImage"], res.json()["coverImageUrl"]), (key, f"/media/{key}"))
+        job_id = res.json()["id"]
+        self.assertEqual(self.client.get(LIST_URL).json()["items"][0]["coverImageUrl"], f"/media/{key}")
+        self.assertEqual(self.client.get(detail_url(job_id)).json()["coverImageUrl"], f"/media/{key}")
+
+    def test_without_image_url_is_null(self):
+        res = self.post_json(LIST_URL, self.body())
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertIsNone(res.json()["coverImageUrl"])
+
+    def test_update_and_remove_image(self):
+        job = make_job(self.producer, term_type="long")
+        key = self.upload()
+        res = self.patch_json(detail_url(job.id), {"coverImage": key})
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json()["coverImageUrl"], f"/media/{key}")
+        res = self.patch_json(detail_url(job.id), {"coverImage": None})
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual((res.json()["coverImage"], res.json()["coverImageUrl"]), (None, None))
+
+    def test_rejects_other_users_or_missing_image(self):
+        mine = self.upload()
+        self.post_json("/api/v1/auth/signout")
+        other = make_producer(user=make_user(email="other@example.com"))
+        self.signin(other.user.email)
+        job = make_job(other, term_type="long")
+        missing = mine.replace(f"images/{self.producer.user.id}/", f"images/{other.user.id}/")
+        for key in (mine, missing, "../secret.jpg"):
+            with self.subTest(key=key):
+                res = self.post_json(LIST_URL, self.body(coverImage=key))
+                self.assertEqual(res.status_code, 400, res.content)
+                self.assertIn("coverImage", res.json()["details"])
+                res = self.patch_json(detail_url(job.id), {"coverImage": key})
+                self.assertEqual(res.status_code, 400, res.content)
+                self.assertIn("coverImage", res.json()["details"])
+        self.assertEqual(Job.objects.filter(producer=other).count(), 1)
+        job.refresh_from_db()
+        self.assertFalse(job.cover_image)
 
 
 class JobCountTests(ApiTestCase):
