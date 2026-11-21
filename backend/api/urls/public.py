@@ -18,6 +18,7 @@ urlpatterns = [
     # メール認証（auth/email-verification/resend・confirm）は拡張。views/public/auth.py のコードは残してある
     path("auth/password-reset", auth.PasswordResetView.as_view(), name="auth-password-reset"),
     path("auth/password-reset/confirm", auth.PasswordResetConfirmView.as_view(), name="auth-password-reset-confirm"),
+    path("policies", users.PolicyVersionView.as_view(), name="policies"),
     path("users", users.SignupView.as_view(), name="users-signup"),
     path("users/me", users.MeView.as_view(), name="users-me"),
     path("users/me/email", users.EmailChangeView.as_view(), name="users-me-email"),
