@@ -1,8 +1,11 @@
 import type { UserInfo } from '../types/user';
 import ApiError, { toApiError } from './apiError';
 import type { SignupFormValues } from '../types/authForm';
-import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from '../config/env';
 import { apiFetch } from './client';
+
+// チーム合意：バックエンドの初期版番号と同じ固定値を送信する。
+const TERMS_VERSION = '2026-10-01';
+const PRIVACY_POLICY_VERSION = '2026-10-01';
 
 // ログインチェックAPIのレスポンス（未ログインでも 200 で authenticated: false）
 type SessionResponse =

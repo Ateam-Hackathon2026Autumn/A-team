@@ -12,7 +12,7 @@ const values = { lastName: ' 山田 ', firstName: ' 太郎 ', email: ' user@exam
 const configured = { DEV: true, VITE_USE_MOCK: 'false', VITE_TERMS_VERSION: '2026-10-01', VITE_PRIVACY_POLICY_VERSION: '2026-10-01', VITE_TERMS_URL: 'https://example.com/terms', VITE_PRIVACY_POLICY_URL: 'https://example.com/privacy' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-function runtime(replies = [], env = configured) {
+function runtime(replies = [], env = configured, overrides = {}) {
   const calls = [];
   const cache = new Map();
   function load(filename) {
@@ -30,7 +30,8 @@ function runtime(replies = [], env = configured) {
         return reply;
       },
       require: (name) => {
-        assert.ok(name.startsWith('.'), `Unexpected dependency: ${name}`);
+        if (Object.hasOwn(overrides, name)) return overrides[name];
+        if (!name.startsWith('.')) return require(name);
         const base = path.resolve(path.dirname(filename), name);
         const resolved = ['.tsx', '.ts'].map((ext) => base + ext).find(fs.existsSync);
         assert.ok(resolved, `Module not found: ${name}`);
@@ -41,7 +42,7 @@ function runtime(replies = [], env = configured) {
     return module.exports;
   }
   const src = path.resolve(__dirname, '../src');
-  return { calls, api: load(path.join(src, 'api/authApi.tsx')), validation: load(path.join(src, 'utils/authValidation.ts')), env: load(path.join(src, 'config/env.tsx')) };
+  return { calls, api: load(path.join(src, 'api/authApi.tsx')), validation: load(path.join(src, 'utils/authValidation.ts')), env: load(path.join(src, 'config/env.tsx')), loadSource: (name) => load(path.join(src, name)) };
 }
 
 test('signin sends CSRF, cookies and exact password, then refreshes CSRF', async () => {
@@ -107,12 +108,22 @@ test('signup requires 201 rather than treating arbitrary 2xx as registration suc
   await assert.rejects(r.api.signup(values));
 });
 
-test('policy configuration requires both versions and valid document URLs', () => {
-  assert.equal(runtime().env.SIGNUP_POLICY_CONFIGURED, true);
-  for (const key of ['VITE_TERMS_VERSION', 'VITE_PRIVACY_POLICY_VERSION', 'VITE_TERMS_URL', 'VITE_PRIVACY_POLICY_URL']) {
-    assert.equal(runtime([], { ...configured, [key]: '' }).env.SIGNUP_POLICY_CONFIGURED, false);
+test('signup sends fixed policy versions without policy environment settings', async () => {
+  for (const env of [{ DEV: true, VITE_USE_MOCK: 'false' }, { ...configured, VITE_TERMS_VERSION: 'ignored', VITE_PRIVACY_POLICY_VERSION: 'ignored' }]) {
+    const r = runtime([json({ csrfToken: 'token' }), json({ authenticated: true, user }, 201), json({ csrfToken: 'new' })], env);
+    await r.api.signup(values);
+    const body = JSON.parse(r.calls[1].init.body);
+    assert.equal(body.termsVersion, '2026-10-01');
+    assert.equal(body.privacyPolicyVersion, '2026-10-01');
+    assert.equal(body.agreedToTerms, true);
+    assert.equal(body.agreedToPrivacyPolicy, true);
   }
-  assert.equal(runtime([], { ...configured, VITE_TERMS_URL: 'javascript:alert(1)' }).env.SIGNUP_POLICY_CONFIGURED, false);
+});
+
+test('optional policy links exclude invalid URLs without blocking registration', () => {
+  assert.equal(runtime([], {}).env.TERMS_URL, '');
+  assert.equal(runtime().env.TERMS_URL, 'https://example.com/terms');
+  assert.equal(runtime([], { ...configured, VITE_TERMS_URL: 'javascript:alert(1)' }).env.TERMS_URL, '');
 });
 
 test('email and phone validation matches backend limits', () => {
@@ -122,4 +133,100 @@ test('email and phone validation matches backend limits', () => {
   assert.equal(Object.keys(v.validateSignup(values)).length, 0);
   for (const phone of ['1234567', '+819012345678', '(090)12345678', '19012345678']) assert.ok(v.validateSignup({ ...values, phone }).phone);
   for (const phone of ['09012345678', '03-1234-5678']) assert.equal(v.validateSignup({ ...values, phone }).phone, undefined);
+  for (const key of ['agreedToTerms', 'agreedToPrivacyPolicy']) assert.ok(v.validateSignup({ ...values, [key]: false })[key]);
+});
+
+test('return path keeps internal pathname, search and hash', () => {
+  const { getAuthReturnPath } = runtime().loadSource('utils/authRedirect.ts');
+  assert.equal(getAuthReturnPath({ pathname: '/checkout', search: '?step=1', hash: '#delivery' }), '/checkout?step=1#delivery');
+  assert.equal(getAuthReturnPath('/products/1?quantity=2#details'), '/products/1?quantity=2#details');
+  assert.equal(getAuthReturnPath({ pathname: '/mypage/orders' }), '/mypage/orders');
+});
+
+test('return path rejects external URLs, malformed values and auth loops', () => {
+  const { getAuthReturnPath } = runtime().loadSource('utils/authRedirect.ts');
+  for (const from of [undefined, null, 1, {}, { pathname: '/checkout', search: 3 }, { pathname: '/checkout', hash: 'bad' }, { pathname: '/checkout', search: '//evil.test' }, 'https://evil.test', '//evil.test/path', '/\\evil.test', '/%2f%2fevil.test', '/%5cevil.test', '/%00', '/bad%escape', '/\nevil.test', '/signin', '/signup', '/signup/complete', '/admin/signin', '/foo/../signin', '/%73ignin', { pathname: '//evil.test' }, { pathname: '/checkout?bad=1' }]) {
+    assert.equal(getAuthReturnPath(from), '/', JSON.stringify(from));
+  }
+});
+
+// 実際の Jotai ストア・React コンポーネントを使用し、ルーターの現在位置と
+// Navigate の出力だけを差し替える。状態更新が URL 更新に先行する順序を再現する。
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const { Provider } = require('jotai');
+const { createStore } = require('jotai/vanilla');
+function guardFixture(pathname, env = configured) {
+  const redirects = [];
+  const router = {
+    ...require('react-router'),
+    useLocation: () => ({ pathname, search: '', hash: '', state: null }),
+    useNavigate: () => () => {},
+    Navigate: (props) => { redirects.push(props); return null; },
+    Outlet: () => React.createElement('span', null, 'outlet'),
+  };
+  const r = runtime([], env, { 'react-router': router });
+  const atoms = r.loadSource('stores/userAtom.tsx');
+  const Guard = r.loadSource('components/AuthWrapper.tsx').default;
+  const store = createStore();
+  return { r, atoms, store, redirects, render: () => renderToStaticMarkup(React.createElement(Provider, { store }, React.createElement(Guard))) };
+}
+
+test('signup guard preserves completion and producer metadata when login becomes visible first', () => {
+  const f = guardFixture('/signup');
+  const navigation = { to: '/signup/complete', state: { registered: true, purpose: 'producer', csrfRefreshFailed: false } };
+  let observed = false;
+  const unsubscribe = f.store.sub(f.atoms.loginStatusAtom, () => {
+    observed = true;
+    assert.equal(f.store.get(f.atoms.pendingAuthNavigationAtom).to, '/signup/complete');
+    assert.equal(f.store.get(f.atoms.userInfoAtom).id, user.id);
+  });
+  f.store.set(f.atoms.authenticatedNavigationAtom, { user, navigation });
+  f.render();
+  unsubscribe();
+  assert.equal(observed, true);
+  assert.equal(f.redirects.length, 1);
+  assert.equal(f.redirects[0].to, '/signup/complete');
+  assert.equal(f.redirects[0].state.purpose, 'producer');
+  assert.equal(f.redirects[0].state.registered, true);
+});
+
+test('signin guard prioritizes checkout return path while still at signin', () => {
+  const f = guardFixture('/signin');
+  f.store.set(f.atoms.authenticatedNavigationAtom, { user, navigation: { to: '/checkout?step=1#delivery' } });
+  f.render();
+  assert.equal(f.redirects[0].to, '/checkout?step=1#delivery');
+});
+
+test('normal authenticated visits to signin go home and unauthenticated protected visits keep from', () => {
+  const loggedIn = guardFixture('/signin');
+  loggedIn.store.set(loggedIn.atoms.userInfoAtom, user);
+  loggedIn.store.set(loggedIn.atoms.loginStatusAtom, 'loggedIn');
+  loggedIn.render();
+  assert.equal(loggedIn.redirects[0].to, '/');
+  const loggedOut = guardFixture('/mypage/orders');
+  loggedOut.store.set(loggedOut.atoms.loginStatusAtom, 'loggedOut');
+  loggedOut.render();
+  assert.equal(loggedOut.redirects[0].to, '/signin');
+  assert.equal(loggedOut.redirects[0].state.from.pathname, '/mypage/orders');
+});
+
+test('registration form without policy URLs permits submission and retains required agreement checks', () => {
+  const r = runtime([], {});
+  const AccountStep = r.loadSource('components/signup/AccountStep.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(AccountStep, { values, purpose: 'consumer', errors: {}, isSubmitting: false, message: '', onChange() {}, onBack() {}, onSubmit() {} }));
+  assert.ok(html.includes('登録する →'));
+  assert.ok(!html.includes('disabled=""'));
+  assert.ok(!html.includes('現在は登録できません'));
+  assert.ok(html.includes('name="agreedToTerms"'));
+  assert.ok(html.includes('name="agreedToPrivacyPolicy"'));
+});
+
+test('auth layout shows demo notice only with mocks enabled', () => {
+  for (const [env, expected] of [[{ DEV: true }, true], [{ DEV: true, VITE_USE_MOCK: 'false' }, false], [{ DEV: false }, false]]) {
+    const r = runtime([], env, { 'react-router': { Outlet: () => null } });
+    const Layout = r.loadSource('Layouts/AuthLayout.tsx').default;
+    const html = renderToStaticMarkup(React.createElement(Layout));
+    assert.equal(html.includes('画面確認用デモです。APIは未接続です。'), expected);
+  }
 });

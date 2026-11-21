@@ -1,19 +1,21 @@
-import { useRef, useState } from "react";
+import { startTransition, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { useSetAtom } from "jotai";
 import { signin, checkSession } from "../api/authApi";
 import ApiError from "../api/apiError";
-import { loginStatusAtom, userInfoAtom } from "../stores/userAtom";
+import { authenticatedNavigationAtom } from "../stores/userAtom";
+import { getAuthReturnPath } from "../utils/authRedirect";
+import type { UserInfo } from "../types/user";
 import Button from "../components/ui/Button";
 import FormField from "../components/ui/FormField";
 import { validateSignin } from "../utils/authValidation";
 
 export default function SigninPage() {
   const navigate = useNavigate();
-  const setLoginStatus = useSetAtom(loginStatusAtom);
-  const setUserInfo = useSetAtom(userInfoAtom);
+  const location = useLocation();
+  const setAuthenticated = useSetAtom(authenticatedNavigationAtom);
   const submitting = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState("");
@@ -23,6 +25,14 @@ export default function SigninPage() {
     password?: string;
   }>({});
   const [message, setMessage] = useState("");
+
+  function finishSignin(user: UserInfo) {
+    const to = getAuthReturnPath(location.state?.from);
+    startTransition(() => {
+      setAuthenticated({ user, navigation: { to } });
+      navigate(to, { replace: true });
+    });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,17 +49,13 @@ export default function SigninPage() {
     try {
       const result = await signin(email, password);
       setPassword("");
-      setUserInfo(result.user);
-      setLoginStatus("loggedIn");
-      navigate("/", { replace: true });
+      finishSignin(result.user);
     } catch (error) {
       if (error instanceof ApiError && error.errorCode === "ALREADY_AUTHENTICATED") {
         try {
           const session = await checkSession();
           if (session.authenticated) {
-            setUserInfo(session.user);
-            setLoginStatus("loggedIn");
-            navigate("/", { replace: true });
+            finishSignin(session.user);
             return;
           }
         } catch { /* 以下の再試行案内を表示 */ }

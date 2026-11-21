@@ -1,4 +1,5 @@
 import { Outlet } from "react-router";
+import { USE_MOCK } from "../config/env";
 
 export default function AuthLayout() {
   return (
@@ -6,9 +7,7 @@ export default function AuthLayout() {
       <div className="mx-auto grid max-w-[1060px] overflow-hidden rounded-3xl border border-marche-line bg-white md:grid-cols-[0.8fr_1.2fr]">
         <aside className="hidden flex-col justify-between bg-marche-sage px-9 py-12 md:flex">
           <div>
-            <p className="m-0 text-xs font-bold tracking-[0.18em] text-marche-green">
-              A NEW CONNECTION
-            </p>
+            <p className="m-0 text-xs font-bold tracking-[0.18em] text-marche-green">A NEW CONNECTION</p>
 
             <h2 className="m-0 font-serif mt-6 text-3xl font-bold leading-relaxed">
               つくる人を知る。
@@ -23,13 +22,14 @@ export default function AuthLayout() {
             </p>
           </div>
 
-          <div aria-hidden="true" className="py-12 text-center text-8xl">
+          <div
+            aria-hidden="true"
+            className="py-12 text-center text-8xl"
+          >
             🌿
           </div>
 
-          <p className="m-0 text-sm text-marche-muted">
-            買う ・ 体験する ・ 働く ・ 学ぶ
-          </p>
+          <p className="m-0 text-sm text-marche-muted">買う ・ 体験する ・ 働く ・ 学ぶ</p>
         </aside>
 
         <section
@@ -40,10 +40,7 @@ export default function AuthLayout() {
         </section>
       </div>
 
-      <p className="m-0 mx-auto mt-5 max-w-3xl text-center text-xs leading-6 text-marche-muted">
-        画面確認用デモです。APIは未接続です。
-        実際の個人情報や普段使うパスワードは入力しないでください。
-      </p>
+      {USE_MOCK && <p className="m-0 mx-auto mt-5 max-w-3xl text-center text-xs leading-6 text-marche-muted">画面確認用デモです。APIは未接続です。 実際の個人情報や普段使うパスワードは入力しないでください。</p>}
     </div>
   );
 }

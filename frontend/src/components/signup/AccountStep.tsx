@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { TERMS_URL, PRIVACY_POLICY_URL, TERMS_VERSION, PRIVACY_POLICY_VERSION, SIGNUP_POLICY_CONFIGURED } from "../../config/env";
+import { TERMS_URL, PRIVACY_POLICY_URL } from "../../config/env";
 import Button from "../ui/Button";
 import FormField from "../ui/FormField";
 import { INTERESTS } from "../../types/authForm";
@@ -79,7 +79,6 @@ export default function AccountStep({
 
       <form noValidate onSubmit={onSubmit} aria-busy={isSubmitting}>
         {message && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{message}</p>}
-        {!SIGNUP_POLICY_CONFIGURED && <p role="alert" className="mt-4 text-sm text-red-800">利用規約の設定が完了していないため、現在は登録できません。</p>}
         <fieldset disabled={isSubmitting} className="m-0 min-w-0 border-0 p-0">
           {Object.values(errors).some(Boolean) && (
             <p
@@ -256,14 +255,15 @@ export default function AccountStep({
             </div>
           ))}
 
-          {SIGNUP_POLICY_CONFIGURED && (
+          {(TERMS_URL || PRIVACY_POLICY_URL) && (
             <p className="m-0 mt-3 text-xs leading-6 text-marche-muted">
-              <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">利用規約（{TERMS_VERSION}）</a>
-              ・<a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">プライバシーポリシー（{PRIVACY_POLICY_VERSION}）</a>
+              {TERMS_URL && <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">利用規約</a>}
+              {TERMS_URL && PRIVACY_POLICY_URL && "・"}
+              {PRIVACY_POLICY_URL && <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>}
               を確認して同意してください。
             </p>
           )}
-          <Button block type="submit" disabled={isSubmitting || !SIGNUP_POLICY_CONFIGURED}>
+          <Button block type="submit" disabled={isSubmitting}>
             {isSubmitting ? "登録中…" : "登録する →"}
           </Button>
         </fieldset>
