@@ -17,7 +17,6 @@ from marche.models import (
     Job,
     JobWorkDate,
     JobApplication,
-    ApplicationWorkDate,
     Prefecture,
     Notification,
 )
@@ -752,6 +751,7 @@ class JobApplicationDetailView(APIView):
 
         producer = get_producer(request)
 
+        # 掲載停止中は、応募のステータスをどれも変えられない（採用・不採用・勤務完了も含む）
         ensure_producer_not_suspended(producer)
 
         serializer = JobApplicationStatusUpdateSerializer(

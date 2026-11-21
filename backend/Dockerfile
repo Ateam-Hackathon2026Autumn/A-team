@@ -20,4 +20,7 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# 本番（AWS）用の起動コマンド。ローカルは compose.yaml の command（migrate → runserver）が優先される。
+# 本番のマイグレーションは、デプロイのときに別のタスクで python manage.py migrate --noinput を実行する
+ENV GUNICORN_WORKERS=3
+CMD ["sh", "-c", "exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS} --access-logfile - --error-logfile -"]

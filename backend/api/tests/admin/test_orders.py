@@ -325,6 +325,36 @@ class StripeRefundTests(AdminOrderTestCase):
         res = self.stripe_refund()
         self.assertEqual((res.status_code, res.json()["errorCode"]), (409, "STRIPE_REFUND_NOT_AVAILABLE"))
 
+    def test_stripe_is_called_while_shipment_is_locked(self):
+        """Stripe を呼んでいる間も箱の行をロックしている（manual の返金と同時に来ても二重に記録しない）"""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        locked = []
+
+        def fake_refund(*args):
+            locked.append(sum(1 for q in queries.captured_queries
+                              if "FOR UPDATE" in q["sql"] and "order_shipments" in q["sql"]))
+            return {"id": "re_1", "status": "succeeded", "amount": 3200}
+
+        self.refund.side_effect = fake_refund
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(self.stripe_refund().status_code, 200)
+        # ビューでの確認に1回、refund_by_stripe で Stripe を呼ぶ前に1回
+        self.assertEqual(locked, [2])
+
+    def test_logs_error_when_refund_cannot_be_recorded(self):
+        def refunded_meanwhile(*args):
+            OrderShipment.objects.filter(pk=self.box.pk).update(refunded_amount=3200)
+            return {"id": "re_1", "status": "succeeded", "amount": 3200}
+
+        self.refund.side_effect = refunded_meanwhile
+        with self.assertLogs("api.services.orders", level="ERROR") as logs:
+            res = self.stripe_refund()
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("re_1", logs.output[0])
+        self.assertFalse(AuditLog.objects.exists())
+
     def test_admin_cancel_refunds_card_boxes(self):
         self.refund.return_value = {"id": "re_2", "status": "succeeded", "amount": 1000}
         box = add_shipment(self.order, self.other, items=((None, 1),), shipping_fee=0)

@@ -387,23 +387,35 @@ def record_refund(shipment_id, amount, stripe_refund_id=None):
 
 
 def refund_by_stripe(shipment_id):
-    """箱1つを Stripe で返金して記録する。返金待ちでなければ何もせず False"""
-    shipment = (OrderShipment.objects.select_related("order").prefetch_related("order_items")
-                .get(pk=shipment_id))
-    if shipment.status != OrderShipment.Status.CANCELED or shipment.refunded_amount is not None:
-        return False
-    order = shipment.order
-    if order.payment_method != "card":
-        raise RefundNotAvailable("コンビニ払いは Stripe で返金できません。")
-    if not order.stripe_payment_intent_id:
-        raise RefundNotAvailable("Stripe の決済IDがないため返金できません。manual で記録してください。")
-    if not payments.is_enabled():
-        raise RefundNotAvailable("Stripe が設定されていないため返金できません。manual で記録してください。")
-    amount = refund_amount(shipment)
-    refund = payments.refund_shipment(order.stripe_payment_intent_id, shipment.id, amount)
-    if refund["status"] not in payments.REFUND_OK_STATUSES:
-        raise payments.PaymentError(f"返金の状態が {refund['status']} です")
-    return record_refund(shipment.id, amount, refund["id"])
+    """箱1つを Stripe で返金して記録する。返金待ちでなければ何もせず False
+
+    Stripe を呼んでから記録するまで、箱の行をロックしたままにする。
+    同じ箱に manual の返金や自動返金が同時に来ても、あとから来た方はロックが外れるのを待ち、
+    返金済みを見て何もしない（二重に返金したり、Stripe の返金IDが記録されなかったりしない）。
+    管理者の操作とキャンセル直後の返金だけで使うので、数秒ロックを持っても困らない
+    """
+    with transaction.atomic():
+        shipment = (OrderShipment.objects.select_for_update().select_related("order")
+                    .prefetch_related("order_items").get(pk=shipment_id))
+        if shipment.status != OrderShipment.Status.CANCELED or shipment.refunded_amount is not None:
+            return False
+        order = shipment.order
+        if order.payment_method != "card":
+            raise RefundNotAvailable("コンビニ払いは Stripe で返金できません。")
+        if not order.stripe_payment_intent_id:
+            raise RefundNotAvailable("Stripe の決済IDがないため返金できません。manual で記録してください。")
+        if not payments.is_enabled():
+            raise RefundNotAvailable("Stripe が設定されていないため返金できません。manual で記録してください。")
+        amount = refund_amount(shipment)
+        refund = payments.refund_shipment(order.stripe_payment_intent_id, shipment.id, amount)
+        if refund["status"] not in payments.REFUND_OK_STATUSES:
+            raise payments.PaymentError(f"返金の状態が {refund['status']} です")
+        recorded = record_refund(shipment.id, amount, refund["id"])
+        if not recorded:
+            # ロックしているので通常は起きない。起きたら Stripe では返金済みなので、手で記録を直す
+            logger.error("Stripe で返金しましたが記録できませんでした: shipment_id=%s refund_id=%s",
+                         shipment.id, refund["id"])
+        return recorded
 
 
 def refund_canceled_shipments(shipment_ids):
