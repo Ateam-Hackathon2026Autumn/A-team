@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router";
-import { BackgroundVideo, PlayPauseButton, useBackgroundVideo } from "../components/BackgroundVideo";
+import { USE_MOCK } from "../config/env";
 
 export default function AuthLayout() {
   const [showVideo, setShowVideo] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(min-width: 48rem)").matches);
@@ -18,13 +18,9 @@ export default function AuthLayout() {
   return (
     <div className="px-4 py-8 sm:px-6 lg:py-14">
       <div className="mx-auto grid max-w-[1060px] overflow-hidden rounded-3xl border border-marche-line bg-white md:grid-cols-[0.8fr_1.2fr]">
-        <aside className="relative isolate hidden min-h-[700px] flex-col justify-between overflow-hidden bg-marche-green-dark px-6 py-12 text-white md:flex lg:px-9">
-          {showVideo && <BackgroundVideo control={video} />}
-          <div aria-hidden="true" className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgb(36 85 62 / 0.9) 0px, rgb(36 85 62 / 0.9) 280px, rgb(36 85 62 / 0.15) 340px, rgb(36 85 62 / 0.15) calc(100% - 190px), rgb(36 85 62 / 0.9) calc(100% - 150px), rgb(36 85 62 / 0.9) 100%)" }} />
-          <div className="relative z-10" style={{ textShadow: "0 1px 3px rgb(0 0 0 / 0.45)" }}>
-            <p className="m-0 text-xs font-bold tracking-[0.18em] text-white/80">
-              A NEW CONNECTION
-            </p>
+        <aside className="hidden flex-col justify-between bg-marche-sage px-9 py-12 md:flex">
+          <div>
+            <p className="m-0 text-xs font-bold tracking-[0.18em] text-marche-green">A NEW CONNECTION</p>
 
             <h2 className="m-0 font-serif mt-6 text-2xl font-bold leading-relaxed lg:text-3xl">
               つくる人を知る。
@@ -39,12 +35,14 @@ export default function AuthLayout() {
             </p>
           </div>
 
-          <div className="relative z-10 flex flex-col items-start gap-3" style={{ textShadow: "0 1px 3px rgb(0 0 0 / 0.45)" }}>
-            <p className="m-0 text-sm text-white/80">
-              買う ・ 体験する ・ 働く ・ 学ぶ
-            </p>
-            <PlayPauseButton control={video} className="grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-full border border-white/70 bg-marche-green-dark p-2 text-white" />
+          <div
+            aria-hidden="true"
+            className="py-12 text-center text-8xl"
+          >
+            🌿
           </div>
+
+          <p className="m-0 text-sm text-marche-muted">買う ・ 体験する ・ 働く ・ 学ぶ</p>
         </aside>
 
         <section
@@ -55,10 +53,7 @@ export default function AuthLayout() {
         </section>
       </div>
 
-      <p className="m-0 mx-auto mt-5 max-w-3xl text-center text-xs leading-6 text-marche-muted">
-        画面確認用デモです。APIは未接続です。
-        実際の個人情報や普段使うパスワードは入力しないでください。
-      </p>
+      {USE_MOCK && <p className="m-0 mx-auto mt-5 max-w-3xl text-center text-xs leading-6 text-marche-muted">画面確認用デモです。APIは未接続です。 実際の個人情報や普段使うパスワードは入力しないでください。</p>}
     </div>
   );
 }

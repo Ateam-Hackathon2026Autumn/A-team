@@ -1,7 +1,7 @@
 export type Purpose = "consumer" | "producer";
 export type Interest = "vegetables" | "fruits" | "seafood" | "experiences" | "short_term_jobs" | "farming";
 
-// 画面入力値。API送信時には担当Bが最新の規約バージョンを加えて組み立てます。
+// 画面入力値。API送信時には authApi が設定済みの規約バージョンを加えて組み立てる。
 export type SignupFormValues = {
   lastName: string;
   firstName: string;
