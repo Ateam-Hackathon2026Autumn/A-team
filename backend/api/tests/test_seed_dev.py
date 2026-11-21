@@ -116,15 +116,21 @@ class SeedDevTests(ApiTestCase):
         self.assertNotEqual(without_photo.image.read(), photo)
 
     def test_photos_are_in_repository(self):
-        """確認用の写真（商品19・生産者6・体験5）がそろっていて、入れたデータに使われる"""
+        """確認用の写真（商品19・生産者6・体験5・求人4）がそろっていて、入れたデータに使われる"""
         names = [f"product-{n:02d}" for n in range(1, 21) if n != 10]  # 10番は画像なしの下書き
         names += [f"producer-{n}-{kind}" for n in (1, 2, 3) for kind in ("profile", "cover")]
         names += [f"experience-{n}" for n in range(1, 6)]
+        names += [f"job-{n}" for n in range(1, 5)]
         for name in names:
             self.assertTrue((seed_dev.SEED_IMAGE_DIR / f"{name}.jpg").is_file(), name)
         seed()
         image = ProductImage.objects.get(product__name="シナノゴールド 3kg")
         self.assertEqual(image.image.read(), (seed_dev.SEED_IMAGE_DIR / "product-02.jpg").read_bytes())
+        # 求人：公開の4件はカバー写真あり、下書きはなし
+        picking = Job.objects.get(title="りんごの収穫スタッフ")
+        self.assertEqual(picking.cover_image.read(), (seed_dev.SEED_IMAGE_DIR / "job-1.jpg").read_bytes())
+        self.assertEqual(Job.objects.exclude(cover_image="").count(), 4)
+        self.assertFalse(Job.objects.get(title="下書きの求人").cover_image)
 
     def test_masters_already_exist_with_other_ids(self):
         """同じ名前のカテゴリー・エリアが別の ID でもうあっても、失敗せずに足りない分だけ入れる"""
