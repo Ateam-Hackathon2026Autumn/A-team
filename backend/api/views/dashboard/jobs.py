@@ -17,7 +17,6 @@ from marche.models import (
     Job,
     JobWorkDate,
     JobApplication,
-    ApplicationWorkDate,
     Prefecture,
     Notification,
 )
@@ -41,6 +40,7 @@ from api.common.permissions import (
 from api.common.exceptions import Conflict
 from api.services.jobs import HIRED_STATUSES, date_hired_count
 from api.services.notifications import MY_JOB_APPLICATIONS_PATH, notify
+from api.services.storage import validate_image_keys
 
 
 # ============================================================
@@ -107,6 +107,16 @@ def get_owned_job(producer, job_id, lock=False):
         raise NotFound("求人が見つかりません。")
 
     return job
+
+
+def validate_cover_image(user, data):
+    """カバー画像のキーが、自分のアップロードした実在する画像か確かめる（商品・体験と同じ。だめなら400）
+
+    送られていない・null（画像を外す）のときは確かめない
+    """
+    key = data.get("cover_image")
+    if key:
+        validate_image_keys(user, [key], field="cover_image")
 
 
 def validate_prefecture(producer, data):
@@ -444,6 +454,8 @@ class JobListCreateView(APIView):
 
         data = dict(serializer.validated_data)
 
+        validate_cover_image(request.user, data)
+
         work_dates = data.pop(
             "work_dates",
             [],
@@ -557,6 +569,8 @@ class JobDetailView(APIView):
             data = dict(
                 serializer.validated_data
             )
+
+            validate_cover_image(request.user, data)
 
             work_dates_supplied = (
                 "work_dates" in data
@@ -752,6 +766,7 @@ class JobApplicationDetailView(APIView):
 
         producer = get_producer(request)
 
+        # 掲載停止中は、応募のステータスをどれも変えられない（採用・不採用・勤務完了も含む）
         ensure_producer_not_suspended(producer)
 
         serializer = JobApplicationStatusUpdateSerializer(

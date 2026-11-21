@@ -1,10 +1,13 @@
 """会員登録・自分のアカウント
 
+- GET /api/v1/policies  今の利用規約・プライバシーポリシーの版 {termsVersion, privacyPolicyVersion}
+    ・新規登録の画面を開いたときに取得し、POST /api/v1/users にそのまま付けて送ってもらう
+    ・版は settings（環境変数 TERMS_VERSION・PRIVACY_POLICY_VERSION）。ログイン不要
 - POST /api/v1/users  新規登録（Notion「共通ユーザー新規登録API」）
 - GET /api/v1/users/me  本人情報の取得（Notion「本人情報取得API」）。{user, profile}
 - PATCH /api/v1/users/me  本人情報の更新（Notion「本人情報更新API」）。送った項目だけ。メールアドレスは変えられない
 - PUT /api/v1/users/me/email  メールアドレスの変更 {email, currentPassword}
-    ・使用中のアドレスは 409 EMAIL_ALREADY_EXISTS。変えたら未確認に戻し、新しいアドレスに確認メール、古いアドレスにお知らせ
+    ・使用中のアドレスは 409 EMAIL_ALREADY_EXISTS。変えたら未確認に戻し、古いアドレスにお知らせ（メール認証は拡張なので確認メールは送らない）
     ・200 で本人情報（GET と同じ形）
 - PUT /api/v1/users/me/password  パスワード変更 {currentPassword, newPassword}
     ・今の端末はログインしたまま（update_session_auth_hash）、ほかの端末は自動でログアウト。お知らせメール。204
@@ -27,6 +30,8 @@ from rest_framework.views import APIView
 from marche.models import NotificationSetting, User, UserConsent
 
 from ...common.exceptions import ApiError, Conflict
+from ...common.pagination import validate_query
+from ...common.serializers import QuerySerializer
 from ...common.throttles import IPRateThrottle
 from ...serializers.public.users import (
     EmailChangeSerializer,
@@ -36,9 +41,22 @@ from ...serializers.public.users import (
     SignupSerializer,
     WithdrawSerializer,
 )
-from ...services import email_verification, mail
+from ...services import mail
 from ...services.anonymize import active_transactions, anonymize_user
 from .auth import already_authenticated, auth_response, login_and_merge_cart
+
+
+class PolicyVersionView(APIView):
+    """GET /api/v1/policies"""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        validate_query(QuerySerializer, request)  # クエリパラメーターは受け付けない
+        return Response({
+            "terms_version": settings.TERMS_VERSION,
+            "privacy_policy_version": settings.PRIVACY_POLICY_VERSION,
+        })
 
 
 def email_already_exists():
@@ -53,7 +71,7 @@ class SignupView(APIView):
     3. メールアドレスの重複は 409 EMAIL_ALREADY_EXISTS（大文字・小文字は区別しない）
     4. ユーザー・同意履歴・通知設定を同じトランザクションで作る
     5. 自動ログインし、ゲストのときのカートを付け替える
-    6. コミット後に確認メールを送る（失敗しても登録は成功のまま。再送APIで救う）
+    6. メール認証は拡張なので、確認メールは送らない
     - すでにログイン済みなら 409 ALREADY_AUTHENTICATED
     - 同じIPから1時間10回まで
     """
@@ -97,15 +115,13 @@ class SignupView(APIView):
                                 version=data["privacy_policy_version"], agreed_at=now),
                 ])
                 NotificationSetting.objects.create(user=user)
-
-                token = email_verification.make_token(user)
-                transaction.on_commit(lambda: mail.send_email_verification(user, token))
+                # メール認証は行わない（拡張）。確認メールは送らない
         except IntegrityError:
             # 同じメールアドレスの登録が同時に来た場合（DB の一意制約で検出）
             raise email_already_exists()
 
         login_and_merge_cart(request, user)
-        return auth_response("登録が完了しました。確認メールの配送を受け付けました。", user,
+        return auth_response("登録が完了しました。", user,
                                 status_code=status.HTTP_201_CREATED)
 
 
@@ -191,9 +207,9 @@ class EmailChangeView(APIView):
                 user.email = new_email
                 user.email_verified_at = None
                 user.save(update_fields=["email", "email_verified_at", "updated_at"])
-                token = email_verification.make_token(user)
+                # メール認証は行わない（拡張）。新しいアドレスへの確認メールは送らず、
+                # 乗っ取りに気づけるよう、古いアドレスにだけ変更のお知らせを送る
                 name = full_name(user)
-                transaction.on_commit(lambda: mail.send_email_change_verification(user, token))
                 transaction.on_commit(lambda: mail.send_account_notice(
                     old_email, name, "メールアドレスが変更されました",
                     f"ログインに使うメールアドレスが {new_email} に変更されました。\n"
