@@ -1,5 +1,8 @@
 """会員登録・自分のアカウント
 
+- GET /api/v1/policies  今の利用規約・プライバシーポリシーの版 {termsVersion, privacyPolicyVersion}
+    ・新規登録の画面を開いたときに取得し、POST /api/v1/users にそのまま付けて送ってもらう
+    ・版は settings（環境変数 TERMS_VERSION・PRIVACY_POLICY_VERSION）。ログイン不要
 - POST /api/v1/users  新規登録（Notion「共通ユーザー新規登録API」）
 - GET /api/v1/users/me  本人情報の取得（Notion「本人情報取得API」）。{user, profile}
 - PATCH /api/v1/users/me  本人情報の更新（Notion「本人情報更新API」）。送った項目だけ。メールアドレスは変えられない
@@ -27,6 +30,8 @@ from rest_framework.views import APIView
 from marche.models import NotificationSetting, User, UserConsent
 
 from ...common.exceptions import ApiError, Conflict
+from ...common.pagination import validate_query
+from ...common.serializers import QuerySerializer
 from ...common.throttles import IPRateThrottle
 from ...serializers.public.users import (
     EmailChangeSerializer,
@@ -39,6 +44,19 @@ from ...serializers.public.users import (
 from ...services import mail
 from ...services.anonymize import active_transactions, anonymize_user
 from .auth import already_authenticated, auth_response, login_and_merge_cart
+
+
+class PolicyVersionView(APIView):
+    """GET /api/v1/policies"""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        validate_query(QuerySerializer, request)  # クエリパラメーターは受け付けない
+        return Response({
+            "terms_version": settings.TERMS_VERSION,
+            "privacy_policy_version": settings.PRIVACY_POLICY_VERSION,
+        })
 
 
 def email_already_exists():
