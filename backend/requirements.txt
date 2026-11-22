@@ -6,3 +6,4 @@ boto3==1.43.115
 djangorestframework==3.16.1
 djangorestframework-camel-case==1.4.2
 stripe==16.1.0
+gunicorn==27.0.1

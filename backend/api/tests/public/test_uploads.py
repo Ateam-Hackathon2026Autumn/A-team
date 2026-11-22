@@ -78,6 +78,23 @@ class ImageUploadTests(ApiTestCase):
         res = self.post_multipart(URL, {"file": image_file()})
         self.assertEqual(res.status_code, 401)
 
+    def test_rate_limited_per_user(self):
+        from unittest.mock import patch
+
+        from django.conf import settings
+
+        from ...views.public.uploads import ImageUploadThrottle
+        self.assertEqual(settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["image_upload"], "60/hour")
+        with patch.object(ImageUploadThrottle, "rate", "2/hour", create=True):
+            for _ in range(2):
+                self.assertEqual(self.post_multipart(URL, {"file": image_file()}).status_code, 201)
+            res = self.post_multipart(URL, {"file": image_file()})
+            self.assertEqual((res.status_code, res.json()["errorCode"]), (429, "RATE_LIMITED"))
+            # ほかのユーザーは数が別
+            self.post_json("/api/v1/auth/signout")
+            self.signin(make_user(email="other@example.com").email)
+            self.assertEqual(self.post_multipart(URL, {"file": image_file()}).status_code, 201)
+
     def test_validate_image_keys(self):
         mine = self.post_multipart(URL, {"file": image_file()}).json()["key"]
         other = make_user(email="other@example.com")

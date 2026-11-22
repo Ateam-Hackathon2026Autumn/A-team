@@ -5,8 +5,8 @@ Notion の API 定義（認証・ユーザー）に合わせる。新規登録�
 - POST /api/v1/auth/signin                       ログイン
 - GET  /api/v1/auth/session                      ログインチェック
 - POST /api/v1/auth/signout                      ログアウト
-- POST /api/v1/auth/email-verification/resend    確認メール再送
-- POST /api/v1/auth/email-verification/confirm   メール認証完了
+- POST /api/v1/auth/email-verification/resend    確認メール再送（拡張。URL は外してある）
+- POST /api/v1/auth/email-verification/confirm   メール認証完了（拡張。URL は外してある）
 - POST /api/v1/auth/password-reset               パスワード再設定の申請（ステップ12）
 - POST /api/v1/auth/password-reset/confirm       パスワード再設定（ステップ12）
 
@@ -127,6 +127,11 @@ class SignoutView(APIView):
     def post(self, request):
         logout(request)
         return Response({"message": "ログアウトしました。"})
+
+
+# --- メール認証（拡張）------------------------------------------------------
+# MVP ではメール認証をしないので、下の2つの API は urls/public.py に登録していない。
+# 戻すときは URL を足し、users.py の新規登録・メール変更で確認メールを送る処理を戻す
 
 
 class ResendPerMinuteThrottle(UserRateThrottle):

@@ -410,8 +410,8 @@ class Command(BaseCommand):
         make_experience(4, producer2, "港の朝市ツアー（日程の準備中）", (90, 120, 160))
         make_experience(5, producer1, "下書きの体験", (180, 180, 180), publish=PublishStatus.DRAFT)
 
-        # ---- 求人5件 ----
-        def make_job(producer, title, publish=PublishStatus.PUBLIC, **extra):
+        # ---- 求人5件（公開の4件はカバー写真 job-1〜4、下書きは画像なし）----
+        def make_job(producer, title, publish=PublishStatus.PUBLIC, photo=None, **extra):
             fields = dict(
                 term_type=Job.TermType.SHORT, pay_unit=Job.PayUnit.DAILY, pay_amount=10000, work_hours="8:00〜15:00",
                 work_place=f"{producer.business_name}（{producer.city}）", slots=3,
@@ -419,6 +419,8 @@ class Command(BaseCommand):
                 belongings=["汚れてもよい服装", "長靴"], notes=["昼食は各自でご用意ください。"],
                 inexperienced_ok=True, prefecture=producer.prefecture, publish_status=publish)
             fields.update(extra)
+            if photo is not None:
+                fields["cover_image"] = self.save_image(producer.user, (150, 170, 120), f"job-{photo}")
             return Job.objects.create(producer=producer, title=title, **fields)
 
         def work_date(job, days, needed_count=2):
@@ -433,21 +435,22 @@ class Command(BaseCommand):
             for date in work_dates:
                 ApplicationWorkDate.objects.create(application=application, work_date=date)
 
-        picking = make_job(producer1, "りんごの収穫スタッフ", period_start=today - timedelta(days=7),
+        picking = make_job(producer1, "りんごの収穫スタッフ", photo=1, period_start=today - timedelta(days=7),
                            period_end=today + timedelta(days=30))
         day1, day2 = work_date(picking, 7), work_date(picking, 8)
         work_date(picking, 14)
         apply(picking, buyer1, JobApplication.Status.APPLIED, [day1, day2])
         apply(picking, buyer2, JobApplication.Status.HIRED, [day1])
-        ended = make_job(producer1, "田植えの手伝い（募集期間が終わった）", term_type=Job.TermType.ONE_DAY,
+        ended = make_job(producer1, "田植えの手伝い（募集期間が終わった）", photo=2, term_type=Job.TermType.ONE_DAY,
                          period_start=today - timedelta(days=30), period_end=today - timedelta(days=1))
         work_date(ended, -3)
-        filled = make_job(producer2, "干物の箱詰めスタッフ（採用枠がいっぱい）", slots=1, pay_unit=Job.PayUnit.HOURLY,
-                          pay_amount=1200)
+        filled = make_job(producer2, "干物の箱詰めスタッフ（採用枠がいっぱい）", photo=3, slots=1,
+                          pay_unit=Job.PayUnit.HOURLY, pay_amount=1200)
         filled_day = work_date(filled, 5)
         apply(filled, applicant, JobApplication.Status.HIRED, [filled_day])
-        make_job(producer2, "水産加工の正社員（長期）", term_type=Job.TermType.LONG, pay_unit=Job.PayUnit.MONTHLY,
-                 pay_amount=230000, work_hours="6:00〜15:00（休憩1時間）", slots=2, inexperienced_ok=False)
+        make_job(producer2, "水産加工の正社員（長期）", photo=4, term_type=Job.TermType.LONG,
+                 pay_unit=Job.PayUnit.MONTHLY, pay_amount=230000, work_hours="6:00〜15:00（休憩1時間）", slots=2,
+                 inexperienced_ok=False)
         make_job(producer1, "下書きの求人", publish=PublishStatus.DRAFT)
 
     # ------------------------------------------------------------------
