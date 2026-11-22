@@ -10,6 +10,7 @@ import ApiError from '../api/apiError';
 import { uploadImage } from '../api/uploadApi';
 import type {
   DashboardExperience,
+  ExperienceFlowItem,
   ExperienceInput,
   ExperienceWritableStatus,
 } from '../types/dashboardExperience';
@@ -109,7 +110,7 @@ function toFormValues(experience: DashboardExperience): ExperienceFormValues {
     ageCondition: experience.ageCondition ?? '',
     familyOk: experience.familyOk,
     beginnerOk: experience.beginnerOk,
-    flow: lines(experience.flow),
+    flow: (experience.flow ?? []).map(({ time, text }) => `${time} ${text}`).join('\n'),
     belongings: lines(experience.belongings),
     notes: lines(experience.notes),
     cancelPolicy: experience.cancelPolicy,
@@ -179,13 +180,33 @@ function validateLines(value: string, label: string): string | undefined {
   return undefined;
 }
 
+const FLOW_LINE = /^([01]\d|2[0-3]):[0-5]\d\s+(.+)$/;
+
+function validateFlow(value: string): string | undefined {
+  const items = toLines(value);
+  if (items.length > MAX_LIST_ITEMS) return `当日の流れは${MAX_LIST_ITEMS}行までにしてください。`;
+  if (items.some((item) => {
+    const match = FLOW_LINE.exec(item);
+    return match === null || match[2].trim().length === 0 || match[2].trim().length > MAX_LIST_ITEM_LENGTH;
+  })) return `当日の流れは「10:00 集合」の形式で、内容を${MAX_LIST_ITEM_LENGTH}文字以内で入力してください。`;
+  return undefined;
+}
+
+function toFlow(value: string): ExperienceFlowItem[] | null {
+  const items = toLines(value).map((line) => {
+    const match = FLOW_LINE.exec(line)!;
+    return { time: match[1], text: match[2].trim() };
+  });
+  return items.length === 0 ? null : items;
+}
+
 function validate(values: ExperienceFormValues): FieldErrors {
   const errors: FieldErrors = {
     title: validateRequiredText(values.title, 'タイトル', 100),
     place: validateRequiredText(values.place, '開催場所', 200),
     description: validateRequiredText(values.description, '体験の説明', 10000),
     cancelPolicy: validateRequiredText(values.cancelPolicy, 'キャンセルポリシー', 10000),
-    flow: validateLines(values.flow, '当日の流れ'),
+    flow: validateFlow(values.flow),
     belongings: validateLines(values.belongings, '持ち物'),
     notes: validateLines(values.notes, '注意事項'),
   };
@@ -235,13 +256,13 @@ function toInput(
     ageCondition: optionalText(values.ageCondition),
     familyOk: values.familyOk,
     beginnerOk: values.beginnerOk,
-    flow: optionalLines(values.flow),
+    flow: toFlow(values.flow),
     belongings: optionalLines(values.belongings),
     notes: optionalLines(values.notes),
     cancelPolicy: values.cancelPolicy.trim(),
     publishStatus: status,
     // 同じキーは送らない（API で重複不可）
-    images: [...new Set(imageKeys)].map((imageKey) => ({ imageKey })),
+    imageKeys: [...new Set(imageKeys)],
   };
 }
 
@@ -249,6 +270,7 @@ function toInput(
 function toFormField(apiField: string): FieldName | null {
   const name = apiField.split(/[.[]/)[0];
 
+  if (name === 'imageKeys') return 'images';
   if (name === 'images' || name in initialValues) {
     return name as FieldName;
   }
@@ -279,7 +301,7 @@ function DashboardExperienceForm({
   const [images, setImages] = useState<ImageItem[]>(() =>
     isEdit ? toImageItems(experience) : [],
   );
-  // 編集時の公開状態（掲載停止中の体験は編集画面でフォームを出さない）
+  // 掲載停止中は公開状態を選べないが、内容は編集できる
   const [publishStatus, setPublishStatus] = useState<ExperienceWritableStatus>(
     experience !== undefined && experience.publishStatus !== 'suspended'
       ? experience.publishStatus
@@ -391,6 +413,9 @@ function DashboardExperienceForm({
     }
 
     const nextErrors = validate(values);
+    if (status === 'public' && uploadedKeys.length === 0) {
+      nextErrors.images = '公開するには写真を1枚以上登録してください。';
+    }
     setErrors(nextErrors);
 
     const firstError = Object.keys(nextErrors)[0];
@@ -475,13 +500,6 @@ function DashboardExperienceForm({
         </p>
       )}
 
-      {isEdit && (
-        <p className="m-0 box-border rounded-2xl border border-solid border-marche-line bg-marche-canvas p-4 text-xs leading-relaxed text-marche-muted">
-          申込中・確定の予約がある体験は、トラブルを防ぐため、タイトル・説明・開催地・参加条件・当日の案内を変更できません。
-          料金・キャンセルポリシーの変更は、これから申し込まれる予約にだけ適用されます。
-        </p>
-      )}
-
       <FormSection title="写真">
         <div>
           <p className="m-0 text-sm">
@@ -537,6 +555,11 @@ function DashboardExperienceForm({
             </li>
           )}
         </ul>
+        {images.length === MAX_IMAGES && (
+          <p id="experience-images" tabIndex={-1} className="m-0 text-xs text-marche-muted">
+            写真は上限の{MAX_IMAGES}枚です。写真を削除すると追加できます。
+          </p>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -717,7 +740,7 @@ function DashboardExperienceForm({
         {renderLinesField(
           'flow',
           '当日の流れ',
-          `1行に1つずつ書いてください（${MAX_LIST_ITEMS}行まで）。`,
+          `時刻と内容を「10:00 集合」の形式で1行ずつ書いてください（${MAX_LIST_ITEMS}行まで）。`,
           '10:00 集合・農園の紹介\n10:20 りんごの収穫体験\n12:30 試食・解散',
         )}
         {renderLinesField(
@@ -756,14 +779,14 @@ function DashboardExperienceForm({
 
       {isEdit && (
         <FormSection title="公開設定">
-          <PublishStatusField
-            options={publishStatusOptions}
-            value={publishStatus}
-            onChange={setPublishStatus}
-          />
-          <p className="m-0 text-xs text-marche-muted">
-            公開しても、受付中の予約枠がないとお客さまは申し込めません。
-          </p>
+          {experience?.publishStatus === 'suspended' ? (
+            <p className="m-0 text-sm text-marche-muted">運営により掲載停止中です。内容は編集できますが、公開状態は変更できません。</p>
+          ) : (
+            <>
+              <PublishStatusField options={publishStatusOptions} value={publishStatus} onChange={setPublishStatus} />
+              <p className="m-0 text-xs text-marche-muted">公開しても、受付中の予約枠がないとお客さまは申し込めません。</p>
+            </>
+          )}
         </FormSection>
       )}
 

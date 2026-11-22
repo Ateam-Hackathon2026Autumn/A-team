@@ -76,7 +76,7 @@ type WorkDateRow = {
 
 // カバー写真（1枚まで）
 type CoverImage =
-  | { kind: 'saved'; key: string }
+  | { kind: 'saved'; key: string; previewUrl: string | null }
   | { kind: 'new'; previewUrl: string; status: 'uploading' | 'done' | 'error'; key: string | null };
 
 type FieldName = keyof JobFormValues | 'workDates' | 'coverImage';
@@ -389,7 +389,7 @@ function DashboardJobForm({
     isEdit ? toWorkDateRows(job, lockedWorkDateIds) : [],
   );
   const [cover, setCover] = useState<CoverImage | null>(() =>
-    job?.coverImage ? { kind: 'saved', key: job.coverImage } : null,
+    job?.coverImage ? { kind: 'saved', key: job.coverImage, previewUrl: job.coverImageUrl ?? null } : null,
   );
   const [publishStatus, setPublishStatus] = useState<JobWritableStatus>(
     job !== undefined && job.publishStatus !== 'suspended' ? job.publishStatus : 'draft',
@@ -666,10 +666,15 @@ function DashboardJobForm({
                   </span>
                 )}
               </div>
+            ) : cover.previewUrl ? (
+              <img
+                src={cover.previewUrl}
+                alt="カバー写真"
+                className="block aspect-[4/3] w-full max-w-xs rounded-xl bg-marche-sage object-cover"
+              />
             ) : (
               <p className="m-0 box-border w-full max-w-xs rounded-xl bg-marche-sage p-4 text-sm">
-                登録済みの写真があります
-                <span className="block break-all text-xs text-marche-muted">{cover.key}</span>
+                登録済みの写真があります。写真を変更する場合は下のボタンを押してください。
               </p>
             )}
             <div className="flex gap-2">

@@ -218,8 +218,7 @@ function DashboardJobApplicantsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // 求人名と採用人数（見出し用）。取れなくても応募者一覧は表示する
-  // 求人の詳細に採用人数はないため、採用（hired）の応募の件数を数える
+  // 求人名と採用人数（見出し用）。採用人数には勤務完了も含む
   useEffect(() => {
     if (!canManage || !isValidId) {
       return;
@@ -227,14 +226,11 @@ function DashboardJobApplicantsPage() {
 
     let isActive = true;
 
-    Promise.all([
-      getDashboardJob(jobId),
-      getJobApplications(jobId, { page: 1, pageSize: 1, status: 'hired' }),
-    ])
-      .then(([data, hired]) => {
+    getDashboardJob(jobId)
+      .then((data) => {
         if (isActive) {
           setJob(data);
-          setCapacity({ hiredCount: hired.total, slots: data.slots });
+          setCapacity({ hiredCount: data.hiredCount, slots: data.slots });
         }
       })
       .catch(() => {});
@@ -313,17 +309,21 @@ function DashboardJobApplicantsPage() {
 
       setApplications(
         (current) =>
-          current?.map((item) =>
+          current?.filter((item) => statusFilter === '' || item.id !== result.id || result.status === statusFilter).map((item) =>
             item.id === result.id ? { ...item, status: result.status, decidedAt: result.decidedAt } : item,
           ) ?? null,
       );
-      setCapacity({ hiredCount: result.hiredCount, slots: result.slots });
-      setNotice(
-        `${applicantName(application)}さんを「${applicationStatusLabels[result.status]}」にしました。` +
-          (result.isOverCapacity
-            ? `採用人数（${result.hiredCount}人）が募集人数（${result.slots}人）を超えています。`
-            : ''),
-      );
+      if (statusFilter !== '' && result.status !== statusFilter) setTotal((count) => Math.max(0, count - 1));
+      const success = `${applicantName(application)}さんを「${applicationStatusLabels[result.status]}」にしました。`;
+      setNotice(success);
+      getDashboardJob(jobId)
+        .then((currentJob) => {
+          setCapacity({ hiredCount: currentJob.hiredCount, slots: currentJob.slots });
+          setNotice(success + (currentJob.hiredCount > currentJob.slots
+            ? `採用人数（${currentJob.hiredCount}人）が募集人数（${currentJob.slots}人）を超えています。`
+            : ''));
+        })
+        .catch(() => {});
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         window.location.replace('/signin');

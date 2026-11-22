@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router";
 import PurposeStep from "../components/signup/PurposeStep";
 import AccountStep from "../components/signup/AccountStep";
 import CompleteStep from "../components/signup/CompleteStep";
+import { CheckIcon } from "../components/Icons";
 import { initialSignupValues } from "../types/authForm";
 import type {
   Purpose,
@@ -82,7 +83,7 @@ export default function SignupPage() {
                     : "border-marche-line"
                 }`}
               >
-                {completed ? "✓" : number}
+                {completed ? <><span className="sr-only">完了: </span><CheckIcon className="size-4" /></> : number}
               </span>
               {title}
             </li>

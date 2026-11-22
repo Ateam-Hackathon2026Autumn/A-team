@@ -36,7 +36,7 @@ function StockBadge({ stock }: { stock: number | null }) {
   if (stock === null) {
     return (
       <span className={`${className} bg-marche-canvas text-marche-muted`}>
-        在庫未設定
+        在庫管理なし
       </span>
     );
   }
@@ -61,7 +61,7 @@ function StockBadge({ stock }: { stock: number | null }) {
 type DashboardProductRowProps = {
   product: DashboardProduct;
   categoryName: string | undefined;
-  // 通信中はこの行の操作を止める（古い etag での二重送信を防ぐ）
+  // 通信中はこの行の操作を止める
   isPending: boolean;
   onStockChange: (product: DashboardProduct, stock: number) => void;
   onPublishToggle: (product: DashboardProduct) => void;
@@ -84,7 +84,7 @@ function DashboardProductRow({
 
   const isSuspended = publishStatus === 'suspended';
   const isPublic = publishStatus === 'public';
-  const isStockLocked = isPending || isSuspended;
+  const isStockLocked = isPending;
   // 公開中は先に非公開へ変更してから削除する。掲載停止中は運営の対応が必要
   const canDelete = !isPublic && !isSuspended;
 
@@ -95,7 +95,7 @@ function DashboardProductRow({
 
     setStockDraft(null);
 
-    // 数字以外・空欄・上限超えは元の値に戻す（公開中の商品は未設定にできないため空欄を送らない）
+    // 空欄・数字以外・上限超えは元の値に戻す。在庫管理なしは編集画面で設定する
     if (!/^\d+$/.test(stockDraft)) {
       return;
     }
@@ -218,20 +218,20 @@ function DashboardProductRow({
         )}
 
         {/* 削除ボタンの有無で在庫・公開の位置がずれないよう、PC では幅を固定する */}
-        <div className="flex items-center gap-2 md:w-28 md:justify-end">
-          {!isSuspended && (
-            <DashboardButton
-              to={`/dashboard/products/${id}/edit`}
-              variant="secondary"
-              size="sm"
-            >
-              編集
-            </DashboardButton>
-          )}
+        <div className="flex min-w-max items-center gap-2 md:w-36 md:shrink-0 md:justify-end">
+          <DashboardButton
+            to={`/dashboard/products/${id}/edit`}
+            variant="secondary"
+            size="sm"
+            className="shrink-0 whitespace-nowrap"
+          >
+            編集
+          </DashboardButton>
           {canDelete && (
             <DashboardButton
               variant="danger"
               size="sm"
+              className="shrink-0 whitespace-nowrap"
               disabled={isPending}
               onClick={() => onDelete(product)}
             >

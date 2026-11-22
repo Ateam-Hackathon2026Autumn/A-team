@@ -10,13 +10,13 @@ type Props = {
 const choices = [
   {
     value: "consumer",
-    icon: "🧺",
+    image: "/images/categories/buy.webp",
     title: "買う・体験する・働く",
     description: "商品の購入、体験への参加、仕事への応募",
   },
   {
     value: "producer",
-    icon: "🌱",
+    image: "/images/categories/producer.webp",
     title: "生産者として利用する",
     description: "商品販売・体験・求人を掲載したい",
   },
@@ -47,7 +47,7 @@ export default function PurposeStep({
           if (purpose) onNext();
         }}
       >
-        {choices.map(({ value, icon, title, description }) => (
+        {choices.map(({ value, image, title, description }) => (
           <label
             key={value}
             className={`mt-4 flex cursor-pointer items-center gap-3 rounded-xl border p-4 ${
@@ -65,9 +65,14 @@ export default function PurposeStep({
               className="font-sans size-4 shrink-0 accent-marche-green"
             />
 
-            <span aria-hidden="true" className="text-3xl">
-              {icon}
-            </span>
+            <img
+              src={image}
+              width={512}
+              height={512}
+              decoding="async"
+              alt=""
+              className="size-14 shrink-0 rounded-xl object-cover"
+            />
 
             <span>
               <span className="block text-sm font-bold">{title}</span>

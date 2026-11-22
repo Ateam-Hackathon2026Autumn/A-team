@@ -8,7 +8,7 @@ type JobApplicationStatus = 'applied' | 'screening' | 'hired' | 'rejected' | 'wi
 // 生産者が変更できる応募の状態（completed は長期の求人で採用済みの応募だけ）
 type JobDecisionStatus = 'screening' | 'hired' | 'rejected' | 'completed';
 
-// 一覧の1件（JobListSerializer）。応募件数・採用人数は含まれない
+// 一覧の1件（JobListSerializer）
 type DashboardJobSummary = {
   id: number;
   title: string;
@@ -23,6 +23,10 @@ type DashboardJobSummary = {
   inexperiencedOk: boolean;
   // アップロード済み画像のキー
   coverImage: string | null;
+  // 表示URLを返す実装では保存済み画像のプレビューに使用
+  coverImageUrl?: string | null;
+  applicationCount: number;
+  hiredCount: number;
   publishStatus: JobPublishStatus;
   createdAt: string;
   updatedAt: string;

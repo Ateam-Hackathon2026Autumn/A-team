@@ -9,6 +9,7 @@ import { todayInJapan } from '../../../utils/jobFormat';
 import {
   conflict,
   idFromPath,
+  imageUrlFor,
   isObject,
   loadState,
   nextId,
@@ -24,7 +25,7 @@ import {
 //
 // 求人（一覧・詳細・登録・更新・削除）、応募者（一覧・状態変更）の各モックが、このデータを読み書きする
 // レスポンスの形・入力チェックは実API（backend/api/views/dashboard/jobs.py、serializers/dashboard/jobs.py）に合わせる
-// - 一覧・詳細に応募件数・採用人数は含まれない。勤務日は { id, workDate, neededCount } だけ
+// - 一覧・詳細に応募件数・採用人数を含む。
 // - 応募があっても求人の項目は変更できる。ただし応募者が希望している勤務日の削除・日付変更は 409
 // - 応募されたことがある求人は削除できない（409）
 // - 応募の状態を変えたときのレスポンスは { id, status, decidedAt, hiredCount, slots, isOverCapacity }
@@ -44,7 +45,7 @@ const APPLICATION_NOT_FOUND = '応募者が見つかりません。';
 // 退会した会員の氏名（実APIの anonymize と同じ）
 const DELETED_NAME = '退会ユーザー';
 
-type StoredJob = DashboardJob;
+type StoredJob = Omit<DashboardJob, 'applicationCount' | 'hiredCount' | 'coverImageUrl'>;
 type StoredApplication = DashboardJobApplication & { jobId: number };
 
 type State = {
@@ -278,6 +279,9 @@ function hasApplicants(jobId: number, workDateId: number): boolean {
 function toDetail(job: StoredJob): DashboardJob {
   return {
     ...job,
+    coverImageUrl: job.coverImage === null ? null : imageUrlFor(job.coverImage),
+    applicationCount: applicationsOf(job.id).filter((item) => item.status !== 'withdrawn').length,
+    hiredCount: applicationsOf(job.id).filter((item) => item.status === 'hired' || item.status === 'completed').length,
     workDates: [...job.workDates].sort(
       (a, b) => a.workDate.localeCompare(b.workDate) || a.id - b.id,
     ),
@@ -298,6 +302,9 @@ function toSummary(job: StoredJob): DashboardJobSummary {
     slots: job.slots,
     inexperiencedOk: job.inexperiencedOk,
     coverImage: job.coverImage,
+    coverImageUrl: job.coverImage === null ? null : imageUrlFor(job.coverImage),
+    applicationCount: applicationsOf(job.id).filter((item) => item.status !== 'withdrawn').length,
+    hiredCount: applicationsOf(job.id).filter((item) => item.status === 'hired' || item.status === 'completed').length,
     publishStatus: job.publishStatus,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,

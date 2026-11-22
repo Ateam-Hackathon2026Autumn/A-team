@@ -29,7 +29,29 @@ const uploadsImageCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/uploads/images',
   status: 201,
-  handler: () => {
+  handler: (_url, init) => {
+    const form = init?.body instanceof FormData ? init.body : null;
+    const file = form?.get('file');
+    if (!(file instanceof File) || [...(form?.keys() ?? [])].some((key) => key !== 'file')) {
+      return {
+        status: 400,
+        body: {
+          errorCode: 'VALIDATION_ERROR',
+          errorMsg: '入力内容に誤りがあります。',
+          details: { file: ['画像を選んでください。'] },
+        },
+      };
+    }
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      return {
+        status: 400,
+        body: {
+          errorCode: 'VALIDATION_ERROR',
+          errorMsg: '入力内容に誤りがあります。',
+          details: { file: ['JPEGまたはPNGの画像を選択してください。'] },
+        },
+      };
+    }
     const uuid = crypto.randomUUID();
     const image = {
       key: `images/1/${uuid}.jpg`,
