@@ -1,8 +1,8 @@
 # バケット自体は bootstrap が管理します。dev はアプリのアクセス権だけを管理します。
 locals {
   uploads_bucket_arn = "arn:aws:s3:::${var.uploads_bucket_name}"
-  # uploads/ の外へ画像の保存先を変更した場合も、必要な prefix だけ追加します。
-  uploads_prefixes = distinct(concat(["uploads/"], [
+  # Django は圧縮済みの公開画像を images/ に保存します。
+  uploads_prefixes = distinct(concat(["uploads/", "images/"], [
     for prefix in [var.image_prefixes.input, var.image_prefixes.output] : prefix
     if !startswith(prefix, "uploads/")
   ]))

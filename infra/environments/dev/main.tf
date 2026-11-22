@@ -63,6 +63,7 @@ module "ecs" {
   image_tag                             = var.image_tag
   deployment_aws_profile                = var.deployment_aws_profile
   migration_load_initial_data           = var.migration_load_initial_data
+  migration_load_dev_seed               = var.migration_load_dev_seed
   migration_timeout_seconds             = var.migration_timeout_seconds
   desired_count                         = var.desired_count
   django_allowed_hosts                  = var.django_allowed_hosts

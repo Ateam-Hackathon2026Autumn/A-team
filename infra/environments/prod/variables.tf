@@ -167,7 +167,7 @@ variable "db_instance_class" {
 variable "db_multi_az" {
   description = "true にすると、別の AZ に RDS のスタンバイを配置して Multi-AZ を有効にします。"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "db_skip_final_snapshot" {

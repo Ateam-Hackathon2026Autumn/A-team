@@ -2,13 +2,16 @@
 
 DB に保存した S3 のキー（ImageField の値、またはサブクエリで取ったキーの文字列）を、表示用のURLに変える。
 - キーが空なら None
-- 公開画像は署名なしURL（settings.AWS_QUERYSTRING_AUTH = False）。開発・テストでは /media/... になる
-- 将来 CDN（CloudFront）のドメインに変えるときは、ここだけ直す
+- images/ の公開画像は、設定されている場合は CloudFront の URL を返す
+- 開発・テストではストレージの /media/... を返す
 
 使い方（シリアライザー）:
     url = ImageUrlField(source="image")                  # ImageField
     thumbnail_url = ImageUrlField(source="thumbnail_key")  # サブクエリで取ったキーの文字列
 """
+from urllib.parse import quote
+
+from django.conf import settings
 from django.core.files.storage import default_storage
 from rest_framework import serializers
 
@@ -20,6 +23,8 @@ def image_url(value):
     key = getattr(value, "name", value)
     if not key:
         return None
+    if settings.PUBLIC_IMAGE_BASE_URL and key.startswith("images/"):
+        return f"{settings.PUBLIC_IMAGE_BASE_URL}/{quote(key)}"
     return default_storage.url(key)
 
 

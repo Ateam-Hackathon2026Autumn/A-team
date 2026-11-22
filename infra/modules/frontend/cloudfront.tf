@@ -1,6 +1,7 @@
 locals {
-  site_origin_id = "frontend-s3"
-  api_origin_id  = "backend-alb"
+  site_origin_id   = "frontend-s3"
+  api_origin_id    = "backend-alb"
+  images_origin_id = "uploads-images-s3"
   # AWS 管理ポリシー CachingDisabled。API の本文・認証状態をキャッシュしない。
   api_cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
 }
@@ -57,6 +58,7 @@ resource "aws_cloudfront_distribution" "site" {
   is_ipv6_enabled     = true
   comment             = "${var.name} frontend and API entry point"
   default_root_object = "index.html"
+  aliases             = var.custom_domain == null ? [] : [var.custom_domain.name]
   http_version        = "http2and3"
   price_class         = "PriceClass_200"
   wait_for_deployment = true
@@ -66,6 +68,15 @@ resource "aws_cloudfront_distribution" "site" {
     origin_id                = local.site_origin_id
     domain_name              = data.aws_s3_bucket.site.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.site.id
+  }
+
+  dynamic "origin" {
+    for_each = aws_s3_access_point.images
+    content {
+      origin_id                = local.images_origin_id
+      domain_name              = "${origin.value.alias}.s3.${origin.value.region}.amazonaws.com"
+      origin_access_control_id = aws_cloudfront_origin_access_control.site.id
+    }
   }
 
   dynamic "origin" {
@@ -112,12 +123,27 @@ resource "aws_cloudfront_distribution" "site" {
     }
   }
 
+  dynamic "ordered_cache_behavior" {
+    for_each = aws_s3_access_point.images
+    content {
+      path_pattern           = "/images/*"
+      target_origin_id       = local.images_origin_id
+      viewer_protocol_policy = "redirect-to-https"
+      allowed_methods        = ["GET", "HEAD"]
+      cached_methods         = ["GET", "HEAD"]
+      cache_policy_id        = aws_cloudfront_cache_policy.site.id
+    }
+  }
+
   restrictions {
     geo_restriction { restriction_type = "none" }
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.custom_domain == null
+    acm_certificate_arn            = one(aws_acm_certificate_validation.frontend[*].certificate_arn)
+    ssl_support_method             = var.custom_domain == null ? null : "sni-only"
+    minimum_protocol_version       = var.custom_domain == null ? null : "TLSv1.2_2021"
   }
 
 }

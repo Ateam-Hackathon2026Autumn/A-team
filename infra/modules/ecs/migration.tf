@@ -16,7 +16,7 @@ resource "aws_ecs_task_definition" "migration" {
 
   container_definitions = jsonencode([merge(local.backend_container, {
     name         = "migration"
-    command      = ["python", "manage.py", "migrate", "--noinput"]
+    command      = var.migration_load_dev_seed ? local.migration_with_dev_seed : ["python", "manage.py", "migrate", "--noinput"]
     portMappings = []
     logConfiguration = merge(local.backend_container.logConfiguration, {
       options = merge(local.backend_container.logConfiguration.options, {
@@ -29,6 +29,12 @@ resource "aws_ecs_task_definition" "migration" {
 }
 
 locals {
+  # seed_dev が出力する検証用アカウントの情報は CloudWatch Logs に送らない。
+  migration_with_dev_seed = [
+    "sh", "-c",
+    "python manage.py migrate --noinput && DJANGO_DEBUG=true python manage.py seed_dev >/dev/null && echo 'Development seed completed.'",
+  ]
+
   # サービスの resource を参照しない。サービス作成前に実行できる依存関係にする。
   migration_config = {
     aws_account_id     = var.aws_account_id
@@ -49,7 +55,8 @@ locals {
     }
     log_group         = aws_cloudwatch_log_group.backend.name
     log_stream_prefix = "migration"
-    load_initial_data = var.migration_load_initial_data
+    # seed_dev が初期マスターも入れるため、run_migration.py の loaddata 用上書きを無効にする。
+    load_initial_data = var.migration_load_initial_data && !var.migration_load_dev_seed
     timeout_seconds   = var.migration_timeout_seconds
   }
 
@@ -89,7 +96,7 @@ resource "terraform_data" "migration" {
     aws_ecs_task_definition.migration.arn,
     var.database.resource_id,
     var.application_config_revision,
-    var.migration_load_initial_data,
+    local.migration_config.load_initial_data,
     var.migration_timeout_seconds,
     terraform_data.django_secret_ready[0].id,
     filesha256("${path.module}/../../scripts/run_migration.py"),

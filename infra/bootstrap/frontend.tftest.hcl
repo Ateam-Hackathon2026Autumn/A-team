@@ -5,6 +5,12 @@ mock_provider "aws" {
   }
 }
 
+override_resource {
+  target          = aws_s3_bucket.uploads
+  override_during = plan
+  values          = { arn = "arn:aws:s3:::a-team-uploads-tests" }
+}
+
 variables {
   aws_account_id      = "123456789012"
   state_bucket_name   = "a-team-state-tests"
@@ -36,5 +42,24 @@ run "frontend_storage_is_separate_for_prod" {
       output.frontend_deployments["prod"].bucket_name == "a-team-prod-frontend-123456789012-ap-northeast-1"
     )
     error_message = "dev / prod のフロント成果物を別バケットで保持する必要があります。"
+  }
+
+  assert {
+    condition = anytrue([for statement in data.aws_iam_policy_document.uploads_bucket.statement :
+      statement.sid == "DelegatePublicImageReadsToAccessPoints" &&
+      toset(statement.actions) == toset(["s3:GetObject"]) &&
+      toset(statement.resources) == toset(["arn:aws:s3:::a-team-uploads-tests/images/*"]) &&
+      anytrue([for principal in statement.principals :
+        principal.type == "Service" && toset(principal.identifiers) == toset(["cloudfront.amazonaws.com"])
+      ]) &&
+      anytrue([for condition in statement.condition :
+        condition.test == "ArnEquals" && condition.variable == "s3:DataAccessPointArn" &&
+        toset(condition.values) == toset([
+          "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/a-team-dev-public-images",
+          "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/a-team-prod-public-images"
+        ])
+      ])
+    ])
+    error_message = "既知の画像配信用アクセスポイントに、images/ の読み取りだけを委譲する必要があります。"
   }
 }

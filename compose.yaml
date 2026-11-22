@@ -20,7 +20,10 @@ services:
     command:
       - sh
       - -c
-      - python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000
+      - >-
+        python manage.py migrate --noinput &&
+        python manage.py seed_dev --masters-only &&
+        python manage.py runserver 0.0.0.0:8000
     ports:
       - "8000:8000"
     volumes:
@@ -34,6 +37,10 @@ services:
       DB_NAME: ${MYSQL_DATABASE:-hackathon}
       DB_USER: ${MYSQL_USER:-hackathon}
       DB_PASSWORD: ${MYSQL_PASSWORD:-hackathon_password}
+      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-${AWS_TEST_UPLOADS_BUCKET_NAME:-}}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy

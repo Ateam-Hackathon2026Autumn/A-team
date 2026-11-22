@@ -5,7 +5,8 @@ output "bucket_name" {
 
 output "url" {
   description = "画面と API の共通入口になる CloudFront の HTTPS URL。"
-  value       = "https://${aws_cloudfront_distribution.site.domain_name}"
+  value       = "https://${var.custom_domain == null ? aws_cloudfront_distribution.site.domain_name : var.custom_domain.name}"
+  depends_on  = [aws_route53_record.frontend]
 }
 
 output "distribution_id" {

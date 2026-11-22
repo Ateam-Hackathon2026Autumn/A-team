@@ -57,10 +57,11 @@ variables {
   desired_count        = 0
   django_allowed_hosts = ["*"]
   application_parameter_arns = {
-    AWS_STORAGE_BUCKET_NAME     = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/uploads-bucket-name"
-    FRONTEND_BASE_URL           = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/frontend-base-url"
-    DJANGO_CSRF_TRUSTED_ORIGINS = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/csrf-trusted-origins"
-    DJANGO_COOKIE_SECURE        = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/django-cookie-secure"
+    AWS_STORAGE_BUCKET_NAME      = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/uploads-bucket-name"
+    FRONTEND_BASE_URL            = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/frontend-base-url"
+    DJANGO_PUBLIC_IMAGE_BASE_URL = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/public-image-base-url"
+    DJANGO_CSRF_TRUSTED_ORIGINS  = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/csrf-trusted-origins"
+    DJANGO_COOKIE_SECURE         = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/django-cookie-secure"
   }
   application_config_revision = sha256("initial-settings")
 }
@@ -70,14 +71,23 @@ run "inject_parameters_and_keep_existing_secrets" {
 
   assert {
     condition = (
-      length(jsondecode(aws_ecs_task_definition.backend.container_definitions)[0].secrets) == 6 &&
+      length(jsondecode(aws_ecs_task_definition.backend.container_definitions)[0].secrets) == 7 &&
       alltrue([for name, arn in var.application_parameter_arns :
         one([for secret in jsondecode(aws_ecs_task_definition.backend.container_definitions)[0].secrets : secret.valueFrom if secret.name == name]) == arn
       ]) &&
       one([for secret in jsondecode(aws_ecs_task_definition.backend.container_definitions)[0].secrets : secret.valueFrom if secret.name == "DB_PASSWORD"]) == "${var.database.secret_arn}:password::" &&
       one([for secret in jsondecode(aws_ecs_task_definition.backend.container_definitions)[0].secrets : secret.valueFrom if secret.name == "DJANGO_SECRET_KEY"]) == aws_secretsmanager_secret.django.arn
     )
-    error_message = "4つの SSM 設定を正しい名前で注入し、既存の DB・Django の秘密値の参照も残す必要があります。"
+    error_message = "SSM 設定を正しい名前で注入し、既存の DB・Django の秘密値の参照も残す必要があります。"
+  }
+
+  assert {
+    condition = anytrue([for statement in data.aws_iam_policy_document.ecs_uploads.statement :
+      statement.sid == "ReadAndWriteUploads" &&
+      contains(statement.resources, "arn:aws:s3:::${var.uploads_bucket_name}/images/*") &&
+      contains(statement.actions, "s3:PutObject") && contains(statement.actions, "s3:GetObject")
+    ])
+    error_message = "ECS からアップロードバケットの images/ を読み書きできる必要があります。"
   }
 
   assert {
@@ -127,10 +137,11 @@ run "reject_parameters_in_another_account" {
 
   variables {
     application_parameter_arns = {
-      AWS_STORAGE_BUCKET_NAME     = "arn:aws:ssm:ap-northeast-1:999999999999:parameter/other/uploads"
-      FRONTEND_BASE_URL           = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/frontend-base-url"
-      DJANGO_CSRF_TRUSTED_ORIGINS = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/csrf-trusted-origins"
-      DJANGO_COOKIE_SECURE        = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/django-cookie-secure"
+      AWS_STORAGE_BUCKET_NAME      = "arn:aws:ssm:ap-northeast-1:999999999999:parameter/other/uploads"
+      FRONTEND_BASE_URL            = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/frontend-base-url"
+      DJANGO_PUBLIC_IMAGE_BASE_URL = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/public-image-base-url"
+      DJANGO_CSRF_TRUSTED_ORIGINS  = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/csrf-trusted-origins"
+      DJANGO_COOKIE_SECURE         = "arn:aws:ssm:ap-northeast-1:123456789012:parameter/a-team/dev/django-cookie-secure"
     }
   }
 
@@ -170,6 +181,27 @@ run "migration_uses_the_same_release_database_and_private_network" {
       jsondecode(aws_ecs_task_definition.migration.container_definitions)[0].logConfiguration.options["awslogs-stream-prefix"] == "migration"
     )
     error_message = "単発タスクは専用 ARN・既存の private subnet / SG と migration 用ログの設定を output する必要があります。"
+  }
+}
+
+run "development_seed_runs_after_migrate" {
+  command = plan
+
+  variables {
+    migration_load_initial_data = true
+    migration_load_dev_seed     = true
+  }
+
+  assert {
+    condition = (
+      jsondecode(aws_ecs_task_definition.migration.container_definitions)[0].command == [
+        "sh", "-c",
+        "python manage.py migrate --noinput && DJANGO_DEBUG=true python manage.py seed_dev >/dev/null && echo 'Development seed completed.'",
+      ] &&
+      !output.migration.load_initial_data &&
+      one([for item in jsondecode(aws_ecs_task_definition.backend.container_definitions)[0].environment : item.value if item.name == "DJANGO_DEBUG"]) == "false"
+    )
+    error_message = "migrate 成功後だけ seed_dev を実行し、Web サービスの DEBUG は無効にする必要があります。"
   }
 }
 

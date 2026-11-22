@@ -91,6 +91,12 @@ variable "migration_load_initial_data" {
   default     = false
 }
 
+variable "migration_load_dev_seed" {
+  description = "dev 環境で migrate 成功後に seed_dev を実行します。"
+  type        = bool
+  default     = false
+}
+
 variable "migration_timeout_seconds" {
   description = "単発 migration の完了待ち秒数。"
   type        = number
@@ -155,10 +161,11 @@ variable "django_allowed_hosts" {
 variable "application_parameter_arns" {
   description = "Parameter Store モジュールの output。ECS 起動時に、同名の環境変数として注入します。"
   type = object({
-    AWS_STORAGE_BUCKET_NAME     = string
-    FRONTEND_BASE_URL           = string
-    DJANGO_CSRF_TRUSTED_ORIGINS = string
-    DJANGO_COOKIE_SECURE        = string
+    AWS_STORAGE_BUCKET_NAME      = string
+    FRONTEND_BASE_URL            = string
+    DJANGO_PUBLIC_IMAGE_BASE_URL = string
+    DJANGO_CSRF_TRUSTED_ORIGINS  = string
+    DJANGO_COOKIE_SECURE         = string
   })
 
   validation {

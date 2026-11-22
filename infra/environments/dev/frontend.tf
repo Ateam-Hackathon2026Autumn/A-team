@@ -3,12 +3,23 @@
 module "frontend" {
   source = "../../modules/frontend"
 
-  name        = local.name
-  bucket_name = "${local.name}-frontend-${var.aws_account_id}-${var.aws_region}"
+  name                = local.name
+  bucket_name         = "${local.name}-frontend-${var.aws_account_id}-${var.aws_region}"
+  uploads_bucket_name = var.uploads_bucket_name
+  custom_domain       = var.frontend_domain
   api_origin = {
     domain_name     = var.backend_origin_domain_name != null ? var.backend_origin_domain_name : module.alb.dns_name
     protocol_policy = var.certificate_arn == null ? "http-only" : "https-only"
   }
+}
+
+variable "frontend_domain" {
+  description = "フロント公開用のドメイン名と既存 Route 53 パブリックホストゾーン ID。"
+  type = object({
+    name    = string
+    zone_id = string
+  })
+  default = null
 }
 
 variable "backend_origin_domain_name" {

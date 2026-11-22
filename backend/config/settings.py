@@ -109,8 +109,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 # ブラウザは frontend（localhost:5173）を開いているので、画像は backend（localhost:8000）のURLで返す
 MEDIA_URL = os.getenv("DJANGO_MEDIA_URL", "http://localhost:8000/media/")
 AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "ap-northeast-1")
+PUBLIC_IMAGE_BASE_URL = os.getenv("DJANGO_PUBLIC_IMAGE_BASE_URL", "").rstrip("/")
 
-# 公開用の画像（商品・農園・体験など）は署名なしのURLで返す。
+# 公開画像は CloudFront のURLで返す（api/common/images.py）。
 # 申請書類・チャット添付など非公開のファイルは、表示のたびに期限付きURLを個別に発行する（api-spec「ファイル」）
 AWS_QUERYSTRING_AUTH = False
 # 非公開ファイル（申請書類・チャット添付）の期限付きURLの有効期間（秒）→ api/services/storage.py

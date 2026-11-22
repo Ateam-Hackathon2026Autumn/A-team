@@ -44,7 +44,28 @@ resource "aws_s3_bucket_ownership_controls" "uploads" {
   }
 }
 
-data "aws_iam_policy_document" "uploads_tls" {
+data "aws_iam_policy_document" "uploads_bucket" {
+  # 配信ごとの許可は環境側のアクセスポイントポリシーで管理します。
+  statement {
+    sid       = "DelegatePublicImageReadsToAccessPoints"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.uploads.arn}/images/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "s3:DataAccessPointArn"
+      values = [
+        for environment in var.frontend_environments :
+        "arn:aws:s3:${var.aws_region}:${var.aws_account_id}:accesspoint/${var.project_name}-${environment}-public-images"
+      ]
+    }
+  }
+
   statement {
     sid     = "DenyInsecureTransport"
     effect  = "Deny"
@@ -69,5 +90,5 @@ data "aws_iam_policy_document" "uploads_tls" {
 
 resource "aws_s3_bucket_policy" "uploads" {
   bucket = aws_s3_bucket.uploads.id
-  policy = data.aws_iam_policy_document.uploads_tls.json
+  policy = data.aws_iam_policy_document.uploads_bucket.json
 }

@@ -81,3 +81,24 @@ run "dev_can_explicitly_retain_data" {
     error_message = "明示的に指定したデータ保持設定を各モジュールへ渡す必要があります。"
   }
 }
+
+run "custom_frontend_domain_is_the_application_origin" {
+  command = plan
+
+  variables {
+    frontend_domain = {
+      name    = "marche.example.com"
+      zone_id = "ZPUBLICEXAMPLE"
+    }
+  }
+
+  assert {
+    condition = (
+      output.frontend_url == "https://marche.example.com" &&
+      alltrue([for name in ["FRONTEND_BASE_URL", "DJANGO_CSRF_TRUSTED_ORIGINS", "DJANGO_PUBLIC_IMAGE_BASE_URL"] :
+        module.application_config.values[name] == output.frontend_url
+      ])
+    )
+    error_message = "画面の公開 URL と、Django のリンク・CSRF・画像 URL を同じドメインに揃える必要があります。"
+  }
+}

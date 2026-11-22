@@ -9,8 +9,29 @@ mock_provider "aws" {
 
   mock_resource "aws_cloudfront_distribution" {
     defaults = {
-      arn         = "arn:aws:cloudfront::123456789012:distribution/EFRONTENDTEST"
-      domain_name = "frontend-tests.cloudfront.net"
+      arn            = "arn:aws:cloudfront::123456789012:distribution/EFRONTENDTEST"
+      domain_name    = "frontend-tests.cloudfront.net"
+      hosted_zone_id = "Z2FDTNDATAQYW2"
+    }
+  }
+
+  mock_resource "aws_acm_certificate" {
+    defaults = {
+      arn = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+      domain_validation_options = [{
+        domain_name           = "marche.example.com"
+        resource_record_name  = "_validation.marche.example.com"
+        resource_record_type  = "CNAME"
+        resource_record_value = "_target.acm-validations.aws."
+      }]
+    }
+  }
+
+  mock_resource "aws_s3_access_point" {
+    defaults = {
+      arn    = "arn:aws:s3:ap-northeast-1:123456789012:accesspoint/a-team-dev-public-images"
+      alias  = "a-team-dev-public-images-test-s3alias"
+      region = "ap-northeast-1"
     }
   }
 
@@ -77,6 +98,57 @@ run "private_static_site" {
     )
     error_message = "静的配信は HTTPS・読み取り専用とし、エラー全体の HTML 化や強制キャッシュを行わない必要があります。"
   }
+
+  assert {
+    condition = (
+      output.url == "https://frontend-tests.cloudfront.net" &&
+      length(aws_cloudfront_distribution.site.aliases) == 0 &&
+      one(aws_cloudfront_distribution.site.viewer_certificate).cloudfront_default_certificate &&
+      length(aws_acm_certificate.frontend) == 0 && length(aws_route53_record.frontend) == 0
+    )
+    error_message = "独自ドメイン未指定時に CloudFront の標準 HTTPS URL を返す必要があります。"
+  }
+}
+
+run "custom_domain_uses_validated_certificate_and_aliases" {
+  command = apply
+
+  variables {
+    custom_domain = {
+      name    = "marche.example.com"
+      zone_id = "ZPUBLICEXAMPLE"
+    }
+  }
+
+  assert {
+    condition = (
+      one(aws_acm_certificate.frontend).region == "us-east-1" &&
+      one(aws_acm_certificate.frontend).validation_method == "DNS" &&
+      one(aws_route53_record.certificate_validation).type == "CNAME" &&
+      one(aws_route53_record.certificate_validation).zone_id == var.custom_domain.zone_id &&
+      one(aws_acm_certificate_validation.frontend).region == "us-east-1" &&
+      toset(one(aws_acm_certificate_validation.frontend).validation_record_fqdns) == toset([one(aws_route53_record.certificate_validation).fqdn]) &&
+      toset(aws_cloudfront_distribution.site.aliases) == toset([var.custom_domain.name]) &&
+      !one(aws_cloudfront_distribution.site.viewer_certificate).cloudfront_default_certificate &&
+      one(aws_cloudfront_distribution.site.viewer_certificate).acm_certificate_arn == one(aws_acm_certificate_validation.frontend).certificate_arn &&
+      one(aws_cloudfront_distribution.site.viewer_certificate).ssl_support_method == "sni-only"
+    )
+    error_message = "us-east-1 の ACM 証明書を Route 53 で DNS 検証し、CloudFront に設定する必要があります。"
+  }
+
+  assert {
+    condition = (
+      output.url == "https://marche.example.com" &&
+      toset(keys(aws_route53_record.frontend)) == toset(["A", "AAAA"]) &&
+      alltrue([for record in aws_route53_record.frontend :
+        record.zone_id == var.custom_domain.zone_id && record.name == var.custom_domain.name &&
+        one(record.alias).name == aws_cloudfront_distribution.site.domain_name &&
+        one(record.alias).zone_id == aws_cloudfront_distribution.site.hosted_zone_id &&
+        !one(record.alias).evaluate_target_health
+      ])
+    )
+    error_message = "公開 URL を独自ドメインにし、IPv4・IPv6 を同じ CloudFront に転送する必要があります。"
+  }
 }
 
 run "api_requests_keep_credentials_and_methods" {
@@ -112,6 +184,38 @@ run "api_requests_keep_credentials_and_methods" {
       toset(aws_cloudfront_origin_request_policy.api[0].headers_config[0].headers[0].items) == toset(["Host"])
     )
     error_message = "Cookie・CSRF 等のヘッダー・クエリを転送し、Host は接続先に合わせる必要があります。"
+  }
+}
+
+run "images_use_private_bucket_access_point" {
+  command = apply
+
+  variables {
+    uploads_bucket_name = "a-team-dev-uploads-tests"
+  }
+
+  assert {
+    condition = (
+      aws_s3_access_point.images[0].bucket == var.uploads_bucket_name &&
+      aws_s3_access_point.images[0].name == "a-team-dev-public-images" &&
+      aws_s3_access_point.images[0].public_access_block_configuration[0].block_public_policy &&
+      one([for origin in aws_cloudfront_distribution.site.origin : origin.domain_name if origin.origin_id == "uploads-images-s3"]) == "a-team-dev-public-images-test-s3alias.s3.ap-northeast-1.amazonaws.com" &&
+      one([for origin in aws_cloudfront_distribution.site.origin : origin.origin_access_control_id if origin.origin_id == "uploads-images-s3"]) == aws_cloudfront_origin_access_control.site.id
+    )
+    error_message = "アップロード用 S3 のアクセスポイントを、署名付きの画像配信元にする必要があります。"
+  }
+
+  assert {
+    condition = (
+      one(aws_cloudfront_distribution.site.ordered_cache_behavior).path_pattern == "/images/*" &&
+      one(aws_cloudfront_distribution.site.ordered_cache_behavior).target_origin_id == "uploads-images-s3" &&
+      toset(one(aws_cloudfront_distribution.site.ordered_cache_behavior).allowed_methods) == toset(["GET", "HEAD"]) &&
+      length(one(aws_cloudfront_distribution.site.ordered_cache_behavior).function_association) == 0 &&
+      one(jsondecode(aws_s3control_access_point_policy.images[0].policy).Statement).Resource == "${aws_s3_access_point.images[0].arn}/object/images/*" &&
+      one(jsondecode(aws_s3control_access_point_policy.images[0].policy).Statement).Action == "s3:GetObject" &&
+      one(jsondecode(aws_s3control_access_point_policy.images[0].policy).Statement).Condition.StringEquals["AWS:SourceArn"] == aws_cloudfront_distribution.site.arn
+    )
+    error_message = "この CloudFront だけに images/ を許可し、画像リクエストは読み取り専用で転送する必要があります。"
   }
 }
 
