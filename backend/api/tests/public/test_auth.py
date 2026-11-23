@@ -1,13 +1,9 @@
-"""認証（CSRF取得・ログイン・ログインチェック・ログアウト・メール認証）のテスト"""
-from urllib.parse import parse_qs, urlparse
+"""認証（CSRF取得・ログイン・ログインチェック・ログアウト。メール認証は拡張で無効）のテスト"""
 
-from django.core import mail
-from django.test import override_settings
 from django.utils import timezone
 
 from marche.models import CartItem, Producer, PublishStatus
 
-from ...services import email_verification
 from ..utils import PASSWORD, ApiTestCase, make_producer, make_product, make_user
 
 SESSION = "/api/v1/auth/session"
@@ -154,89 +150,10 @@ class SignoutTests(ApiTestCase):
         self.assertEqual(res.json()["errorCode"], "CSRF_FAILED")
 
 
-class EmailVerificationTests(ApiTestCase):
-    def setUp(self):
-        super().setUp()
-        self.user = make_user()
+class EmailVerificationDisabledTests(ApiTestCase):
+    """メール認証は拡張。確認・再送の API は公開していない"""
 
-    def token_from_mail(self):
-        """メール本文のリンクからトークンを取り出す（フロントの URLSearchParams と同じくデコードする）"""
-        url = next(line for line in mail.outbox[-1].body.splitlines() if "/verify-email?token=" in line)
-        return parse_qs(urlparse(url).query)["token"][0]
-
-    # --- 再送 -----------------------------------------------------------------
-
-    def test_resend_requires_login(self):
-        res = self.post_json(RESEND)
-        self.assertEqual(res.status_code, 401)
-        self.assertEqual(res.json()["errorCode"], "NOT_AUTHENTICATED")
-
-    def test_resend_sends_mail_when_unverified(self):
-        self.client.force_login(self.user)
-        res = self.post_json(RESEND)
-        self.assertEqual(res.status_code, 202)
-        self.assertEqual(res.json(), {"message": "必要な場合、確認メールの配送を受け付けました。"})
-        self.assertEqual(mail.outbox[0].to, ["taro@example.com"])
-
-    def test_resend_does_nothing_when_verified(self):
-        self.user.email_verified_at = timezone.now()
-        self.user.save()
-        self.client.force_login(self.user)
-        self.assertEqual(self.post_json(RESEND).status_code, 202)
-        self.assertEqual(len(mail.outbox), 0)
-
-    def test_resend_once_per_minute(self):
-        self.client.force_login(self.user)
-        self.assertEqual(self.post_json(RESEND).status_code, 202)
-        res = self.post_json(RESEND)
-        self.assertEqual(res.status_code, 429)
-        self.assertEqual(res.json()["errorCode"], "RATE_LIMITED")
-
-    # --- 認証完了 -------------------------------------------------------------
-
-    def test_confirm_with_mailed_token(self):
-        self.client.force_login(self.user)
-        self.post_json(RESEND)
-        self.client.logout()  # ログインしていなくても確認できる
-
-        res = self.post_json(CONFIRM, {"token": self.token_from_mail()})
-        self.assertEqual(res.status_code, 200, res.content)
-        self.assertEqual(res.json(), {"message": "メール認証が完了しました。", "emailVerified": True})
-        self.user.refresh_from_db()
-        self.assertIsNotNone(self.user.email_verified_at)
-        self.assertFalse(self.client.get(SESSION).json()["authenticated"])  # 自動ログインはしない
-
-    def assert_invalid(self, token):
-        res = self.post_json(CONFIRM, {"token": token})
-        self.assertEqual(res.status_code, 400)
-        self.assertEqual(res.json()["errorCode"], "INVALID_OR_EXPIRED_TOKEN")
-
-    def test_token_can_be_used_once(self):
-        token = email_verification.make_token(self.user)
-        self.assertEqual(self.post_json(CONFIRM, {"token": token}).status_code, 200)
-        self.assert_invalid(token)
-
-    def test_tampered_token(self):
-        self.assert_invalid(email_verification.make_token(self.user) + "x")
-        self.assert_invalid("abc")
-        
-    def test_signed_token_with_unexpected_shape(self):
-        # 正しい署名でも、中身の形が違えば 400（500 にしない）
-        from django.core import signing
-        for payload in (["x"], {"uid": "1", "email": "taro@example.com"}, {"uid": self.user.pk}):
-            self.assert_invalid(signing.dumps(payload, salt=email_verification.SALT))
-
-    def test_expired_token(self):
-        token = email_verification.make_token(self.user)
-        with override_settings(EMAIL_VERIFICATION_TIMEOUT=-1):
-            self.assert_invalid(token)
-
-    def test_token_for_old_email(self):
-        token = email_verification.make_token(self.user)
-        self.user.email = "new@example.com"
-        self.user.save()
-        self.assert_invalid(token)
-
-    def test_confirm_requires_csrf(self):
-        res = self.post_json(CONFIRM, {"token": "abc"}, csrf=False)
-        self.assertEqual(res.status_code, 403)
+    def test_endpoints_are_not_found(self):
+        self.client.force_login(make_user())
+        self.assertEqual(self.post_json(RESEND).status_code, 404)
+        self.assertEqual(self.post_json(CONFIRM, {"token": "abc"}).status_code, 404)

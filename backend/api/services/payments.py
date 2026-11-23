@@ -124,7 +124,13 @@ def expire_checkout_session(session_id):
 
 
 def parse_webhook(payload, signature):
-    """署名を検証し、(イベントの種類, セッションの dict) を返す。Checkout 以外のイベントのセッションは None"""
+    """署名を検証し、(イベントの種類, セッションの dict) を返す。Checkout 以外のイベントのセッションは None
+
+    STRIPE_WEBHOOK_SECRET が空なら、署名を確かめられないので必ず拒否する
+    （stripe ライブラリも拒否するが、ライブラリの版に頼らずここで止める）
+    """
+    if not settings.STRIPE_WEBHOOK_SECRET:
+        raise InvalidWebhook("STRIPE_WEBHOOK_SECRET が設定されていません")
     try:
         event = stripe.Webhook.construct_event(payload, signature, settings.STRIPE_WEBHOOK_SECRET)
     except (ValueError, stripe.SignatureVerificationError) as exc:
