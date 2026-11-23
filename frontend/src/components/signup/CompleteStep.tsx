@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation } from "react-router";
+import { CheckIcon } from "../Icons";
 
 export default function CompleteStep() {
   const { state } = useLocation();
@@ -17,7 +18,7 @@ export default function CompleteStep() {
         aria-hidden="true"
         className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-3xl text-marche-green"
       >
-        ✓
+        <CheckIcon className="size-8" />
       </div>
       <p className="m-0 text-xs font-bold tracking-widest text-marche-green">REGISTRATION COMPLETED</p>
       <h1 className="m-0 mt-3 font-serif text-2xl font-bold sm:text-3xl">登録が完了しました！</h1>

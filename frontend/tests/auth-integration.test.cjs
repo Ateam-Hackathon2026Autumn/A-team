@@ -67,13 +67,52 @@ for (const prefectureId of ['', '13']) {
   });
 }
 
-for (const [status, errorCode] of [[400, 'VALIDATION_ERROR'], [401, 'INVALID_CREDENTIALS'], [403, 'CSRF_FAILED'], [409, 'ALREADY_AUTHENTICATED'], [429, 'THROTTLED']]) {
+for (const [status, errorCode] of [[400, 'VALIDATION_ERROR'], [401, 'INVALID_CREDENTIALS'], [403, 'FORBIDDEN'], [409, 'ALREADY_AUTHENTICATED'], [429, 'RATE_LIMITED'], [500, 'SERVER_ERROR'], [401, 'CSRF_FAILED']]) {
   test(`signin preserves ${status} and ${errorCode} without retrying POST`, async () => {
     const r = runtime([json({ csrfToken: 'token' }), json({ errorCode, errorMsg: 'Rejected', details: { email: ['Invalid'] } }, status)]);
     await assert.rejects(r.api.signin('user@example.com', 'secret'), (error) => error.status === status && error.errorCode === errorCode && error.details.email[0] === 'Invalid');
     assert.equal(r.calls.length, 2);
   });
 }
+
+for (const operation of ['signin', 'signup']) {
+  test(`${operation} retries CSRF_FAILED once with a new token and identical body`, async () => {
+    const r = runtime([
+      json({ csrfToken: 'old' }), json({ errorCode: 'CSRF_FAILED', errorMsg: 'Expired' }, 403),
+      json({ csrfToken: 'renewed' }), json({ authenticated: true, user }, operation === 'signin' ? 200 : 201),
+      json({ csrfToken: 'after-login' }),
+    ]);
+    const result = operation === 'signin' ? await r.api.signin('user@example.com', ' secret ') : await r.api.signup(values);
+    assert.equal(result.authenticated, true);
+    assert.deepEqual(r.calls.map((call) => call.init.method ?? 'GET'), ['GET', 'POST', 'GET', 'POST', 'GET']);
+    assert.equal(r.calls[1].init.headers['X-CSRFToken'], 'old');
+    assert.equal(r.calls[3].init.headers['X-CSRFToken'], 'renewed');
+    assert.equal(r.calls[1].init.body, r.calls[3].init.body);
+    assert.ok(r.calls.every((call) => call.init.credentials === 'include'));
+  });
+
+  test(`${operation} stops after a second CSRF_FAILED without looping`, async () => {
+    const r = runtime([
+      json({ csrfToken: 'old' }), json({ errorCode: 'CSRF_FAILED' }, 403),
+      json({ csrfToken: 'renewed' }), json({ errorCode: 'CSRF_FAILED', errorMsg: 'Still rejected' }, 403),
+    ]);
+    const request = operation === 'signin' ? r.api.signin('user@example.com', 'secret') : r.api.signup(values);
+    await assert.rejects(request, (error) => error.status === 403 && error.errorCode === 'CSRF_FAILED');
+    assert.equal(r.calls.length, 4);
+  });
+}
+
+test('failed CSRF reacquisition does not resend the rejected POST', async () => {
+  const r = runtime([json({ csrfToken: 'old' }), json({ errorCode: 'CSRF_FAILED' }, 403), json({}, 503)]);
+  await assert.rejects(r.api.signup(values), (error) => error.status === 503);
+  assert.equal(r.calls.filter((call) => call.init.method === 'POST').length, 1);
+});
+
+test('network failure during registration POST never triggers an automatic retry', async () => {
+  const r = runtime([json({ csrfToken: 'token' }), new Error('Connection lost')]);
+  await assert.rejects(r.api.signup(values), /Connection lost/);
+  assert.equal(r.calls.length, 2);
+});
 
 for (const errorCode of ['EMAIL_ALREADY_EXISTS', 'POLICY_VERSION_MISMATCH']) {
   test(`signup preserves ${errorCode} and does not refresh CSRF after rejection`, async () => {
@@ -229,4 +268,41 @@ test('auth layout shows demo notice only with mocks enabled', () => {
     const html = renderToStaticMarkup(React.createElement(Layout));
     assert.equal(html.includes('画面確認用デモです。APIは未接続です。'), expected);
   }
+});
+
+test('restored auth layout keeps dev dark panel and playback control without emoji', () => {
+  const r = runtime([], configured, { 'react-router': { Outlet: () => null } });
+  const Layout = r.loadSource('Layouts/AuthLayout.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(Layout));
+  assert.ok(html.includes('bg-marche-green-dark'));
+  assert.ok(html.includes('背景動画を再生'));
+  assert.ok(!html.includes('🌿'));
+});
+
+test('restored background video uses the existing video sources and poster', () => {
+  const r = runtime();
+  const { BackgroundVideo, useBackgroundVideo } = r.loadSource('components/BackgroundVideo.tsx');
+  function VideoFixture() { return React.createElement(BackgroundVideo, { control: useBackgroundVideo() }); }
+  const html = renderToStaticMarkup(React.createElement(VideoFixture));
+  for (const asset of ['home-hero.webm', 'home-hero.mp4', 'home-hero-poster.jpg']) assert.ok(html.includes(asset));
+});
+
+test('completion screen renders CheckIcon and preserves producer application link', () => {
+  const router = { ...require('react-router'), useLocation: () => ({ state: { registered: true, purpose: 'producer' } }) };
+  const r = runtime([], configured, { 'react-router': router });
+  const Complete = r.loadSource('components/signup/CompleteStep.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(require('react-router').MemoryRouter, null, React.createElement(Complete)));
+  assert.ok(html.includes('<svg'));
+  assert.ok(html.includes('登録が完了しました！'));
+  assert.ok(html.includes('href="/producer-application/new"'));
+});
+
+test('signup progress shows only the two form steps', () => {
+  const r = runtime();
+  const Signup = r.loadSource('pages/SignupPage.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(require('react-router').MemoryRouter, null, React.createElement(Signup)));
+  const progress = html.match(/<ol[^>]*>[\s\S]*?<\/ol>/)?.[0];
+  assert.ok(progress);
+  assert.equal((progress.match(/<li\b/g) ?? []).length, 2);
+  assert.ok(!progress.includes('完了'));
 });

@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import PurposeStep from "../components/signup/PurposeStep";
+import { CheckIcon } from "../components/Icons";
 import AccountStep from "../components/signup/AccountStep";
 import { useSetAtom } from "jotai";
 import { signup, checkSession } from "../api/authApi";
@@ -102,7 +103,7 @@ export default function SignupPage() {
     }
   }
 
-  const stepTitles = ["利用目的", "アカウント情報", "完了"];
+  const stepTitles = ["利用目的", "アカウント情報"];
 
   return (
     <>
@@ -132,7 +133,7 @@ export default function SignupPage() {
                     : "border-marche-line"
                 }`}
               >
-                {completed ? "✓" : number}
+                {completed ? <CheckIcon className="size-3.5" /> : number}
               </span>
               {title}
             </li>

@@ -43,11 +43,20 @@ type AuthResult = AuthResponse & { csrfRefreshFailed: boolean };
 
 async function authenticate(path: string, body: unknown, expectedStatus: number): Promise<AuthResult> {
   const csrfToken = await getCsrfToken();
-  const response = await apiFetch(path, {
+  const payload = JSON.stringify(body);
+  const send = (token: string) => apiFetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+    body: payload,
   });
+  let response = await send(csrfToken);
+  if (!response.ok) {
+    const error = await toApiError(response, '認証処理に失敗しました。');
+    if (error.status !== 403 || error.errorCode !== 'CSRF_FAILED') throw error;
+    // CSRF 検証で拒否されたときだけ新しいトークンで1回再送する。
+    // 通信断・429・他の403は再送せず、成功済みPOSTの重複も避ける。
+    response = await send(await getCsrfToken());
+  }
   if (!response.ok) throw await toApiError(response, '認証処理に失敗しました。');
   const result = (await response.json()) as AuthResponse;
   if (response.status !== expectedStatus || result.authenticated !== true || !result.user) {

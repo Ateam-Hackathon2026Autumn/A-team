@@ -98,7 +98,7 @@ export default function SigninPage() {
           {message && (
             <p
               role="alert"
-              className="m-0 mt-5 rounded-xl bg-marche-sage p-4 text-sm"
+              className="m-0 mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-800"
             >
               {message}
             </p>
