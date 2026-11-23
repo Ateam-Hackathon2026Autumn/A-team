@@ -118,7 +118,7 @@ async function createExperience(
   throw await toApiError(response, '体験を登録できませんでした');
 }
 
-// 体験を更新（送った項目だけ更新。images は送った内容で置き換わる）
+// 体験を更新（送った項目だけ更新。imageKeys は送った内容で置き換わる）
 async function updateExperience(
   experienceId: number,
   input: Partial<ExperienceInput>,

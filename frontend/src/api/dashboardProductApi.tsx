@@ -14,14 +14,14 @@ import { apiFetch } from './client';
 // 公開・非公開の切り替えや在庫更新の結果のうち、一覧に反映するもの
 type ProductUpdateResult = {
   updatedAt: string;
-  etag: string;
+  etag?: string;
 };
 
-// 商品の更新系API共通（CSRFトークンと、競合検知用の If-Match を付けて送る）
+// 実APIは ETag を返さない。旧モックが返す場合だけ If-Match を付ける
 async function sendProductRequest(
   path: string,
   method: 'PATCH' | 'DELETE',
-  etag: string,
+  etag?: string,
   body?: unknown,
 ): Promise<Response> {
   const csrfToken = await getCsrfToken();
@@ -30,7 +30,7 @@ async function sendProductRequest(
     method,
     headers: {
       'X-CSRFToken': csrfToken,
-      'If-Match': etag,
+      ...(etag ? { 'If-Match': etag } : {}),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -113,7 +113,7 @@ async function createProduct(
 async function updateProduct(
   productId: number,
   input: ProductUpdateInput,
-  etag: string,
+  etag?: string,
 ): Promise<DashboardProduct> {
   const response = await sendProductRequest(
     `/api/v1/dashboard/products/${productId}`,
@@ -133,7 +133,7 @@ async function updateProduct(
 async function updateProductPublishStatus(
   productId: number,
   publishStatus: Exclude<ProductPublishStatus, 'suspended'>,
-  etag: string,
+  etag?: string,
 ): Promise<ProductUpdateResult> {
   const response = await sendProductRequest(
     `/api/v1/dashboard/products/${productId}`,
@@ -149,11 +149,11 @@ async function updateProductPublishStatus(
   throw await toApiError(response, '公開状態を変更できませんでした');
 }
 
-// 在庫数を変更（増減ではなく変更後の数を送る。null は未設定で、公開中の商品には使えない）
+// 在庫数を変更（増減ではなく変更後の数を送る。null は在庫管理なし）
 async function updateProductStock(
   productId: number,
   stock: number | null,
-  etag: string,
+  etag?: string,
 ): Promise<ProductUpdateResult> {
   const response = await sendProductRequest(
     `/api/v1/dashboard/products/${productId}/stock`,
@@ -170,7 +170,7 @@ async function updateProductStock(
 }
 
 // 商品を削除（非公開・下書きのみ可能）
-async function deleteProduct(productId: number, etag: string): Promise<void> {
+async function deleteProduct(productId: number, etag?: string): Promise<void> {
   const response = await sendProductRequest(
     `/api/v1/dashboard/products/${productId}`,
     'DELETE',

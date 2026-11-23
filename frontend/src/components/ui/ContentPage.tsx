@@ -39,7 +39,7 @@ export function ContentImage({ src, alt, className = '' }: { src: string | null;
     {src && failedSrc !== src ? <img src={src} alt={alt} loading="lazy" className="block h-full w-full object-cover" onError={() => setFailedSrc(src)} /> : <span className="flex h-full items-center justify-center text-sm text-marche-muted">写真準備中</span>}
   </div>;
 }
-export function ContentSection({ title, text, items }: { title: string; text?: string | null; items?: string[] }) {
+export function ContentSection({ title, text, items }: { title: string; text?: string | null; items?: string[] | { time: string; text: string }[] | null }) {
   if (!text && !items?.length) return null;
-  return <section className="my-8"><h2 className="font-serif text-xl">{title}</h2>{text && <p className="whitespace-pre-line">{text}</p>}{items && <ul className="space-y-2 pl-5">{items.map((item, index) => <li key={index}>{item}</li>)}</ul>}</section>;
+  return <section className="my-8"><h2 className="font-serif text-xl">{title}</h2>{text && <p className="whitespace-pre-line">{text}</p>}{items && <ul className="space-y-2 pl-5">{items.map((item, index) => <li key={index}>{typeof item === 'string' ? item : <><time dateTime={item.time} className="font-bold">{item.time}</time> {item.text}</>}</li>)}</ul>}</section>;
 }

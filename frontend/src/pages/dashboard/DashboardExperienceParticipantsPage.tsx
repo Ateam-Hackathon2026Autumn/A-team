@@ -173,7 +173,7 @@ function DashboardExperienceParticipantsPage() {
     return () => {
       isActive = false;
     };
-  }, [canManage, isValidId, experienceId]);
+  }, [canManage, isValidId, experienceId, reloadCount]);
 
   useEffect(() => {
     if (!canManage || !isValidId) {

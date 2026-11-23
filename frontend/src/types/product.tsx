@@ -34,8 +34,8 @@ type DashboardProduct = {
   images: ProductImage[];
   createdAt: string;
   updatedAt: string;
-  // 更新時に If-Match で送る値（引用符付き）
-  etag: string;
+  // 旧モックだけが返す競合検知用の値。実APIは返さない
+  etag?: string;
 };
 
 type DashboardProductList = {
@@ -89,7 +89,9 @@ type ProductCreateInput = {
 
 // 商品更新API（PATCH /api/v1/dashboard/products/{productId}）のリクエスト
 // 在庫数はこのAPIでは変更できない（在庫更新APIを使う）
-type ProductUpdateInput = Omit<ProductCreateInput, 'stock'>;
+type ProductUpdateInput = Omit<ProductCreateInput, 'stock' | 'publishStatus'> & {
+  publishStatus?: Exclude<ProductPublishStatus, 'suspended'>;
+};
 
 export type {
   Category,

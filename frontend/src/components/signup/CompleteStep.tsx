@@ -16,7 +16,7 @@ export default function CompleteStep() {
     <div className="text-center">
       <div
         aria-hidden="true"
-        className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-3xl text-marche-green"
+        className="mx-auto my-5 grid size-16 place-items-center rounded-full bg-marche-sage text-marche-green"
       >
         <CheckIcon className="size-8" />
       </div>
