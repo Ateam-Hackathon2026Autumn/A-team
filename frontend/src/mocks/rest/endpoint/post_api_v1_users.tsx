@@ -21,7 +21,7 @@ const usersCreate: RestMock = {
   path: '/api/v1/users',
   status: 201,
   body: {
-    message: '登録が完了しました。確認メールの配送を受け付けました。',
+    message: '登録が完了しました。',
     authenticated: true,
     user: {
       id: 9,

@@ -18,6 +18,9 @@ const PREFECTURES =
 
 type Props = {
   isSubmitting: boolean;
+  policiesReady?: boolean;
+  policiesError?: boolean;
+  onReloadPolicies?: () => void;
   message: string;
   values: SignupFormValues;
   errors: SignupErrors;
@@ -32,6 +35,9 @@ type Props = {
 
 export default function AccountStep({
   isSubmitting,
+  policiesReady = true,
+  policiesError = false,
+  onReloadPolicies,
   message,
   values,
   errors,
@@ -79,6 +85,8 @@ export default function AccountStep({
 
       <form noValidate onSubmit={onSubmit} aria-busy={isSubmitting}>
         {message && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{message}</p>}
+        {policiesError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">利用規約の情報を取得できませんでした。</p>}
+        {policiesError && <button type="button" onClick={onReloadPolicies} className="mt-2 text-sm text-marche-green underline">再読み込み</button>}
         <fieldset disabled={isSubmitting} className="m-0 min-w-0 border-0 p-0">
           {Object.values(errors).some(Boolean) && (
             <p
@@ -263,7 +271,7 @@ export default function AccountStep({
               を確認して同意してください。
             </p>
           )}
-          <Button block type="submit" disabled={isSubmitting}>
+          <Button block type="submit" disabled={isSubmitting || !policiesReady}>
             {isSubmitting ? "登録中…" : "登録する →"}
           </Button>
         </fieldset>
