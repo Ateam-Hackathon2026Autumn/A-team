@@ -3,7 +3,8 @@ type ProducerApplicationStatus =
   | 'not_applied'
   | 'pending'
   | 'approved'
-  | 'rejected';
+  | 'rejected'
+  | 'returned';
 
 // 生産者アカウントの状態（生産者レコードがない場合は null）
 type ProducerAccountStatus = 'active' | 'suspended' | null;

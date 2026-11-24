@@ -1,6 +1,7 @@
 import { producersList } from './get_api_v1_producers';
 import type { ProducerSummary, ProducerProfile } from '../../../types/producer';
 import type { RestMock } from '../../types';
+import { isProducerFavorited } from '../store/favorites';
 
 // 生産者プロフィール取得API GET /api/v1/producers/:producerId
 //
@@ -36,6 +37,10 @@ const producerProfile: RestMock = {
       { id: 3, url: 'https://picsum.photos/seed/producer1-alps/800/600', sortOrder: 3 },
     ],
     hasPublicStory: true,
+    isFavorited: false,
+    craft: '樹上でじっくり完熟させてから収穫しています。見た目よりも、ひと口目の甘さと香りを大切にしています。',
+    reason: '祖父の代から続く園地を、次の世代にも残したいと思い会社を辞めて戻りました。',
+    goal: '収穫体験と短期スタッフ受け入れで、りんご産地の担い手を増やしたい。',
   },
 };
 
@@ -45,7 +50,8 @@ producerProfile.handler = url => {
  const id = Number(url.pathname.split('/').at(-1));
  const producer = (producersList.body as { items: ProducerSummary[] }).items.find(item => item.id === id);
  if (!producer) return { status: 404, body: { errorMsg: '生産者が見つかりません。' } };
- if (id === 1) return { status: 200, body: producerProfile.body };
- const body: ProducerProfile = { ...producer, foundedYear: producer.careerStartYear, representativeName: '生産者スタッフ', intro: `${producer.prefectureName}${producer.city}で${producer.productionItems}を生産しています。産地から食卓へ、おいしさをお届けします。`, images: [], hasPublicStory: [2, 3].includes(id) };
+ const isFavorited = isProducerFavorited(id);
+ if (id === 1) return { status: 200, body: { ...(producerProfile.body as ProducerProfile), isFavorited } };
+ const body: ProducerProfile = { ...producer, foundedYear: producer.careerStartYear, representativeName: '生産者スタッフ', intro: `${producer.prefectureName}${producer.city}で${producer.productionItems}を生産しています。産地から食卓へ、おいしさをお届けします。`, images: [], hasPublicStory: [2, 3].includes(id), isFavorited };
  return { status: 200, body };
 };
