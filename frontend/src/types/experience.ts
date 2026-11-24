@@ -5,7 +5,7 @@ export type Experience = {
   thumbnailUrl: string | null; nextStartAt: string | null;
   producer: { id: number; businessName: string; city: string };
 };
-export type PublicExperienceSlot = { id: number; startAt: string; durationMin: number; capacity: number; remainingCapacity: number; quoteToken: string };
+export type PublicExperienceSlot = { id: number; startAt: string; durationMin: number; capacity: number; remainingCapacity: number; bookingDeadlineAt: string; bookable: boolean };
 export type PublicExperienceFlowItem = { time: string; text: string };
 export type ExperienceDetail = Experience & {
   description: string; images: { id: number; url: string; sortOrder: number }[];
@@ -13,7 +13,8 @@ export type ExperienceDetail = Experience & {
   cancelPolicy: string; slots: PageResult<PublicExperienceSlot>;
 };
 export type ExperienceApplyInput = {
-  slotId: number; quoteToken: string; adultCount: number; childCount: number;
-  representativeName: string; phone: string; message: string; policyAgreed: boolean;
+  slotId: number; adultCount: number; childCount: number; infantCount: number;
+  lastName: string; firstName: string; phone: string; message: string;
+  agreedToCancelPolicy: boolean; eligibilityConfirmed: boolean; expectedTotalAmount: number;
 };
 export type ExperienceReceipt = { id: number; reservationNo: string; totalAmount: number };

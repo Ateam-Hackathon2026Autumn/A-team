@@ -7,7 +7,6 @@ import { daysFromNow } from '../../helpers';
 //
 // 一覧のIDに対応する詳細を返す。体験1以外の詳細は画面確認用の簡易データ。
 // slots は将来の開催枠（満席も含む）。remainingCapacity = 定員 - 予約数（満席は 0）
-// quoteToken は申込API（POST /api/v1/experiences/:experienceId/applications）にそのまま渡す
 //
 // 存在しない・非公開の場合（status: 404）:
 //   { errorCode: 'NOT_FOUND', errorMsg: '体験が見つかりません。' }
@@ -62,7 +61,8 @@ const experienceDetail: RestMock = {
           durationMin: 180,
           capacity: 20,
           remainingCapacity: 4,
-          quoteToken: 'mock-quote-token-exp1-slot1',
+          bookingDeadlineAt: `${daysFromNow(9)}T10:00:00+09:00`,
+          bookable: true,
         },
         {
           id: 2,
@@ -70,7 +70,8 @@ const experienceDetail: RestMock = {
           durationMin: 180,
           capacity: 20,
           remainingCapacity: 17,
-          quoteToken: 'mock-quote-token-exp1-slot2',
+          bookingDeadlineAt: `${daysFromNow(16)}T10:00:00+09:00`,
+          bookable: true,
         },
       ],
       total: 2,
@@ -100,7 +101,7 @@ export function getMockExperience(id: number): ExperienceDetail | undefined {
       { time: '11:30', text: '振り返り・解散' },
     ],
     belongings: ['汚れてもよい服装', '飲み物'], notes: ['天候によって内容が変更になる場合があります。'],
-    slots: { items: item.nextStartAt ? [{ id: id * 10, startAt: item.nextStartAt, durationMin: 120, capacity: 10, remainingCapacity: 5, quoteToken: `mock-quote-${id}` }] : [], total: item.nextStartAt ? 1 : 0, page: 1, pageSize: 20, totalPages: 1 },
+    slots: { items: item.nextStartAt ? [{ id: id * 10, startAt: item.nextStartAt, durationMin: 120, capacity: 10, remainingCapacity: 5, bookingDeadlineAt: item.nextStartAt, bookable: true }] : [], total: item.nextStartAt ? 1 : 0, page: 1, pageSize: 20, totalPages: 1 },
   };
 }
 experienceDetail.handler = url => {

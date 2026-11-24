@@ -1,12 +1,7 @@
 import { toApiError } from "./apiError";
 import { apiFetch } from "./client";
-import { USE_MOCK } from "../config/env";
+import { fetchWithCsrf } from "./authApi";
 import type { Cart } from "../types/cart";
-function requireMock(): void {
-  if (!USE_MOCK) {
-    throw new Error("カートの更新は認証・CSRF連携の接続確認後に利用できます。");
-  }
-}
 
 async function checkResponse(response: Response): Promise<void> {
   if (response.ok) return;
@@ -32,8 +27,7 @@ export async function addCartItem(
   productId: number,
   quantity: number,
 ): Promise<void> {
-  requireMock();
-  const response = await apiFetch("/api/v1/cart/items", {
+  const response = await fetchWithCsrf("/api/v1/cart/items", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ productId, quantity }),
@@ -46,8 +40,7 @@ export async function updateCartItem(
   quantity: number,
   signal?: AbortSignal,
 ): Promise<Cart> {
-  requireMock();
-  const response = await apiFetch(`/api/v1/cart/items/${itemId}`, {
+  const response = await fetchWithCsrf(`/api/v1/cart/items/${itemId}`, {
     method: "PATCH",
     signal,
     headers: { "Content-Type": "application/json" },
@@ -61,8 +54,7 @@ export async function removeCartItem(
   itemId: number,
   signal?: AbortSignal,
 ): Promise<void> {
-  requireMock();
-  const response = await apiFetch(`/api/v1/cart/items/${itemId}`, {
+  const response = await fetchWithCsrf(`/api/v1/cart/items/${itemId}`, {
     method: "DELETE",
     signal,
   });

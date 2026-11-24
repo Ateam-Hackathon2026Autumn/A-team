@@ -72,13 +72,13 @@ function ProductDetailContent({ productId }: { productId: string }) {
   }, [productId, retry]);
 
   async function addToCart() {
-    if (!product || adding || !loggedIn || !USE_MOCK || product.stock === 0) return;
+    if (!product || adding || !loggedIn || product.stock === 0) return;
     setAdding(true);
     setMessage("");
     setCartError("");
     try {
       await addCartItem(product.id, quantity);
-      setMessage(`${product.name}を${quantity}点、デモカートに追加しました。`);
+      setMessage(`${product.name}を${quantity}点、カートに追加しました。`);
     } catch (cause) {
       setCartError(apiErrorMessage(cause, "カートに追加できませんでした。", "quantity"));
     } finally {
@@ -264,7 +264,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               {loggedIn ? (
                 <Button
                   className="mt-4 w-full"
-                  disabled={adding || !USE_MOCK}
+                  disabled={adding}
                   onClick={() => void addToCart()}
                 >
                   {adding ? "追加しています…" : "カートに追加"}
@@ -279,7 +279,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               )}
             </>
           )}
-          <p className="m-0 mt-3 text-xs text-marche-muted">{USE_MOCK ? "商品情報・画像・カートは画面確認用デモです。実際の購入は行われません。" : "カート追加は認証・CSRF連携の接続確認後に利用できます。"}</p>
+          {USE_MOCK && <p className="m-0 mt-3 text-xs text-marche-muted">商品情報・画像・カートは画面確認用デモです。実際の購入は行われません。</p>}
           {message && (
             <div
               role="status"

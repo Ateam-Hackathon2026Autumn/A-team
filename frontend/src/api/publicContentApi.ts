@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 import { toApiError } from './apiError';
-import { USE_MOCK } from '../config/env';
+import { fetchWithCsrf } from './authApi';
 import type { PageResult } from '../types/experience';
 
 export async function contentJson<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -23,8 +23,7 @@ export async function contentItems<T>(path: string, signal?: AbortSignal, query:
 }
 
 export async function submitContent<T>(path: string, input: unknown): Promise<T> {
-  if (!USE_MOCK) throw new Error('実際の送信は認証・CSRF連携の接続確認後に利用できます。');
-  const response = await apiFetch(path, {
+  const response = await fetchWithCsrf(path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
   });
   if (!response.ok) throw await toApiError(response, '送信できませんでした。内容を確認して再度お試しください。');

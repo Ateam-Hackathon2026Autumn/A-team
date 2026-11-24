@@ -2,6 +2,8 @@ export type CartItem = {
   id: number;
   productId: number;
   productName: string | null;
+  volume: string | null;
+  thumbnailUrl: string | null;
   quantity: number;
   unitPrice: number | null;
   subtotal: number | null;

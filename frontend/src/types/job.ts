@@ -13,4 +13,4 @@ export type JobApplication = {
   id: number; job: { id: number; title: string | null; isPublic: boolean };
   workDates: { id: number; workDate: string }[]; status: string; createdAt: string;
 };
-export type JobInput = { workDateIds: number[]; message: string; answers: never[] };
+export type JobInput = { workDateIds: number[]; message: string; answers: never[]; requirementsConfirmed: boolean };
