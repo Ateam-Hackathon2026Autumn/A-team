@@ -12,7 +12,7 @@ const cartItemAdd: RestMock = {
     let input: unknown;
     try { input = JSON.parse(String(init?.body ?? '')); }
     catch { return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } }; }
-    if (typeof input !== 'object' || input === null || !('productId' in input) || !('quantity' in input)) {
+    if (typeof input !== 'object' || input === null || Object.keys(input).some(key => !['productId', 'quantity'].includes(key)) || !('productId' in input) || !('quantity' in input)) {
       return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
     }
     const { productId, quantity } = input;
@@ -21,10 +21,11 @@ const cartItemAdd: RestMock = {
     }
     const product = productSamples.find((p) => p.id === productId);
     if (!product) return { status: 404, body: { errorCode: 'PRODUCT_NOT_FOUND' } };
+    if (product.isSubscription) return { status: 409, body: { errorCode: 'UNSUPPORTED_PRODUCT' } };
     const existing = mockCartBody.items.find((item) => item.productId === productId);
     const totalQuantity = (existing?.quantity ?? 0) + quantity;
     if (totalQuantity > 10) return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
-    if (totalQuantity > product.stock) return { status: 409, body: { errorCode: 'CONFLICT' } };
+    if (product.stock !== null && totalQuantity > product.stock) return { status: 409, body: { errorCode: 'QUANTITY_EXCEEDS_STOCK' } };
     if (existing) {
       existing.quantity = totalQuantity;
       existing.subtotal = product.salePrice * totalQuantity;
@@ -33,6 +34,8 @@ const cartItemAdd: RestMock = {
         id: Math.max(0, ...mockCartBody.items.map((item) => item.id)) + 1,
         productId: product.id,
         productName: product.name,
+        volume: product.volume,
+        thumbnailUrl: product.thumbnailUrl,
         quantity,
         unitPrice: product.salePrice,
         subtotal: product.salePrice * quantity,

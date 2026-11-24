@@ -21,6 +21,7 @@ function JobForm({ id }: { id: number }) {
   const state = usePublicContent(loader);
   const [dates, setDates] = useState<number[]>([]);
   const [message, setMessage] = useState("");
+  const [requirementsConfirmed, setRequirementsConfirmed] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [dateError, setDateError] = useState(false);
@@ -45,6 +46,11 @@ function JobForm({ id }: { id: number }) {
       setError("勤務希望日を1日以上選択してください。応募条件もご確認ください。");
       return false;
     }
+    if (!requirementsConfirmed) {
+      setConfirming(false);
+      setError("応募条件を確認してください。");
+      return false;
+    }
     setDateError(false);
     return true;
   }
@@ -54,7 +60,7 @@ function JobForm({ id }: { id: number }) {
     setSending(true);
     setError("");
     try {
-      const result = await applyJob(id, { workDateIds: dates, message: message.trim(), answers: [] });
+      const result = await applyJob(id, { workDateIds: dates, message: message.trim(), answers: [], requirementsConfirmed });
       setReceipt(result.id);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "応募できませんでした。");
@@ -90,9 +96,10 @@ function JobForm({ id }: { id: number }) {
               role="status"
               className={panelClass}
             >
-              <h2 className="font-serif text-2xl">デモ応募を受け付けました</h2>
+              <h2 className="font-serif text-2xl">{USE_MOCK ? "デモ応募を受け付けました" : "応募を受け付けました"}</h2>
               <p>受付番号：{receipt}</p>
-              <p>応募は採用の確定を意味しません。実際の応募・通知は行いません。</p>
+              <p>応募は採用の確定を意味しません。</p>
+              {USE_MOCK && <p>実際の応募・通知は行いません。</p>}
               <Link
                 to="/mypage/jobs"
                 className={textLinkClass}
@@ -154,6 +161,10 @@ function JobForm({ id }: { id: number }) {
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
+                  <label className="flex min-h-11 items-center gap-3">
+                    <input type="checkbox" className="size-5 accent-marche-green" checked={requirementsConfirmed} onChange={(event) => setRequirementsConfirmed(event.target.checked)} />
+                    応募条件を確認しました
+                  </label>
                   <label
                     htmlFor="job-message"
                     className="mb-2 mt-5 block font-bold"
@@ -182,6 +193,7 @@ function JobForm({ id }: { id: number }) {
                   </ul>
                   <h3 className="text-lg">メッセージ</h3>
                   <p className="whitespace-pre-wrap">{message || "なし"}</p>
+                  <p>応募条件：確認済み</p>
                 </section>
               )}
               {error && (
@@ -193,7 +205,6 @@ function JobForm({ id }: { id: number }) {
                   {error}
                 </p>
               )}
-              {!USE_MOCK && <p className="text-marche-red">実際の応募送信は準備中です。</p>}
               <div className="mt-6 flex flex-wrap gap-3">
                 {confirming && (
                   <Button
@@ -209,9 +220,9 @@ function JobForm({ id }: { id: number }) {
                 )}
                 <Button
                   type="submit"
-                  disabled={sending || (confirming && !USE_MOCK)}
+                  disabled={sending}
                 >
-                  {sending ? "送信中…" : confirming ? "デモ応募を送信する" : "応募内容を確認する"}
+                  {sending ? "送信中…" : confirming ? "応募を送信する" : "応募内容を確認する"}
                 </Button>
               </div>
             </form>

@@ -27,12 +27,13 @@ const cartItemUpdate: RestMock = {
     let input: unknown;
     try { input = JSON.parse(String(init?.body ?? '')); }
     catch { return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } }; }
-    if (typeof input !== 'object' || input === null || !('quantity' in input)
+    if (typeof input !== 'object' || input === null || Object.keys(input).some(key => key !== 'quantity') || !('quantity' in input)
       || typeof input.quantity !== 'number' || !Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 10) {
       return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
     }
     const product = productSamples.find((p) => p.id === item.productId);
-    if (!product || product.stock < input.quantity) return { status: 409, body: { errorCode: 'CONFLICT' } };
+    if (!product) return { status: 409, body: { errorCode: 'PRODUCT_UNAVAILABLE' } };
+    if (product.stock !== null && product.stock < input.quantity) return { status: 409, body: { errorCode: 'QUANTITY_EXCEEDS_STOCK' } };
     item.quantity = input.quantity;
     return { status: 200, body: refreshMockCart(true) };
   },

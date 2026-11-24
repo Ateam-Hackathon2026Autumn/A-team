@@ -186,7 +186,7 @@ const productsList: RestMock = {
       || !["popular", "price_asc", "price_desc", "rating"].includes(sort)
       || !["all", "under2000", "2000to4000", "over4000"].includes(price)
       || ["subscription", "preorder"].some((key) =>
-        params.has(key) && !["0", "1"].includes(params.get(key) ?? ""))) {
+        params.has(key) && !["true", "false"].includes(params.get(key) ?? ""))) {
       return {
         status: 400,
         body: {
@@ -210,8 +210,8 @@ const productsList: RestMock = {
           || (price === "under2000" && product.salePrice < 2000)
           || (price === "2000to4000" && product.salePrice >= 2000 && product.salePrice < 4000)
           || (price === "over4000" && product.salePrice >= 4000))
-        && (params.get("subscription") !== "1" || product.isSubscription)
-        && (params.get("preorder") !== "1" || product.isPreorder);
+        && (params.get("subscription") !== "true" || product.isSubscription)
+        && (params.get("preorder") !== "true" || product.isPreorder);
     });
 
     if (sort === "price_asc") {

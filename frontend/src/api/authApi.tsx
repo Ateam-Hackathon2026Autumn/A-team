@@ -53,25 +53,33 @@ async function getCsrfToken(): Promise<string> {
   throw new ApiError(response.status, 'CSRFトークンの取得に失敗しました');
 }
 
+async function fetchWithCsrf(path: string, init: RequestInit): Promise<Response> {
+  const send = (token: string) => apiFetch(path, {
+    ...init,
+    headers: { ...init.headers, 'X-CSRFToken': token },
+  });
+  let response = await send(await getCsrfToken());
+  if (!response.ok) {
+    const error = await toApiError(response, '送信に失敗しました。');
+    if (error.status === 403 && error.errorCode === 'CSRF_FAILED') {
+      response = await send(await getCsrfToken());
+    } else {
+      throw error;
+    }
+  }
+  return response;
+}
+
 type AuthResponse = { message: string; authenticated: true; user: UserInfo };
 type AuthResult = AuthResponse & { csrfRefreshFailed: boolean };
 
 async function authenticate(path: string, body: unknown, expectedStatus: number): Promise<AuthResult> {
-  const csrfToken = await getCsrfToken();
   const payload = JSON.stringify(body);
-  const send = (token: string) => apiFetch(path, {
+  const response = await fetchWithCsrf(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+    headers: { 'Content-Type': 'application/json' },
     body: payload,
   });
-  let response = await send(csrfToken);
-  if (!response.ok) {
-    const error = await toApiError(response, '認証処理に失敗しました。');
-    if (error.status !== 403 || error.errorCode !== 'CSRF_FAILED') throw error;
-    // CSRF 検証で拒否されたときだけ新しいトークンで1回再送する。
-    // 通信断・429・他の403は再送せず、成功済みPOSTの重複も避ける。
-    response = await send(await getCsrfToken());
-  }
   if (!response.ok) throw await toApiError(response, '認証処理に失敗しました。');
   const result = (await response.json()) as AuthResponse;
   if (response.status !== expectedStatus || result.authenticated !== true || !result.user) {
@@ -101,5 +109,5 @@ function signup(values: SignupFormValues, policies: Policies): Promise<AuthResul
   }, 201);
 }
 
-export { checkSession, getCsrfToken, getPolicies, signin, signup };
+export { checkSession, fetchWithCsrf, getCsrfToken, getPolicies, signin, signup };
 export type { SessionResponse, Policies };

@@ -45,6 +45,8 @@ jobApply.handler = (url, init) => {
   if (!job) return { status: 404, body: { errorMsg: '求人が見つかりません。' } };
   let input: Record<string, unknown>;
   try { input = JSON.parse(String(init?.body)); } catch { return { status: 400, body: { errorMsg: '応募内容を確認してください。' } }; }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { status: 400, body: { errorCode: 'VALIDATION_ERROR', errorMsg: '応募内容を確認してください。' } };
+  if (Object.keys(input).some(key => !['workDateIds', 'message', 'answers', 'requirementsConfirmed'].includes(key)) || input.requirementsConfirmed !== true || (input.answers !== undefined && (!Array.isArray(input.answers) || input.answers.length > 0))) return { status: 400, body: { errorCode: 'VALIDATION_ERROR', errorMsg: '応募条件を確認してください。' } };
   if (!job.isAcceptingApplications) return { status: 409, body: { errorMsg: '募集を締め切りました。' } };
   if (!Array.isArray(input.workDateIds) || !input.workDateIds.length) return { status: 400, body: { errorMsg: '勤務希望日を選択してください。' } };
   const selected = job.workDates.items.filter(day => (input.workDateIds as unknown[]).includes(day.id));
@@ -52,5 +54,5 @@ jobApply.handler = (url, init) => {
   if (getAllJobApplications().some(application => application.job.id === jobId)) return { status: 409, body: { errorCode: 'ALREADY_APPLIED', errorMsg: 'この求人には応募済みです。' } };
   const id = 100 + demoJobApplications.length;
   demoJobApplications.unshift({ id, job: { id: jobId, title: job.title, isPublic: true }, workDates: selected.map(day => ({ id: day.id, workDate: day.workDate })), status: 'applied', createdAt: hoursFromNow(0) });
-  return { status: 201, body: { ...input, id, jobId, status: 'applied', createdAt: hoursFromNow(0) } };
+  return { status: 201, body: { id, jobId, workDateIds: selected.map(day => day.id), message: input.message || null, answers: [], status: 'applied', decidedAt: null, createdAt: hoursFromNow(0) } };
 };

@@ -8,8 +8,6 @@ import { initializeMockCart, mockCartBody, refreshMockCart } from './get_api_v1_
 // 明細が存在しない・他人の明細（404）:
 //   { errorCode: 'CART_ITEM_NOT_FOUND', errorMsg: 'カートの商品が見つかりません。' }
 //
-// カートが他で更新されていた（412）:
-//   { errorCode: 'CART_CHANGED', errorMsg: 'カートの内容が変更されました。もう一度ご確認ください。' }
 const cartItemDelete: RestMock = {
   method: 'DELETE',
   path: '/api/v1/cart/items/:itemId',
