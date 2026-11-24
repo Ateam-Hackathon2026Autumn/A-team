@@ -55,8 +55,8 @@ test('real API mode sends exact application contract, cookies and CSRF, returnin
   assert.deepEqual(r.calls.map(c => c.url), ['/api/v1/auth/csrf', '/api/v1/experiences/1/applications']);
   assert.ok(r.calls.every(c => c.init.credentials === 'include'));
   assert.equal(r.calls[1].init.method, 'POST');
-  assert.equal(r.calls[1].init.headers['X-CSRFToken'], 'token');
-  assert.equal(r.calls[1].init.headers['Content-Type'], 'application/json');
+  assert.equal(r.calls[1].init.headers.get('X-CSRFToken'), 'token');
+  assert.equal(r.calls[1].init.headers.get('Content-Type'), 'application/json');
   assert.deepEqual(JSON.parse(r.calls[1].init.body), input);
   assert.equal(JSON.stringify(result), JSON.stringify(receipt));
 });
@@ -65,7 +65,7 @@ test('CSRF_FAILED retries once with a fresh token and the same application', asy
   const r = runtime([json({ csrfToken: 'old' }), json({ errorCode: 'CSRF_FAILED' }, 403), json({ csrfToken: 'new' }), json(receipt, 201)]);
   await r.api.applyExperience(1, input);
   assert.deepEqual(r.calls.map(c => c.init.method ?? 'GET'), ['GET', 'POST', 'GET', 'POST']);
-  assert.equal(r.calls[3].init.headers['X-CSRFToken'], 'new');
+  assert.equal(r.calls[3].init.headers.get('X-CSRFToken'), 'new');
   assert.equal(r.calls[1].init.body, r.calls[3].init.body);
 });
 
@@ -103,10 +103,12 @@ for (const [status, body] of [[200, receipt], [201, { ...receipt, status: 'appli
   });
 }
 
-test('enabling experience submission leaves real job submission blocked', async () => {
-  const r = runtime();
-  await assert.rejects(r.loadSource('api/jobApi.ts').applyJob(1, {}), /実際の送信は/);
-  assert.equal(r.calls.length, 0);
+test('experience and job submissions share the same cached CSRF token', async () => {
+  const r = runtime([json({ csrfToken: 'token' }), json(receipt, 201), json({ id: 1, status: 'applied' }, 201)]);
+  await r.api.applyExperience(1, input);
+  await r.loadSource('api/jobApi.ts').applyJob(1, { workDateIds: [], message: null, answers: [], requirementsConfirmed: true });
+  assert.equal(r.calls.length, 3);
+  assert.equal(r.calls[2].init.headers.get('X-CSRFToken'), 'token');
 });
 
 test('mock mode uses the actual CSRF/detail/application endpoints with the real API contract', async () => {

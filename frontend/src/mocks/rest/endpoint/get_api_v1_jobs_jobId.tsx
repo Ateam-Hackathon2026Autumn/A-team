@@ -54,20 +54,25 @@ const jobDetail: RestMock = {
       totalPages: 1,
     },
     applicationQuestions: [],
+    hasApplied: false,
   },
 };
 
 export { jobDetail };
 
+// 初期履歴はdemoJobApplicationsと同じ求人3・4。追加応募も詳細に反映する。
+const appliedJobIds = new Set([3, 4]);
+export function markMockJobApplied(id: number): void { appliedJobIds.add(id); }
+
 export function getMockJob(id: number): JobDetail | undefined {
   const item = (jobsList.body as { items?: Job[] } | undefined)?.items?.find(item => item.id === id);
   if (!item) return undefined;
   const original = jobDetail.body as JobDetail;
-  if (id === 1) return original;
+  if (id === 1) return { ...original, hasApplied: appliedJobIds.has(id) };
   const dates = [3, 4, 5].map((offset, index) => ({ id: id * 10 + index, workDate: daysFromNow(offset), neededCount: item.slots, remainingCount: item.slots, isSelectable: true }));
   return { ...original, ...item, description: `${item.producer.businessName}の「${item.title}」をお手伝いいただきます。詳細の説明はデモ用のサンプルです。`,
     requirements: ['募集内容を確認し、勤務できる方'], belongings: ['動きやすい服装', '飲み物'], notes: ['集合場所や詳しい作業内容は事業者にご確認ください。'],
-    workDates: { items: dates, total: dates.length, page: 1, pageSize: 20, totalPages: 1 },
+    workDates: { items: dates, total: dates.length, page: 1, pageSize: 20, totalPages: 1 }, hasApplied: appliedJobIds.has(id),
   };
 }
 jobDetail.handler = url => {

@@ -80,7 +80,7 @@ export default function CartPage() {
 
   async function changeItem(item: CartItem, quantity?: number) {
     const request = controller.current;
-    if (!request || request.signal.aborted || operationLock.current || !USE_MOCK) return;
+    if (!request || request.signal.aborted || operationLock.current) return;
     operationLock.current = true;
     setBusy(true);
     setActionError("");
@@ -362,7 +362,6 @@ export default function CartPage() {
               </Button>
             )}
             <p className="m-0 mt-3 text-xs leading-6 text-marche-muted">購入手続き画面は準備中です。現在はカートの確認・変更まで利用できます。</p>
-            {!USE_MOCK && <p className="m-0 mt-3 text-xs text-marche-muted">数量変更・削除は認証・CSRF連携の接続確認後に利用できます。</p>}
             <Link
               to="/products"
               className={`mt-4 flex min-h-11 items-center justify-center text-sm ${linkClass}`}

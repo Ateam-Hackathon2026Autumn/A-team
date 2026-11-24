@@ -55,21 +55,23 @@ for (const initial of initialJobApplications) {
   for (const date of initial.workDates) assert.ok(detail.workDates.items.some(day => day.id === date.id && day.workDate === date.workDate));
 }
 const initialJob = getMockJob(3);
-const initialDuplicate = send(jobApply, '/api/v1/jobs/3/applications', { workDateIds: [initialJob.workDates.items[0].id], message: '', answers: [] });
+const initialDuplicate = send(jobApply, '/api/v1/jobs/3/applications', { workDateIds: [initialJob.workDates.items[0].id], message: '', answers: [], requirementsConfirmed: true });
 assert.equal(initialDuplicate.status, 409);
 assert.equal(initialDuplicate.body.errorCode, 'ALREADY_APPLIED');
 assert.equal(demoJobApplications.length, 0);
 assert.equal(myJobApplications.handler().body.items.filter(item => item.job.id === 3).length, 1);
 const job = getMockJob(2);
-const application = { workDateIds: [job.workDates.items[0].id], message: '確認用', answers: [] };
+const application = { workDateIds: [job.workDates.items[0].id], message: '確認用', answers: [], requirementsConfirmed: true };
 assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, workDateIds: [] }).status, 400);
-assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, workDateIds: [999] }).status, 409);
+assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, workDateIds: [999] }).status, 400);
+assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, requirementsConfirmed: false }).status, 400);
 assert.equal(send(jobApply, '/api/v1/jobs/2/applications', application).status, 201);
 const history = myJobApplications.handler().body;
 assert.equal(history.items[0].job.id, 2);
 assert.deepEqual(history.items[0].workDates.map(day => day.id), application.workDateIds);
 assert.equal(send(jobApply, '/api/v1/jobs/2/applications', application).status, 409);
 assert.equal(demoJobApplications.length, 1);
+assert.equal(getMockJob(2).hasApplied, true);
 const story = producerStory.handler(url('/api/v1/producers/2/story'));
 assert.equal(story.status, 200);
 assert.equal(story.body.producerId, 2);

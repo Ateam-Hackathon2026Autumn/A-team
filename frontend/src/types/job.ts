@@ -6,11 +6,16 @@ export type Job = {
   slots: number; inexperiencedOk: boolean; coverImageUrl: string | null; isAcceptingApplications: boolean;
 };
 export type JobDetail = Job & {
-  description: string; requirements: string[]; belongings: string[]; notes: string[];
-  workDates: PageResult<{ id: number; workDate: string; remainingCount: number; isSelectable: boolean }>;
+  description: string; requirements: string[] | null; belongings: string[] | null; notes: string[] | null;
+  hasApplied: boolean; applicationQuestions: never[];
+  workDates: PageResult<{ id: number; workDate: string; neededCount: number; remainingCount: number; isSelectable: boolean }>;
 };
 export type JobApplication = {
   id: number; job: { id: number; title: string | null; isPublic: boolean };
   workDates: { id: number; workDate: string }[]; status: string; createdAt: string;
 };
-export type JobInput = { workDateIds: number[]; message: string; answers: never[] };
+export type JobInput = { workDateIds: number[]; message: string | null; answers: never[]; requirementsConfirmed: boolean };
+export type JobReceipt = {
+  id: number; jobId: number; workDateIds: number[]; message: string | null; answers: never[];
+  status: 'applied'; decidedAt: string | null; createdAt: string;
+};

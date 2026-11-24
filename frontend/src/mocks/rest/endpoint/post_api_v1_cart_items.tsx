@@ -12,7 +12,8 @@ const cartItemAdd: RestMock = {
     let input: unknown;
     try { input = JSON.parse(String(init?.body ?? '')); }
     catch { return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } }; }
-    if (typeof input !== 'object' || input === null || !('productId' in input) || !('quantity' in input)) {
+    if (typeof input !== 'object' || input === null || Array.isArray(input)
+      || Object.keys(input).some(key => !['productId', 'quantity'].includes(key)) || !('productId' in input) || !('quantity' in input)) {
       return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
     }
     const { productId, quantity } = input;
@@ -24,7 +25,10 @@ const cartItemAdd: RestMock = {
     const existing = mockCartBody.items.find((item) => item.productId === productId);
     const totalQuantity = (existing?.quantity ?? 0) + quantity;
     if (totalQuantity > 10) return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
-    if (totalQuantity > product.stock) return { status: 409, body: { errorCode: 'CONFLICT' } };
+    if (product.isSubscription) return { status: 409, body: { errorCode: 'UNSUPPORTED_PRODUCT', errorMsg: '定期便の商品は、現在カートからは購入できません。' } };
+    if (product.stock === 0) return { status: 409, body: { errorCode: 'OUT_OF_STOCK', errorMsg: 'この商品は売り切れです。' } };
+    if (product.stock !== null && totalQuantity > product.stock) return { status: 409, body: { errorCode: 'QUANTITY_EXCEEDS_STOCK', errorMsg: '在庫が足りません。' } };
+    if (!existing && mockCartBody.items.length >= 50) return { status: 409, body: { errorCode: 'CART_LIMIT_EXCEEDED', errorMsg: 'カートに入れられる商品は50種類までです。' } };
     if (existing) {
       existing.quantity = totalQuantity;
       existing.subtotal = product.salePrice * totalQuantity;

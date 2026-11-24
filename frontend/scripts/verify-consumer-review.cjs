@@ -23,7 +23,7 @@ const cart = {
   itemsTotal: 10000, shippingTotal: 2345, total: 12345, canCheckout: true,
 };
 const json = body => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-source('api/client.tsx').apiFetch = async (url, init = {}) => {
+global.fetch = async (url, init = {}) => {
   calls.push({ url, init });
   if (url === '/api/v1/auth/csrf') return json({ csrfToken: 'test-csrf' });
   if (url === '/api/v1/cart') return json(cart);
@@ -45,7 +45,7 @@ async function main() {
   const body = JSON.parse(request.init.body);
   assert.deepEqual(Object.keys(body).sort(), ['expectedGrandTotal', 'paymentMethod', 'shippingAddress']);
   assert.equal(body.expectedGrandTotal, cart.total);
-  assert.equal(request.init.headers['X-CSRFToken'], 'test-csrf');
+  assert.equal(request.init.headers.get('X-CSRFToken'), 'test-csrf');
   calls.length = 0;
   await createConsumerOrder({ addressId: 9, paymentMethod: 'card', expectedGrandTotal: cart.total }, 'address-key');
   assert.deepEqual(JSON.parse(calls.find(call => call.url === '/api/v1/orders').init.body), { addressId: 9, paymentMethod: 'card', expectedGrandTotal: cart.total });

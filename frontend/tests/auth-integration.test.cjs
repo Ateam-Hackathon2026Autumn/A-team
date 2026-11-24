@@ -22,7 +22,7 @@ function runtime(replies = [], env = configured, overrides = {}) {
     const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
     const module = { exports: {} };
     cache.set(filename, module);
-    const context = vm.createContext({ module, exports: module.exports, Response, URL, console,
+    const context = vm.createContext({ module, exports: module.exports, Response, Headers, URL, console,
       fetch: async (url, init) => {
         calls.push({ url, init });
         assert.ok(replies.length > 0, `Unexpected request: ${url}`);
@@ -52,7 +52,7 @@ test('signin sends CSRF, cookies and exact password, then refreshes CSRF', async
   assert.deepEqual(r.calls.map((call) => call.url), ['/api/v1/auth/csrf', '/api/v1/auth/signin', '/api/v1/auth/csrf']);
   assert.ok(r.calls.every((call) => call.init.credentials === 'include'));
   assert.equal(r.calls[1].init.method, 'POST');
-  assert.equal(r.calls[1].init.headers['X-CSRFToken'], 'before');
+  assert.equal(r.calls[1].init.headers.get('X-CSRFToken'), 'before');
   assert.deepEqual(JSON.parse(r.calls[1].init.body), { email: 'user@example.com', password: ' secret ' });
   assert.equal(result.user.id, 1);
   assert.equal(result.csrfRefreshFailed, false);
@@ -116,8 +116,8 @@ for (const operation of ['signin', 'signup']) {
     const result = operation === 'signin' ? await r.api.signin('user@example.com', ' secret ') : await r.api.signup(values, policies);
     assert.equal(result.authenticated, true);
     assert.deepEqual(r.calls.map((call) => call.init.method ?? 'GET'), ['GET', 'POST', 'GET', 'POST', 'GET']);
-    assert.equal(r.calls[1].init.headers['X-CSRFToken'], 'old');
-    assert.equal(r.calls[3].init.headers['X-CSRFToken'], 'renewed');
+    assert.equal(r.calls[1].init.headers.get('X-CSRFToken'), 'old');
+    assert.equal(r.calls[3].init.headers.get('X-CSRFToken'), 'renewed');
     assert.equal(r.calls[1].init.body, r.calls[3].init.body);
     assert.ok(r.calls.every((call) => call.init.credentials === 'include'));
   });

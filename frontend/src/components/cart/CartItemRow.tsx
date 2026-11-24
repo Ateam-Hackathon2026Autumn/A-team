@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import { ProductImage, yen } from "../products/ProductCard";
-import { USE_MOCK } from "../../config/env";
 import type { CartItem } from "../../types/cart";
 import type { ProductDetail } from "../../types/publicProduct";
 
@@ -21,7 +20,7 @@ export default function CartItemRow({
 }: Props) {
   const name = item.productName ?? "販売を終了した商品";
   const unavailable = item.unavailableReason === "PRODUCT_UNAVAILABLE";
-  const disabled = busy || !USE_MOCK;
+  const disabled = busy;
   // nullは在庫管理なしとして10点まで。詳細未取得とは区別する。
   const maxQuantity = product ? Math.min(10, product.stock ?? 10) : 0;
   const quantityDisabled = disabled || unavailable || !product || maxQuantity < 1;

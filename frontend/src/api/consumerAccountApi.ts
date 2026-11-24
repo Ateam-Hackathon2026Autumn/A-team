@@ -1,5 +1,5 @@
 import { contentJson } from './publicContentApi';
-import { apiFetch } from './client';
+import { apiFetch, clearCsrfToken } from './client';
 import { getCsrfToken } from './authApi';
 import { toApiError } from './apiError';
 import type { ConsumerAccount, ConsumerProfileInput } from '../types/consumerAccount';
@@ -18,4 +18,5 @@ export async function updateConsumerProfile(input: ConsumerProfileInput): Promis
 export async function signOutConsumer(): Promise<void> {
   const response = await apiFetch('/api/v1/auth/signout', { method: 'POST', headers: { 'X-CSRFToken': await getCsrfToken() } });
   if (!response.ok) throw await toApiError(response, 'ログアウトできませんでした。');
+  clearCsrfToken();
 }
