@@ -14,6 +14,7 @@ export type Product = {
   isSubscription: boolean;
   isPreorder: boolean;
   thumbnailUrl: string | null;
+  isFavorited?: boolean;
   category: Category;
   producer: {
     id: number;

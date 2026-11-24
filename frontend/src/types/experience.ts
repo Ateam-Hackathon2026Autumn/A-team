@@ -18,3 +18,30 @@ export type ExperienceApplyInput = {
   agreedToCancelPolicy: boolean; eligibilityConfirmed: boolean; expectedTotalAmount: number;
 };
 export type ExperienceReceipt = { id: number; reservationNo: string; totalAmount: number };
+
+export type ExperienceApplicationStatus = 'applied' | 'confirmed' | 'canceled' | 'attended';
+
+export type MyExperienceApplication = {
+  id: number;
+  reservationNo: string;
+  experience: {
+    id: number;
+    title: string | null;
+    isPublic: boolean;
+  };
+  slot: {
+    id: number;
+    startAt: string;
+    durationMin: number;
+    status: 'open' | 'closed' | 'canceled';
+  };
+  adultCount: number;
+  childCount: number;
+  infantCount: number;
+  totalAmount: number;
+  status: ExperienceApplicationStatus;
+  cancellable?: boolean;
+  cancelDeadlineAt?: string | null;
+  createdAt: string;
+};
+

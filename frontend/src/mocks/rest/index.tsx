@@ -67,6 +67,12 @@ import { producerApplicationCreate } from './endpoint/post_api_v1_producer-appli
 import { uploadsImageCreate } from './endpoint/post_api_v1_uploads_images';
 import { usersCreate } from './endpoint/post_api_v1_users';
 import { myJobApplicationWithdraw } from './endpoint/post_api_v1_users_me_job-applications_applicationId_withdraw';
+import { myExperienceApplicationCancel } from './endpoint/post_api_v1_users_me_experience-applications_applicationId_cancel';
+import { myFavoritesList } from './endpoint/get_api_v1_users_me_favorites';
+import { myFavoriteProductPut } from './endpoint/put_api_v1_users_me_favorites_products_productId';
+import { myFavoriteProductDelete } from './endpoint/delete_api_v1_users_me_favorites_products_productId';
+import { myFavoriteProducerPut } from './endpoint/put_api_v1_users_me_favorites_producers_producerId';
+import { myFavoriteProducerDelete } from './endpoint/delete_api_v1_users_me_favorites_producers_producerId';
 import { dashboardStoryUpsert } from './endpoint/put_api_v1_dashboard_story';
 
 /**
@@ -148,6 +154,12 @@ const restMocks: RestMock[] = [
   usersMe,
   usersMeUpdate,
   myExperienceApplications,
+  myExperienceApplicationCancel,
+  myFavoritesList,
+  myFavoriteProductPut,
+  myFavoriteProductDelete,
+  myFavoriteProducerPut,
+  myFavoriteProducerDelete,
   myJobApplications,
   myJobApplicationWithdraw,
   myOrdersList,
