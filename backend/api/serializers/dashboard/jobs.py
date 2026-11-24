@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from rest_framework import serializers
 
+from api.common.images import ImageUrlField
 from api.common.serializers import StrictSerializer
 
 
@@ -162,9 +163,10 @@ class JobListSerializer(serializers.Serializer):
 
     inexperienced_ok = serializers.BooleanField()
 
-    cover_image = serializers.CharField(
-        allow_null=True,
-    )
+    # 画像のキー（更新のときにそのまま送り返す。画像なしは null）と、表示用の URL（プロフィールと同じ形）
+    cover_image = serializers.SerializerMethodField()
+
+    cover_image_url = ImageUrlField(source="cover_image")
 
     publish_status = serializers.CharField()
 
@@ -176,6 +178,9 @@ class JobListSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
     updated_at = serializers.DateTimeField()
+
+    def get_cover_image(self, job):
+        return job.cover_image.name or None
 
 
 # ============================================================
@@ -314,7 +319,8 @@ class JobCreateSerializer(StrictSerializer):
         },
     )
 
-    # S3などにアップロード済みの画像キーを受け取る
+    # 自分がアップロードした画像のキー（POST /uploads/images の key）。null で外す。
+    # 自分の画像か・実在するかは view で確かめる（services/storage.validate_image_keys）
     cover_image = serializers.CharField(
         required=False,
         allow_null=True,

@@ -1,6 +1,7 @@
 """会員登録・自分のアカウント のテスト
 
 テスト対象: api/views/public/users.py（services/anonymize.py）
+  - 規約の版: GET /api/v1/policies
   - 新規登録: POST /api/v1/users
   - 本人情報の取得・更新: GET・PATCH /api/v1/users/me
   - メールアドレスの変更: PUT /api/v1/users/me/email
@@ -12,6 +13,7 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
+from django.test import override_settings
 from django.utils import timezone
 
 from marche.models import (
@@ -62,6 +64,28 @@ def signup_body(**overrides):
     return {k: v for k, v in body.items() if v is not ...}  # ... を渡した項目は送らない
 
 
+class PolicyVersionTests(ApiTestCase):
+    """GET /api/v1/policies：今の規約の版を返す。ログイン不要。返した版で新規登録できる"""
+
+    def test_returns_current_versions(self):
+        res = self.client.get("/api/v1/policies")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"termsVersion": settings.TERMS_VERSION,
+                                      "privacyPolicyVersion": settings.PRIVACY_POLICY_VERSION})
+
+    @override_settings(TERMS_VERSION="2027-04-01", PRIVACY_POLICY_VERSION="2027-05-01")
+    def test_versions_follow_settings_and_signup_accepts_them(self):
+        make_prefecture()
+        versions = self.client.get("/api/v1/policies").json()
+        self.assertEqual(versions, {"termsVersion": "2027-04-01", "privacyPolicyVersion": "2027-05-01"})
+        res = self.post_json(URL, {**signup_body(), **versions})
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(sorted(UserConsent.objects.values_list("version", flat=True)), ["2027-04-01", "2027-05-01"])
+
+    def test_rejects_query_parameters(self):
+        self.assertEqual(self.client.get("/api/v1/policies?x=1").status_code, 400)
+
+
 class SignupTests(ApiTestCase):
     def setUp(self):
         super().setUp()
@@ -85,7 +109,7 @@ class SignupTests(ApiTestCase):
         self.assertEqual(res.status_code, 201, res.content)
         user = User.objects.get()
         self.assertEqual(res.json(), {
-            "message": "登録が完了しました。確認メールの配送を受け付けました。",
+            "message": "登録が完了しました。",
             "authenticated": True,
             "user": {
                 "id": user.id, "email": "taro@example.com", "lastName": "山田", "firstName": "太郎",
@@ -105,10 +129,8 @@ class SignupTests(ApiTestCase):
             [("privacy_policy", settings.PRIVACY_POLICY_VERSION), ("terms", settings.TERMS_VERSION)],
         )
         self.assertTrue(NotificationSetting.objects.filter(user=user).exists())
-        # 確認メール
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["taro@example.com"])
-        self.assertIn("/verify-email?token=", mail.outbox[0].body)
+        # メール認証は拡張なので、確認メールは送らない
+        self.assertEqual(len(mail.outbox), 0)
         # 自動ログイン（Cookie のセッションでログイン状態になる）
         self.assertTrue(self.client.get("/api/v1/auth/session").json()["authenticated"])
         self.assertEqual(res["Cache-Control"], "no-store")
@@ -282,9 +304,9 @@ class EmailChangeTests(MeTestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual((res.json()["user"]["email"], res.json()["user"]["emailVerified"]),
                          ("new@example.com", False))
-        self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["new@example.com", "taro@example.com"])
-        verify = next(m for m in mail.outbox if m.to == ["new@example.com"])
-        self.assertIn("/verify-email?token=", verify.body)
+        # 確認メールは送らず、古いアドレスにだけ変更のお知らせを送る
+        self.assertEqual([m.to for m in mail.outbox], [["taro@example.com"]])
+        self.assertIn("new@example.com", mail.outbox[0].body)
         # 新しいアドレスでログインでき、今のセッションは続く
         self.assertTrue(self.client.get("/api/v1/auth/session").json()["authenticated"])
         self.post_json("/api/v1/auth/signout")

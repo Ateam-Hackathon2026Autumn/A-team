@@ -87,6 +87,15 @@ class WebhookTests(ApiTestCase):
                                HTTP_STRIPE_SIGNATURE=sign(payload, timestamp=int(time.time()) - 3600))
         self.assertEqual(res.status_code, 400)
 
+    def test_empty_secret_rejects_even_signed_payload(self):
+        """STRIPE_WEBHOOK_SECRET が空なら、空のキーで署名したリクエストも拒否する"""
+        payload = "{}"
+        with override_settings(STRIPE_WEBHOOK_SECRET=""):
+            res = self.client.post(URL, payload, content_type="application/json",
+                                   HTTP_STRIPE_SIGNATURE=sign(payload, secret=""))
+        self.assertEqual((res.status_code, res.json()["errorCode"]), (400, "INVALID_SIGNATURE"))
+        self.assert_status("pending")
+
     # ---- 支払い済み ----
 
     def test_completed_paid(self):
