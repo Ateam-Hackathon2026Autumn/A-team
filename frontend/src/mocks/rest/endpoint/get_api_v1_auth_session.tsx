@@ -2,10 +2,7 @@ import type { RestMock } from '../../types';
 
 // ログインチェックAPI GET /api/v1/auth/session
 //
-// 状態を切り替えたい場合は body を下記のコメントの値に書き換える
-//
-// 未ログイン:
-//   { authenticated: false, user: null }
+// VITE_MOCK_LOGGED_OUT=true で未ログインに切り替える。
 //
 // 生産者の状態（user の isProducer / producerApplicationStatus / producerAccountStatus）:
 //   一般ユーザー（未申請）: false / 'not_applied' / null
@@ -18,7 +15,10 @@ const authSession: RestMock = {
   method: 'GET',
   path: '/api/v1/auth/session',
   status: 200,
-  body: {
+  body: import.meta.env.VITE_MOCK_LOGGED_OUT === 'true' ? {
+    authenticated: false,
+    user: null,
+  } : {
     authenticated: true,
     user: {
       id: 1,
@@ -32,16 +32,5 @@ const authSession: RestMock = {
     },
   },
 };
-
-// ログイン・新規登録画面確認用
-// const authSession: RestMock = {
-//   method: "GET",
-//   path: "/api/v1/auth/session",
-//   status: 200,
-//   body: {
-//     authenticated: false,
-//     user: null,
-//   },
-// };
 
 export { authSession };

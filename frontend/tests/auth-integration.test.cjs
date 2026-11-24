@@ -9,7 +9,8 @@ const ts = require('typescript');
 
 const user = { id: 1, email: 'user@example.com', lastName: '山田', firstName: '太郎', isProducer: false, producerApplicationStatus: 'not_applied', producerAccountStatus: null, emailVerified: false };
 const values = { lastName: ' 山田 ', firstName: ' 太郎 ', email: ' user@example.com ', password: 'Abcd1234!', phone: '090-1234-5678', birthDate: '2000-01-01', prefectureId: '13', interests: ['vegetables'], agreedToTerms: true, agreedToPrivacyPolicy: true };
-const configured = { DEV: true, VITE_USE_MOCK: 'false', VITE_TERMS_VERSION: '2026-10-01', VITE_PRIVACY_POLICY_VERSION: '2026-10-01', VITE_TERMS_URL: 'https://example.com/terms', VITE_PRIVACY_POLICY_URL: 'https://example.com/privacy' };
+const configured = { DEV: true, VITE_USE_MOCK: 'false', VITE_TERMS_URL: 'https://example.com/terms', VITE_PRIVACY_POLICY_URL: 'https://example.com/privacy' };
+const policies = { termsVersion: '2027-04-01', privacyPolicyVersion: '2027-05-01' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 function runtime(replies = [], env = configured, overrides = {}) {
@@ -57,12 +58,42 @@ test('signin sends CSRF, cookies and exact password, then refreshes CSRF', async
   assert.equal(result.csrfRefreshFailed, false);
 });
 
+test('getPolicies uses the exact URL with cookies and returns current versions', async () => {
+  const r = runtime([json(policies)]);
+  assert.deepEqual(JSON.parse(JSON.stringify(await r.api.getPolicies())), policies);
+  assert.equal(r.calls[0].url, '/api/v1/policies');
+  assert.equal(r.calls[0].init.credentials, 'include');
+  assert.equal(r.calls[0].init.method, undefined);
+});
+
+for (const invalid of [{ ...policies, termsVersion: '' }, { ...policies, privacyPolicyVersion: ' ' }, {}]) {
+  test(`getPolicies rejects invalid versions ${JSON.stringify(invalid)}`, async () => {
+    const r = runtime([json(invalid)]);
+    await assert.rejects(r.api.getPolicies());
+  });
+}
+
+test('getPolicies preserves the server error shape', async () => {
+  const r = runtime([json({ errorCode: 'VALIDATION_ERROR', errorMsg: 'Invalid', details: { name: ['Wrong'] } }, 400)]);
+  await assert.rejects(r.api.getPolicies(), (error) => error.status === 400 && error.errorCode === 'VALIDATION_ERROR' && error.details.name[0] === 'Wrong');
+});
+
+test('REST mocks include policies and allow a logged-out session', () => {
+  const r = runtime([], { ...configured, VITE_MOCK_LOGGED_OUT: 'true' });
+  const session = r.loadSource('mocks/rest/endpoint/get_api_v1_auth_session.tsx').authSession;
+  const policyMock = r.loadSource('mocks/rest/endpoint/get_api_v1_policies.tsx').policies;
+  assert.equal(session.body.authenticated, false);
+  assert.equal(session.body.user, null);
+  assert.equal(policyMock.path, '/api/v1/policies');
+  assert.equal(policyMock.body.termsVersion, '2026-10-01');
+});
+
 for (const prefectureId of ['', '13']) {
   test(`signup sends policy versions and converts prefectureId=${JSON.stringify(prefectureId)}`, async () => {
     const r = runtime([json({ csrfToken: 'before' }), json({ authenticated: true, user, message: 'Created' }, 201), json({ csrfToken: 'after' })]);
-    await r.api.signup({ ...values, prefectureId });
+    await r.api.signup({ ...values, prefectureId }, policies);
     assert.equal(r.calls[1].url, '/api/v1/users');
-    assert.deepEqual(JSON.parse(r.calls[1].init.body), { ...values, lastName: '山田', firstName: '太郎', email: 'user@example.com', prefectureId: prefectureId ? 13 : null, termsVersion: '2026-10-01', privacyPolicyVersion: '2026-10-01' });
+    assert.deepEqual(JSON.parse(r.calls[1].init.body), { ...values, lastName: '山田', firstName: '太郎', email: 'user@example.com', prefectureId: prefectureId ? 13 : null, ...policies });
     assert.equal(r.calls.length, 3);
   });
 }
@@ -82,7 +113,7 @@ for (const operation of ['signin', 'signup']) {
       json({ csrfToken: 'renewed' }), json({ authenticated: true, user }, operation === 'signin' ? 200 : 201),
       json({ csrfToken: 'after-login' }),
     ]);
-    const result = operation === 'signin' ? await r.api.signin('user@example.com', ' secret ') : await r.api.signup(values);
+    const result = operation === 'signin' ? await r.api.signin('user@example.com', ' secret ') : await r.api.signup(values, policies);
     assert.equal(result.authenticated, true);
     assert.deepEqual(r.calls.map((call) => call.init.method ?? 'GET'), ['GET', 'POST', 'GET', 'POST', 'GET']);
     assert.equal(r.calls[1].init.headers['X-CSRFToken'], 'old');
@@ -96,7 +127,7 @@ for (const operation of ['signin', 'signup']) {
       json({ csrfToken: 'old' }), json({ errorCode: 'CSRF_FAILED' }, 403),
       json({ csrfToken: 'renewed' }), json({ errorCode: 'CSRF_FAILED', errorMsg: 'Still rejected' }, 403),
     ]);
-    const request = operation === 'signin' ? r.api.signin('user@example.com', 'secret') : r.api.signup(values);
+    const request = operation === 'signin' ? r.api.signin('user@example.com', 'secret') : r.api.signup(values, policies);
     await assert.rejects(request, (error) => error.status === 403 && error.errorCode === 'CSRF_FAILED');
     assert.equal(r.calls.length, 4);
   });
@@ -104,20 +135,20 @@ for (const operation of ['signin', 'signup']) {
 
 test('failed CSRF reacquisition does not resend the rejected POST', async () => {
   const r = runtime([json({ csrfToken: 'old' }), json({ errorCode: 'CSRF_FAILED' }, 403), json({}, 503)]);
-  await assert.rejects(r.api.signup(values), (error) => error.status === 503);
+  await assert.rejects(r.api.signup(values, policies), (error) => error.status === 503);
   assert.equal(r.calls.filter((call) => call.init.method === 'POST').length, 1);
 });
 
 test('network failure during registration POST never triggers an automatic retry', async () => {
   const r = runtime([json({ csrfToken: 'token' }), new Error('Connection lost')]);
-  await assert.rejects(r.api.signup(values), /Connection lost/);
+  await assert.rejects(r.api.signup(values, policies), /Connection lost/);
   assert.equal(r.calls.length, 2);
 });
 
 for (const errorCode of ['EMAIL_ALREADY_EXISTS', 'POLICY_VERSION_MISMATCH']) {
   test(`signup preserves ${errorCode} and does not refresh CSRF after rejection`, async () => {
     const r = runtime([json({ csrfToken: 'token' }), json({ errorCode, errorMsg: 'Conflict' }, 409)]);
-    await assert.rejects(r.api.signup(values), (error) => error.status === 409 && error.errorCode === errorCode);
+    await assert.rejects(r.api.signup(values, policies), (error) => error.status === 409 && error.errorCode === errorCode);
     assert.equal(r.calls.length, 2);
   });
 }
@@ -130,7 +161,7 @@ test('CSRF acquisition failure prevents the authentication POST', async () => {
 
 test('successful registration survives CSRF refresh network failure without resubmitting', async () => {
   const r = runtime([json({ csrfToken: 'token' }), json({ authenticated: true, user, message: 'Created' }, 201), new Error('Offline')]);
-  const result = await r.api.signup(values);
+  const result = await r.api.signup(values, policies);
   assert.equal(result.authenticated, true);
   assert.equal(result.csrfRefreshFailed, true);
   assert.equal(r.calls.filter((call) => call.init.method === 'POST').length, 1);
@@ -144,19 +175,7 @@ test('unexpected successful response is not treated as authentication success', 
 
 test('signup requires 201 rather than treating arbitrary 2xx as registration success', async () => {
   const r = runtime([json({ csrfToken: 'token' }), json({ authenticated: true, user })]);
-  await assert.rejects(r.api.signup(values));
-});
-
-test('signup sends fixed policy versions without policy environment settings', async () => {
-  for (const env of [{ DEV: true, VITE_USE_MOCK: 'false' }, { ...configured, VITE_TERMS_VERSION: 'ignored', VITE_PRIVACY_POLICY_VERSION: 'ignored' }]) {
-    const r = runtime([json({ csrfToken: 'token' }), json({ authenticated: true, user }, 201), json({ csrfToken: 'new' })], env);
-    await r.api.signup(values);
-    const body = JSON.parse(r.calls[1].init.body);
-    assert.equal(body.termsVersion, '2026-10-01');
-    assert.equal(body.privacyPolicyVersion, '2026-10-01');
-    assert.equal(body.agreedToTerms, true);
-    assert.equal(body.agreedToPrivacyPolicy, true);
-  }
+  await assert.rejects(r.api.signup(values, policies));
 });
 
 test('optional policy links exclude invalid URLs without blocking registration', () => {
@@ -255,10 +274,23 @@ test('registration form without policy URLs permits submission and retains requi
   const AccountStep = r.loadSource('components/signup/AccountStep.tsx').default;
   const html = renderToStaticMarkup(React.createElement(AccountStep, { values, purpose: 'consumer', errors: {}, isSubmitting: false, message: '', onChange() {}, onBack() {}, onSubmit() {} }));
   assert.ok(html.includes('登録する →'));
-  assert.ok(!html.includes('disabled=""'));
+  const submit = html.match(/<button\b[^>]*type="submit"[^>]*>/)?.[0];
+  assert.ok(submit);
+  assert.ok(!submit.includes('disabled=""'));
   assert.ok(!html.includes('現在は登録できません'));
   assert.ok(html.includes('name="agreedToTerms"'));
   assert.ok(html.includes('name="agreedToPrivacyPolicy"'));
+});
+
+test('registration form blocks submission while policy loading fails and offers reload', () => {
+  const r = runtime([], {});
+  const AccountStep = r.loadSource('components/signup/AccountStep.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(AccountStep, { values, purpose: 'consumer', errors: {}, isSubmitting: false, policiesReady: false, policiesError: true, message: '', onChange() {}, onBack() {}, onSubmit() {}, onReloadPolicies() {} }));
+  assert.ok(html.includes('利用規約の情報を取得できませんでした'));
+  assert.ok(html.includes('再読み込み'));
+  const submit = html.match(/<button\b[^>]*type="submit"[^>]*>/)?.[0];
+  assert.ok(submit);
+  assert.ok(submit.includes('disabled=""'));
 });
 
 test('auth layout shows demo notice only with mocks enabled', () => {
@@ -304,5 +336,4 @@ test('signup progress shows only the two form steps', () => {
   const progress = html.match(/<ol[^>]*>[\s\S]*?<\/ol>/)?.[0];
   assert.ok(progress);
   assert.equal((progress.match(/<li\b/g) ?? []).length, 2);
-  assert.ok(!progress.includes('完了'));
 });

@@ -1,12 +1,14 @@
-import { startTransition, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import PurposeStep from "../components/signup/PurposeStep";
 import { CheckIcon } from "../components/Icons";
 import AccountStep from "../components/signup/AccountStep";
 import { useSetAtom } from "jotai";
-import { signup, checkSession } from "../api/authApi";
+import { signup, checkSession, getPolicies } from "../api/authApi";
+import type { Policies } from "../api/authApi";
 import ApiError from "../api/apiError";
 import { authenticatedNavigationAtom } from "../stores/userAtom";
 import { initialSignupValues } from "../types/authForm";
@@ -32,6 +34,32 @@ export default function SignupPage() {
     ...initialSignupValues,
   });
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [policies, setPolicies] = useState<Policies | null>(null);
+  const [policiesStatus, setPoliciesStatus] = useState<"loading" | "ready" | "error">("loading");
+  const mounted = useRef(false);
+  const policiesRequest = useRef(0);
+
+  async function loadPolicies() {
+    if (!mounted.current) return;
+    const request = ++policiesRequest.current;
+    setPolicies(null);
+    setPoliciesStatus("loading");
+    try {
+      const next = await getPolicies();
+      if (mounted.current && request === policiesRequest.current) {
+        setPolicies(next);
+        setPoliciesStatus("ready");
+      }
+    } catch {
+      if (mounted.current && request === policiesRequest.current) setPoliciesStatus("error");
+    }
+  }
+
+  useEffect(() => {
+    mounted.current = true;
+    void loadPolicies();
+    return () => { mounted.current = false; policiesRequest.current++; };
+  }, []);
 
   function update<K extends keyof SignupFormValues>(
     key: K,
@@ -45,6 +73,8 @@ export default function SignupPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
+    if (policiesStatus !== "ready" || !policies) return;
+    const form = event.currentTarget;
     setMessage("");
 
     const found = validateSignup(values);
@@ -52,7 +82,7 @@ export default function SignupPage() {
 
     if (Object.keys(found).length > 0) {
       const firstKey = Object.keys(found)[0];
-      event.currentTarget
+      form
         .querySelector<HTMLInputElement>(`[name="${firstKey}"]`)
         ?.focus();
       return;
@@ -61,7 +91,8 @@ export default function SignupPage() {
     submitting.current = true;
     setIsSubmitting(true);
     try {
-      const result = await signup(values);
+      const result = await signup(values, policies);
+      if (!mounted.current) return;
       setValues({ ...initialSignupValues });
       const navigation = {
         to: "/signup/complete",
@@ -72,9 +103,11 @@ export default function SignupPage() {
         navigate(navigation.to, { replace: true, state: navigation.state });
       });
     } catch (error) {
+      if (!mounted.current) return;
       if (error instanceof ApiError && error.errorCode === "ALREADY_AUTHENTICATED") {
         try {
           const session = await checkSession();
+          if (!mounted.current) return;
           if (session.authenticated) {
             startTransition(() => {
               setAuthenticated({ user: session.user, navigation: { to: "/" } });
@@ -83,6 +116,7 @@ export default function SignupPage() {
             return;
           }
         } catch { /* 以下の案内を表示 */ }
+        if (!mounted.current) return;
         setMessage("ログイン状態を確認できませんでした。もう一度お試しください。");
       } else if (error instanceof ApiError) {
         const fieldErrors: SignupErrors = {};
@@ -90,16 +124,32 @@ export default function SignupPage() {
           if (error.details[key]) fieldErrors[key] = error.details[key].join(" ");
         }
         if (error.errorCode === "EMAIL_ALREADY_EXISTS") fieldErrors.email = error.message;
-        setErrors(fieldErrors);
         if (error.errorCode === "POLICY_VERSION_MISMATCH") {
-          setValues((previous) => ({ ...previous, agreedToTerms: false, agreedToPrivacyPolicy: false }));
-          setMessage("規約の版番号がサーバーと一致しないため登録できません。運営へお問い合わせください。");
-        } else if (error.status === 429) setMessage("登録の試行回数が上限に達しました。時間を置いてから再度お試しください。");
-        else setMessage(error.message);
+          flushSync(() => {
+            setIsSubmitting(false);
+            setErrors(fieldErrors);
+            setValues((previous) => ({ ...previous, agreedToTerms: false, agreedToPrivacyPolicy: false }));
+          });
+          setMessage("利用規約・プライバシーポリシーが更新されました。内容をご確認のうえ、もう一度同意してください。");
+          await loadPolicies();
+          if (mounted.current) form.querySelector<HTMLInputElement>('[name="agreedToTerms"]')?.focus();
+        } else if (error.status === 400 || error.errorCode === "EMAIL_ALREADY_EXISTS") {
+          flushSync(() => {
+            setIsSubmitting(false);
+            setErrors(fieldErrors);
+          });
+          const firstKey = Object.keys(fieldErrors)[0];
+          if (firstKey) form.querySelector<HTMLInputElement>(`[name="${firstKey}"]`)?.focus();
+          setMessage(error.message);
+        } else {
+          setErrors(fieldErrors);
+          if (error.status === 429) setMessage("登録の試行回数が上限に達しました。時間を置いてから再度お試しください。");
+          else setMessage(error.message);
+        }
       } else setMessage("通信に失敗しました。登録結果が不明な場合は、先にログインをお試しください。");
     } finally {
       submitting.current = false;
-      setIsSubmitting(false);
+      if (mounted.current) setIsSubmitting(false);
     }
   }
 
@@ -133,7 +183,7 @@ export default function SignupPage() {
                     : "border-marche-line"
                 }`}
               >
-                {completed ? <CheckIcon className="size-3.5" /> : number}
+                {completed ? <><span className="sr-only">完了: </span><CheckIcon className="size-4" /></> : number}
               </span>
               {title}
             </li>
@@ -153,6 +203,9 @@ export default function SignupPage() {
         <AccountStep
           purpose={purpose}
           isSubmitting={isSubmitting}
+          policiesReady={policiesStatus === "ready"}
+          policiesError={policiesStatus === "error"}
+          onReloadPolicies={() => { void loadPolicies(); }}
           message={message}
           values={values}
           errors={errors}

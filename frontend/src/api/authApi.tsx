@@ -3,9 +3,24 @@ import ApiError, { toApiError } from './apiError';
 import type { SignupFormValues } from '../types/authForm';
 import { apiFetch } from './client';
 
-// チーム合意：バックエンドの初期版番号と同じ固定値を送信する。
-const TERMS_VERSION = '2026-10-01';
-const PRIVACY_POLICY_VERSION = '2026-10-01';
+type Policies = { termsVersion: string; privacyPolicyVersion: string };
+
+async function getPolicies(): Promise<Policies> {
+  const response = await apiFetch('/api/v1/policies');
+  if (!response.ok) throw await toApiError(response, '利用規約の情報を取得できませんでした。');
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ApiError(response.status, '利用規約の情報を確認できませんでした。');
+  }
+  if (!body || typeof body !== 'object' ||
+      !('termsVersion' in body) || typeof body.termsVersion !== 'string' || !body.termsVersion.trim() ||
+      !('privacyPolicyVersion' in body) || typeof body.privacyPolicyVersion !== 'string' || !body.privacyPolicyVersion.trim()) {
+    throw new ApiError(response.status, '利用規約の情報を確認できませんでした。');
+  }
+  return { termsVersion: body.termsVersion, privacyPolicyVersion: body.privacyPolicyVersion };
+}
 
 // ログインチェックAPIのレスポンス（未ログインでも 200 で authenticated: false）
 type SessionResponse =
@@ -76,15 +91,15 @@ function signin(email: string, password: string): Promise<AuthResult> {
   return authenticate('/api/v1/auth/signin', { email: email.trim(), password }, 200);
 }
 
-function signup(values: SignupFormValues): Promise<AuthResult> {
+function signup(values: SignupFormValues, policies: Policies): Promise<AuthResult> {
   return authenticate('/api/v1/users', {
     ...values,
     lastName: values.lastName.trim(), firstName: values.firstName.trim(),
     email: values.email.trim(), phone: values.phone.trim(),
     prefectureId: values.prefectureId === '' ? null : Number(values.prefectureId),
-    termsVersion: TERMS_VERSION, privacyPolicyVersion: PRIVACY_POLICY_VERSION,
+    termsVersion: policies.termsVersion, privacyPolicyVersion: policies.privacyPolicyVersion,
   }, 201);
 }
 
-export { checkSession, getCsrfToken, signin, signup };
-export type { SessionResponse };
+export { checkSession, getCsrfToken, getPolicies, signin, signup };
+export type { SessionResponse, Policies };
