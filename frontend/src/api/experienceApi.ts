@@ -1,6 +1,5 @@
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
-import { apiFetch } from './client';
+import { fetchWithCsrf } from './authApi';
 import { contentItems, contentJson, submitContent } from './publicContentApi';
 import type {
   Experience,
@@ -20,14 +19,11 @@ export const getExperienceApplications = (signal?: AbortSignal) =>
   contentItems<MyExperienceApplication>('/api/v1/users/me/experience-applications', signal);
 
 export async function cancelExperienceApplication(applicationId: number): Promise<MyExperienceApplication> {
-  const csrfToken = await getCsrfToken();
-  const response = await apiFetch(`/api/v1/users/me/experience-applications/${applicationId}/cancel`, {
+  const response = await fetchWithCsrf(`/api/v1/users/me/experience-applications/${applicationId}/cancel`, {
     method: 'POST',
-    headers: { 'X-CSRFToken': csrfToken },
   });
   if (!response.ok) {
     throw await toApiError(response, '予約をキャンセルできませんでした。');
   }
   return (await response.json()) as MyExperienceApplication;
 }
-

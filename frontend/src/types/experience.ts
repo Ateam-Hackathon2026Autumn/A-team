@@ -44,4 +44,3 @@ export type MyExperienceApplication = {
   cancelDeadlineAt?: string | null;
   createdAt: string;
 };
-

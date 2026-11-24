@@ -1,8 +1,7 @@
 import type { PageResult } from '../types/experience';
 import type { FavoriteProducerItem, FavoriteProductItem } from '../types/favorite';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
-import { apiFetch } from './client';
+import { fetchWithCsrf } from './authApi';
 import { contentJson } from './publicContentApi';
 
 export function getFavoriteProducts(
@@ -30,10 +29,8 @@ export function getFavoriteProducers(
 }
 
 export async function addFavoriteProduct(productId: number): Promise<void> {
-  const csrfToken = await getCsrfToken();
-  const response = await apiFetch(`/api/v1/users/me/favorites/products/${productId}`, {
+  const response = await fetchWithCsrf(`/api/v1/users/me/favorites/products/${productId}`, {
     method: 'PUT',
-    headers: { 'X-CSRFToken': csrfToken },
   });
   if (!response.ok) {
     throw await toApiError(response, '商品をお気に入りに登録できませんでした。');
@@ -41,10 +38,8 @@ export async function addFavoriteProduct(productId: number): Promise<void> {
 }
 
 export async function removeFavoriteProduct(productId: number): Promise<void> {
-  const csrfToken = await getCsrfToken();
-  const response = await apiFetch(`/api/v1/users/me/favorites/products/${productId}`, {
+  const response = await fetchWithCsrf(`/api/v1/users/me/favorites/products/${productId}`, {
     method: 'DELETE',
-    headers: { 'X-CSRFToken': csrfToken },
   });
   if (!response.ok) {
     throw await toApiError(response, '商品のお気に入りを解除できませんでした。');
@@ -55,13 +50,12 @@ export async function addFavoriteProducer(
   producerId: number,
   options?: { notify?: boolean },
 ): Promise<void> {
-  const csrfToken = await getCsrfToken();
   const hasNotify = options?.notify !== undefined;
-  const response = await apiFetch(`/api/v1/users/me/favorites/producers/${producerId}`, {
+  const response = await fetchWithCsrf(`/api/v1/users/me/favorites/producers/${producerId}`, {
     method: 'PUT',
     headers: hasNotify
-      ? { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
-      : { 'X-CSRFToken': csrfToken },
+      ? { 'Content-Type': 'application/json' }
+      : undefined,
     body: hasNotify ? JSON.stringify({ notify: options.notify }) : undefined,
   });
   if (!response.ok) {
@@ -70,10 +64,8 @@ export async function addFavoriteProducer(
 }
 
 export async function removeFavoriteProducer(producerId: number): Promise<void> {
-  const csrfToken = await getCsrfToken();
-  const response = await apiFetch(`/api/v1/users/me/favorites/producers/${producerId}`, {
+  const response = await fetchWithCsrf(`/api/v1/users/me/favorites/producers/${producerId}`, {
     method: 'DELETE',
-    headers: { 'X-CSRFToken': csrfToken },
   });
   if (!response.ok) {
     throw await toApiError(response, '生産者のお気に入りを解除できませんでした。');

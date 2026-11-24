@@ -5,7 +5,7 @@ import type {
   ProducerApplicationResubmitInput,
 } from '../types/producerApplication';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
+import { fetchWithCsrf } from './authApi';
 import { apiFetch } from './client';
 
 export async function getMyProducerApplication(signal?: AbortSignal): Promise<MyProducerApplication> {
@@ -19,10 +19,9 @@ export async function getMyProducerApplication(signal?: AbortSignal): Promise<My
 export async function createProducerApplication(
   input: ProducerApplicationInput,
 ): Promise<ProducerApplicationAccepted> {
-  const csrfToken = await getCsrfToken();
-  const response = await apiFetch('/api/v1/producer-applications', {
+  const response = await fetchWithCsrf('/api/v1/producer-applications', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
   if (response.ok) {
@@ -34,10 +33,9 @@ export async function createProducerApplication(
 export async function resubmitProducerApplication(
   input: ProducerApplicationResubmitInput,
 ): Promise<ProducerApplicationAccepted> {
-  const csrfToken = await getCsrfToken();
-  const response = await apiFetch('/api/v1/producer-applications/me', {
+  const response = await fetchWithCsrf('/api/v1/producer-applications/me', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
   if (response.ok) {
