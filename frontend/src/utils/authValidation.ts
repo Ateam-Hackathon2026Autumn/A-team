@@ -6,7 +6,7 @@ const passwordPattern = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!-/:-@\[-`{-~])
 export const todayJst = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
 export function validateEmail(email: string): string | undefined {
-  if (!emailPattern.test(email.trim()) || email.trim().length > 255) return "メールアドレスを正しく入力してください。";
+  if (!emailPattern.test(email.trim()) || email.trim().length > 254) return "メールアドレスを正しく入力してください。";
 }
 export function validateSignin(email: string, password: string) {
   return {
@@ -23,7 +23,7 @@ export function validateSignup(values: SignupFormValues): SignupErrors {
   errors.email = validateEmail(values.email);
   if (!passwordPattern.test(values.password)) errors.password = "8〜30文字の半角英数字・記号で、英大文字・英小文字・数字・記号を各1文字以上含めてください。";
   const phone = values.phone.trim();
-  if (!/^\+?[0-9() -]{7,50}$/.test(phone) || phone.replace(/\D/g, "").length < 7) errors.phone = "電話番号を正しく入力してください。";
+  if (phone.length > 50 || !/^[0-9-]+$/.test(phone) || !/^0[0-9]{9,10}$/.test(phone.replace(/-/g, ""))) errors.phone = "電話番号を正しく入力してください。";
   const date = values.birthDate;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date || date < MIN_BIRTH_DATE || date > todayJst()) errors.birthDate = "1900年1月1日から今日までの実在する日付を入力してください。";
   if (!values.agreedToTerms) errors.agreedToTerms = "利用規約への同意が必要です。";

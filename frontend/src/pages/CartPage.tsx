@@ -348,7 +348,7 @@ export default function CartPage() {
             {canProceed && !busy ? (
               <Link
                 to={loggedIn ? "/checkout" : "/signin"}
-                state={loggedIn ? undefined : { from: { pathname: "/cart" } }}
+                state={loggedIn ? undefined : { from: { pathname: "/checkout" } }}
                 className="mt-5 flex min-h-12 items-center justify-center rounded-full bg-marche-green px-4 py-3 text-sm font-bold text-white no-underline hover:bg-marche-green-dark"
               >
                 {loggedIn ? "購入手続きへ →" : "ログインして購入手続きへ"}

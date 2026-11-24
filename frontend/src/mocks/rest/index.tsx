@@ -7,6 +7,7 @@ import { dashboardJobDelete } from './endpoint/delete_api_v1_dashboard_jobs_jobI
 import { dashboardProductDelete } from './endpoint/delete_api_v1_dashboard_products_productId';
 import { authCsrf } from './endpoint/get_api_v1_auth_csrf';
 import { authSession } from './endpoint/get_api_v1_auth_session';
+import { policies } from './endpoint/get_api_v1_policies';
 import { cart } from './endpoint/get_api_v1_cart';
 import { categoriesList } from './endpoint/get_api_v1_categories';
 import { dashboardExperiencesList } from './endpoint/get_api_v1_dashboard_experiences';
@@ -86,6 +87,7 @@ const restMocks: RestMock[] = [
   emailVerificationConfirm,
   emailVerificationResend,
   authSession,
+  policies,
   authSignin,
   authSignout,
   cart,
