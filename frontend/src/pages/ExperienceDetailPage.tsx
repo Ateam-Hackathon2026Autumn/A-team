@@ -56,19 +56,19 @@ export default function ExperienceDetailPage() {
               />
               <ContentSection
                 title="参加対象"
-                text={item.ageCondition}
+                text={item.ageCondition?.trim() || null}
               />
               <ContentSection
                 title="当日の流れ"
-                items={item.flow}
+                items={item.flow ?? []}
               />
               <ContentSection
                 title="持ち物"
-                items={item.belongings}
+                items={item.belongings ?? []}
               />
               <ContentSection
                 title="注意事項"
-                items={item.notes}
+                items={item.notes ?? []}
               />
               <ContentSection
                 title="キャンセルポリシー"
