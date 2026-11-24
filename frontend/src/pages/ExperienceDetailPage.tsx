@@ -3,13 +3,14 @@ import { Link, useParams } from "react-router";
 import { getExperience } from "../api/experienceApi";
 import { ContentImage, ContentPage, ContentSection, ContentStatus, dateLabel, timeLabel, yen, linkClass, panelClass, textLinkClass } from "../components/ui/ContentPage";
 import { usePublicContent } from "../hooks/usePublicContent";
+import { isExperienceSlotBookable } from "../utils/experienceValidation";
 
 export default function ExperienceDetailPage() {
   const { experienceId } = useParams();
   const loader = useCallback((signal: AbortSignal) => getExperience(Number(experienceId), signal), [experienceId]);
   const state = usePublicContent(loader);
   const item = state.data;
-  const slots = item?.slots.items.filter((slot) => slot.remainingCapacity > 0 && new Date(slot.startAt).getTime() > Date.now()) ?? [];
+  const slots = item?.slots.items.filter((slot) => isExperienceSlotBookable(slot)) ?? [];
   return (
     <ContentPage
       eyebrow="EXPERIENCE"
@@ -95,6 +96,9 @@ export default function ExperienceDetailPage() {
                   {timeLabel(slot.startAt)}〜（{slot.durationMin}分）
                   <br />
                   残り{slot.remainingCapacity}名 ／定員{slot.capacity}名
+                  <br />
+                  申込締切：{dateLabel(slot.bookingDeadlineAt)} {timeLabel(slot.bookingDeadlineAt)}
+                  {!isExperienceSlotBookable(slot) && <span className="block">受付終了・満席</span>}
                 </p>
               ))}
               {slots.length ? (

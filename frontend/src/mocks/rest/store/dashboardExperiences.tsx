@@ -387,7 +387,7 @@ function getState(): State {
     for (const experience of state.experiences) {
       experience.flow = experience.flow?.map((item) => {
         if (typeof item !== 'string') return item;
-        const match = /^([01]\d|2[0-3]):[0-5]\d\s+(.+)$/.exec(item);
+        const match = /^((?:[01]\d|2[0-3]):[0-5]\d)\s+(.+)$/.exec(item);
         return match === null ? { time: '00:00', text: item } : { time: match[1], text: match[2] };
       }) ?? null;
     }
