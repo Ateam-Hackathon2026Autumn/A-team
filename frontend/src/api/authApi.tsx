@@ -109,5 +109,14 @@ function signup(values: SignupFormValues, policies: Policies): Promise<AuthResul
   }, 201);
 }
 
-export { checkSession, fetchWithCsrf, getCsrfToken, getPolicies, signin, signup };
+async function confirmPasswordReset(uid: string, token: string, newPassword: string): Promise<void> {
+  const response = await fetchWithCsrf('/api/v1/auth/password-reset/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uid, token, newPassword }),
+  });
+  if (!response.ok) throw await toApiError(response, 'パスワードを再設定できませんでした。');
+}
+
+export { checkSession, fetchWithCsrf, getCsrfToken, getPolicies, signin, signup, confirmPasswordReset };
 export type { SessionResponse, Policies };

@@ -251,7 +251,7 @@ function ExperienceForm({ id }: { id: number }) {
                     </div>
                     {errors.capacity && <p id="capacity-error" role="alert" className="text-marche-red">{errors.capacity}</p>}
                     <p className="text-sm">
-                      対象：{item.ageCondition}。大人{yen(item.priceAdult)}
+                      {item.ageCondition?.trim() ? `対象：${item.ageCondition}。` : ""}大人{yen(item.priceAdult)}
                       {item.familyOk && item.priceChild !== null && ` ／子ども${yen(item.priceChild)}`}
                     </p>
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -284,12 +284,12 @@ function ExperienceForm({ id }: { id: number }) {
                     />
                     <h3 className="mt-6 text-base">キャンセルポリシー</h3>
                     <p>{item.cancelPolicy}</p>
-                    <h3 className="text-base">注意事項</h3>
+                    {Boolean(item.notes?.length) && <><h3 className="text-base">注意事項</h3>
                     <ul className="pl-5">
-                      {item.notes.map((note) => (
+                      {(item.notes ?? []).map((note) => (
                         <li key={note}>{note}</li>
                       ))}
-                    </ul>
+                    </ul></>}
                     <label className="flex min-h-11 items-start gap-3">
                       <input
                         id="policy-agreed"

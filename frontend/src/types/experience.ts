@@ -9,7 +9,7 @@ export type PublicExperienceSlot = { id: number; startAt: string; durationMin: n
 export type PublicExperienceFlowItem = { time: string; text: string };
 export type ExperienceDetail = Experience & {
   description: string; images: { id: number; url: string; sortOrder: number }[];
-  place: string; ageCondition: string; flow: PublicExperienceFlowItem[] | null; belongings: string[]; notes: string[];
+  place: string; ageCondition: string | null; flow: PublicExperienceFlowItem[] | null; belongings: string[] | null; notes: string[] | null;
   cancelPolicy: string; slots: PageResult<PublicExperienceSlot>;
 };
 export type ExperienceApplyInput = {

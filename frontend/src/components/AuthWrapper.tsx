@@ -3,6 +3,8 @@ import { matchPath, Navigate, Outlet, useLocation, useNavigate } from "react-rou
 import { useAtom, useStore } from "jotai";
 
 import { checkSession } from "../api/authApi";
+import { setApiFailureHandler } from "../api/client";
+import { getAuthReturnPath } from "../utils/authRedirect";
 import { isCheckingSessionAtom, loginStatusAtom, userInfoAtom, pendingAuthNavigationAtom } from "../stores/userAtom";
 import type { UserInfo } from "../types/user";
 
@@ -10,7 +12,7 @@ import type { UserInfo } from "../types/user";
 const guestOnlyPaths = ["/signin", "/signup"];
 
 // ログインしていないとアクセスできないページ
-const memberOnlyPaths = ["/signup/complete", "/mypage/*", "/jobs/:jobId/apply", "/experiences/:experienceId/apply", "/producer-application/*", "/dashboard/*"];
+const memberOnlyPaths = ["/signup/complete", "/mypage/*", "/checkout", "/checkout/complete", "/jobs/:jobId/apply", "/experiences/:experienceId/apply", "/producer-application/*", "/dashboard/*"];
 
 // 生産者でないとアクセスできないページ
 const producerOnlyPaths = ["/dashboard/*"];
@@ -41,6 +43,21 @@ function AuthWrapper() {
   const isGuestOnlyPage = guestOnlyPaths.includes(location.pathname);
   const isMemberOnlyPage = matchesAny(memberOnlyPaths, location.pathname);
   const isProducerOnlyPage = matchesAny(producerOnlyPaths, location.pathname);
+
+  useEffect(() => {
+    setApiFailureHandler((status, path) => {
+      if (status === 401) {
+        // ログイン失敗や未ログイン状態の公開 API は画面でエラーを表示する。
+        if (loginStatus !== "loggedIn" || path === "/api/v1/auth/signin") return;
+        setUserInfo(null);
+        setLoginStatus("loggedOut");
+        navigate("/signin", { replace: true, state: { from: getAuthReturnPath(location) } });
+      } else if (status >= 500 && location.pathname !== "/500") {
+        navigate("/500", { replace: true });
+      }
+    });
+    return () => setApiFailureHandler(null);
+  }, [loginStatus, location, navigate, setLoginStatus, setUserInfo]);
 
   // 認証画面を離れた後は、一時的な遷移先を次回のログインへ持ち越さない。
   useEffect(() => {
