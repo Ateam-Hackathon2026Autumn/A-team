@@ -1,0 +1,46 @@
+# デモ用サンプル画像の素材
+
+`products/` `experiences/` `producers/` `jobs/` `stories/` の画像は、Pexels（https://www.pexels.com/）で配布されている写真を使用している。すべて [Pexels License](https://www.pexels.com/license/) の「Free」として配布されているもので、商用利用可・クレジット表記不要。表記は任意だが、出典の記録としてこのファイルを残す。
+
+画像はすべて Pexels の公式画像 URL（幅 1200px）から取得し、JPEG のメタデータ（EXIF・XMP・IPTC 等の撮影者情報や著作権表記を含む）は削除済み。削除は JPEG のセグメント単位で行い、画素データは再圧縮していない。1 枚 500KB 以下。
+
+ライセンスの確認日: 2026-11-25（各配布元ページの「Free」表記と Pexels License へのリンクを確認）。
+
+| ファイル | 内容 | 配布元ページ URL | 撮影者 | ライセンス |
+| --- | --- | --- | --- | --- |
+| products/strawberry-01.jpg | 赤いいちごのクローズアップ | https://www.pexels.com/photo/close-up-of-bright-red-strawberries-18096839/ | Budget Bizar | Pexels License |
+| products/strawberry-02.jpg | いちご（水滴と緑の葉つき） | https://www.pexels.com/photo/strawberries-1788912/ | Suzy Hazelwood | Pexels License |
+| products/tomato-01.jpg | 完熟トマトを持つ人の手 | https://www.pexels.com/photo/person-holding-ripe-tomatoes-5677303/ | Viktoria Slowikowska | Pexels License |
+| products/honey-01.jpg | 蜂の巣（ハニカム）のクローズアップ | https://www.pexels.com/photo/close-up-photo-of-honey-comb-4111270/ | Archana GS | Pexels License |
+| products/mandarin-01.jpg | みかんのクローズアップ（白い皿の上） | https://www.pexels.com/photo/close-up-shot-of-fresh-oranges-14705002/ | Hanawasthere | Pexels License |
+| products/grape-01.jpg | ぶどうの房 | https://www.pexels.com/photo/several-bunch-of-grapes-760281/ | Luiz M. Santos | Pexels License |
+| products/cucumber-01.jpg | 収穫したきゅうりを持つ手 | https://www.pexels.com/photo/a-person-holding-freshly-harvested-cucumbers-9465751/ | Marina Leonova | Pexels License |
+| products/apple-01.jpg | 木に実る赤いりんご | https://www.pexels.com/photo/fresh-ripe-apples-growing-on-tree-under-blue-sky-7044801/ | Matt Barnard | Pexels License |
+| products/egg-01.jpg | 卵（かご入り） | https://www.pexels.com/photo/close-up-of-eggs-in-a-basket-4397062/ | Antoni Shkraba | Pexels License |
+| products/seafood-01.jpg | 魚介の盛り合わせ | https://www.pexels.com/photo/bowl-of-seafood-on-table-2871757/ | 奥尼尔 孙 (@1155579) | Pexels License |
+| products/lettuce-01.jpg | バラのような形のレタス | https://www.pexels.com/photo/close-up-shot-of-a-rose-shaped-lettuce-14208722/ | Zoran Milosavljevic | Pexels License |
+| products/jam-01.jpg | 瓶入りのジャム | https://www.pexels.com/photo/jam-in-jar-15209691/ | Boryslav Shoot | Pexels License |
+| products/pickles-01.jpg | 黄色く漬けた大根の小鉢（たくあん風） | https://www.pexels.com/photo/daikon-radish-in-a-bowl-8956729/ | makafood | Pexels License |
+| products/green-tea-01.jpg | 急須と茶器（日本茶のセット） | https://www.pexels.com/photo/traditional-japanese-green-tea-setup-with-teapot-31251487/ | Anh Nguyen | Pexels License |
+| products/root-vegetables-01.jpg | 収穫したての白い大根 | https://www.pexels.com/photo/fresh-harvest-of-organic-daikon-radishes-35625125/ | L. Lum | Pexels License |
+| products/beef-01.jpg | 霜降りの生牛肉と胡椒 | https://www.pexels.com/photo/raw-marbled-beef-steak-with-peppercorns-34003519/ | Nadin Sh | Pexels License |
+| experiences/cooking-class.jpg | 厨房で料理をする人（首から下） | https://www.pexels.com/photo/a-person-cooking-in-the-kitchen-8629107/ | Kampus Production | Pexels License |
+| experiences/harvest-apple-picking.jpg | りんごの実る枝（りんご狩りのイメージ、人物なし） | https://www.pexels.com/photo/apples-on-a-tree-16820561/ | Chen Te | Pexels License |
+| experiences/harvest-vegetables.jpg | 畑で野菜を収穫する女性たち | https://www.pexels.com/photo/anonymous-local-female-farmers-picking-vegetables-during-harvesting-season-in-garden-5529604/ | Zen Chung | Pexels License |
+| experiences/rice-planting.jpg | 水田で田植えをする人々（遠景） | https://www.pexels.com/photo/people-working-on-rice-field-9051683/ | Jeffry Surianto | Pexels License |
+| producers/orchard-red-apples.jpg | 赤いりんごが実る果樹園 | https://www.pexels.com/photo/lush-orchard-with-ripe-red-apples-on-branches-30875359/ | Isabella Her | Pexels License |
+| producers/orchard-sunny.jpg | 晴れた日のりんご果樹園 | https://www.pexels.com/photo/sunny-apple-orchard-with-lush-greenery-33790936/ | Mark Stebnicki | Pexels License |
+| producers/vineyard-grapes.jpg | ぶどう畑 | https://www.pexels.com/photo/grapes-cultivated-in-vineyard-in-farm-5273010/ | Julia Volk | Pexels License |
+| producers/fishing-boat-sea.jpg | 海に出る漁船と獲物 | https://www.pexels.com/photo/fishing-sea-mountains-nature-8826315/ | Kindel Media | Pexels License |
+| producers/tea-harvest-hills.jpg | 京都府和束の茶畑と民家 | https://www.pexels.com/photo/6226137/ | Eva Bronzini | Pexels License |
+| jobs/rice-paddy-farmers.jpg | 田んぼで作業する農家 | https://www.pexels.com/photo/farmers-working-in-a-rice-paddy-9272061/ | Hartono Subagio | Pexels License |
+| jobs/rice-planting-hands.jpg | 田植えをする手元 | https://www.pexels.com/photo/farmer-planting-on-paddy-field-13839277/ | Danang DKW | Pexels License |
+| jobs/tea-pickers.jpg | 茶畑の広がり（遠景に人影） | https://www.pexels.com/photo/38643042/ | Karolina | Pexels License |
+| jobs/farm-okinawa-watering.jpg | 沖縄の畑で水やりをする農家（後ろ姿） | https://www.pexels.com/photo/35283250/ | A Q | Pexels License |
+| stories/aerial-rice-fields.jpg | 田んぼの空撮 | https://www.pexels.com/photo/green-field-aerial-photography-2176032/ | Quang Nguyen Vinh | Pexels License |
+| stories/rice-field-sunrise.jpg | 朝露の田んぼと朝日 | https://www.pexels.com/photo/drops-on-rice-field-20111878/ | Nothing Ahead | Pexels License |
+| stories/tea-plantation.jpg | 京都府和束の茶畑（緑の丘） | https://www.pexels.com/photo/6225748/ | Eva Bronzini | Pexels License |
+| products/rice-01.jpg | 白いご飯の茶碗（箸置きと箸） | Google Flow で生成 (AI 生成画像) | — | AI 生成 (Google の生成 AI 利用規約に従う) |
+| products/vegetables-01.jpg | 木箱に入った産直野菜（トマト・きゅうり・じゃがいも） | Google Flow で生成 (AI 生成画像) | — | AI 生成 (Google の生成 AI 利用規約に従う) |
+| experiences/harvest-tomato.jpg | 温室でトマトを摘む手元 | Google Flow で生成 (AI 生成画像) | — | AI 生成 (Google の生成 AI 利用規約に従う) |
+| experiences/milking-cow.jpg | 牛舎の乳牛と搾乳バケツ | Google Flow で生成 (AI 生成画像) | — | AI 生成 (Google の生成 AI 利用規約に従う) |
