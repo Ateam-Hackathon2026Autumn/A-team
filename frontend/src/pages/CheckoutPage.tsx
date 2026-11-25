@@ -12,6 +12,7 @@ import type { ShippingAddress } from "../types/consumerOrder";
 import { ContentPage, ContentStatus, EmptyContent, fieldClass, panelClass, textLinkClass, yen, linkClass } from "../components/ui/ContentPage";
 import { OrderTotals, temperatureLabels } from "../components/mypage/ConsumerOrderParts";
 import Button from "../components/ui/Button";
+import { safeCheckoutUrl } from "../utils/checkoutUrl";
 
 async function loadCheckout(signal: AbortSignal) {
   const cart = await getCart(signal);
@@ -71,7 +72,9 @@ export default function CheckoutPage() {
       if (USE_MOCK) {
         navigate(receipt.checkoutUrl, { replace: true });
       } else {
-        window.location.assign(receipt.checkoutUrl);
+        const checkoutUrl = safeCheckoutUrl(receipt.checkoutUrl, window.location.origin);
+        if (!checkoutUrl) throw new Error("決済画面のURLを確認できませんでした。時間を置いて再度お試しください。");
+        window.location.assign(checkoutUrl);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "注文を受け付けられませんでした。");
@@ -187,7 +190,7 @@ export default function CheckoutPage() {
                           >
                             <option value="">選択してください</option>
                             {PREFECTURES.map((p) => (
-                              <option key={p.id}>{p.name}</option>
+                              <option key={p.id} value={p.name}>{p.name}</option>
                             ))}
                           </select>
                         </label>

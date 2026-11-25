@@ -42,6 +42,8 @@ const cartItemAdd: RestMock = {
         subtotal: product.salePrice * quantity,
         purchasable: true,
         unavailableReason: null,
+        volume: product.volume,
+        thumbnailUrl: product.thumbnailUrl,
       });
     }
     return { status: 200, body: refreshMockCart(true) };

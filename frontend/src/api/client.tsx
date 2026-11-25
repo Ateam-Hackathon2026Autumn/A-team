@@ -1,15 +1,33 @@
 import { USE_MOCK, VITE_API_URL } from "../config/env";
 import ApiError from './apiError';
 
+type ApiFailureHandler = (status: number, path: string) => void;
+let apiFailureHandler: ApiFailureHandler | null = null;
+
+export function setApiFailureHandler(handler: ApiFailureHandler | null) {
+  apiFailureHandler = handler;
+}
+
 // CSRF取得自身はこの通信処理を使い、apiFetchへの再帰を避ける。
 async function rawFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const url = `${VITE_API_URL}${path}`;
   const options: RequestInit = { ...init, credentials: "include" };
   if (USE_MOCK) {
     const { mockFetch } = await import("../mocks/mockFetch");
-    return mockFetch(url, options);
+    const response = await mockFetch(url, options);
+    notifyFailure(response.status, path, init.method);
+    return response;
   }
-  return fetch(url, options);
+  const response = await fetch(url, options);
+  notifyFailure(response.status, path, init.method);
+  return response;
+}
+
+function notifyFailure(status: number, path: string, requestMethod?: string) {
+  const method = (requestMethod ?? 'GET').toUpperCase();
+  if (status === 401 || (method === 'GET' && status >= 500 && path !== '/api/v1/auth/csrf')) {
+    apiFailureHandler?.(status, path);
+  }
 }
 
 let csrfToken: string | null = null;

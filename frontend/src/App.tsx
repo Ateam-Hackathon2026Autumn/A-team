@@ -1,4 +1,6 @@
-import { Navigate, Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useParams } from 'react-router';
+import type { ReactNode } from 'react';
+import { isValidRouteId } from './utils/routeId';
 
 import AuthWrapper from './components/AuthWrapper';
 import DashboardLayout from './Layouts/DashboardLayout';
@@ -34,6 +36,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import ProductListPage from './pages/ProductListPage';
 import ProfileEditPage from './pages/ProfileEditPage';
 import SigninPage from './pages/SigninPage';
+import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage';
 import CompleteStep from './components/signup/CompleteStep';
 import SignupPage from './pages/SignupPage';
 import StoryDetailPage from './pages/StoryDetailPage';
@@ -68,6 +71,11 @@ import AdminSigninPage from './pages/admin/AdminSigninPage';
 import AdminStoryDetailPage from './pages/admin/AdminStoryDetailPage';
 import AdminStoryListPage from './pages/admin/AdminStoryListPage';
 
+function NumericRoute({ name, children }: { name: string; children: ReactNode }) {
+  const params = useParams();
+  return isValidRouteId(params[name]) ? children : <Navigate to="/404" replace />;
+}
+
 // 画面一覧・URL（Notion「設計」）に沿ったルーティング
 function App() {
   return (
@@ -78,6 +86,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route element={<AuthLayout />}>
             <Route path="/signin" element={<SigninPage />} />
+            <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/signup/complete" element={<CompleteStep />} />
           </Route>
@@ -85,7 +94,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
 
           <Route path="/products" element={<ProductListPage />} />
-          <Route path="/products/:productId" element={<ProductDetailPage />} />
+          <Route path="/products/:productId" element={<NumericRoute name="productId"><ProductDetailPage /></NumericRoute>} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route
@@ -94,25 +103,25 @@ function App() {
           />
 
           <Route path="/jobs" element={<JobListPage />} />
-          <Route path="/jobs/:jobId" element={<JobDetailPage />} />
-          <Route path="/jobs/:jobId/apply" element={<JobApplyPage />} />
+          <Route path="/jobs/:jobId" element={<NumericRoute name="jobId"><JobDetailPage /></NumericRoute>} />
+          <Route path="/jobs/:jobId/apply" element={<NumericRoute name="jobId"><JobApplyPage /></NumericRoute>} />
 
           <Route path="/experiences" element={<ExperienceListPage />} />
           <Route
             path="/experiences/:experienceId"
-            element={<ExperienceDetailPage />}
+            element={<NumericRoute name="experienceId"><ExperienceDetailPage /></NumericRoute>}
           />
           <Route
             path="/experiences/:experienceId/apply"
-            element={<ExperienceApplyPage />}
+            element={<NumericRoute name="experienceId"><ExperienceApplyPage /></NumericRoute>}
           />
 
           <Route path="/learn" element={<LearnPage />} />
-          <Route path="/learn/:storyId" element={<StoryDetailPage />} />
+          <Route path="/learn/:storyId" element={<NumericRoute name="storyId"><StoryDetailPage /></NumericRoute>} />
           <Route path="/producers" element={<ProducerListPage />} />
           <Route
             path="/producers/:producerId"
-            element={<ProducerProfilePage />}
+            element={<NumericRoute name="producerId"><ProducerProfilePage /></NumericRoute>}
           />
 
           <Route path="/mypage" element={<MyPage />} />
@@ -121,7 +130,7 @@ function App() {
           <Route path="/mypage/orders" element={<OrderHistoryPage />} />
           <Route
             path="/mypage/orders/:orderId"
-            element={<OrderDetailPage />}
+            element={<NumericRoute name="orderId"><OrderDetailPage /></NumericRoute>}
           />
           <Route path="/mypage/jobs" element={<JobApplicationsPage />} />
           <Route
@@ -154,15 +163,15 @@ function App() {
           <Route path="products/new" element={<DashboardProductNewPage />} />
           <Route
             path="products/:productId/edit"
-            element={<DashboardProductEditPage />}
+            element={<NumericRoute name="productId"><DashboardProductEditPage /></NumericRoute>}
           />
 
           <Route path="jobs" element={<DashboardJobListPage />} />
           <Route path="jobs/new" element={<DashboardJobNewPage />} />
-          <Route path="jobs/:jobId/edit" element={<DashboardJobEditPage />} />
+          <Route path="jobs/:jobId/edit" element={<NumericRoute name="jobId"><DashboardJobEditPage /></NumericRoute>} />
           <Route
             path="jobs/:jobId/applicants"
-            element={<DashboardJobApplicantsPage />}
+            element={<NumericRoute name="jobId"><DashboardJobApplicantsPage /></NumericRoute>}
           />
 
           <Route
@@ -175,11 +184,11 @@ function App() {
           />
           <Route
             path="experiences/:experienceId/edit"
-            element={<DashboardExperienceEditPage />}
+            element={<NumericRoute name="experienceId"><DashboardExperienceEditPage /></NumericRoute>}
           />
           <Route
             path="experiences/:experienceId/participants"
-            element={<DashboardExperienceParticipantsPage />}
+            element={<NumericRoute name="experienceId"><DashboardExperienceParticipantsPage /></NumericRoute>}
           />
 
           <Route path="story" element={<DashboardStoryEditPage />} />

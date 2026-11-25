@@ -1,7 +1,7 @@
 import { contentItems, contentJson } from './publicContentApi';
 import ApiError, { toApiError } from './apiError';
 import { apiFetch } from './client';
-import type { Experience, ExperienceDetail, ExperienceApplyInput, ExperienceReceipt } from '../types/experience';
+import type { Experience, ExperienceDetail, ExperienceApplyInput, ExperienceReceipt, MyExperienceApplication } from '../types/experience';
 export const getExperiences = (signal?: AbortSignal, query: { producerId?: number } = {}) => contentItems<Experience>('/api/v1/experiences', signal, query);
 export const getExperience = (id: number, signal?: AbortSignal) => contentJson<ExperienceDetail>(`/api/v1/experiences/${id}`, signal);
 
@@ -28,4 +28,13 @@ export async function applyExperience(id: number, input: ExperienceApplyInput): 
     throw invalidReceipt();
   }
   return result as ExperienceReceipt;
+}
+
+export const getExperienceApplications = (signal?: AbortSignal) =>
+  contentItems<MyExperienceApplication>('/api/v1/users/me/experience-applications', signal);
+
+export async function cancelExperienceApplication(applicationId: number): Promise<MyExperienceApplication> {
+  const response = await apiFetch(`/api/v1/users/me/experience-applications/${applicationId}/cancel`, { method: 'POST' });
+  if (!response.ok) throw await toApiError(response, '予約をキャンセルできませんでした。');
+  return response.json() as Promise<MyExperienceApplication>;
 }

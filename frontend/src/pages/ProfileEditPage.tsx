@@ -8,6 +8,7 @@ import { PREFECTURES } from "../utils/prefectures";
 import { ContentPage, ContentStatus, fieldClass, panelClass } from "../components/ui/ContentPage";
 import Button from "../components/ui/Button";
 import MyPageNavigation from "../components/mypage/MyPageNavigation";
+import { profilePhoneField } from "../utils/profilePhone";
 const interests = [
   ["vegetables", "野菜"],
   ["fruits", "果物"],
@@ -46,7 +47,7 @@ function ProfileForm({ account }: { account: ConsumerAccount }) {
     }
     setBusy(true);
     try {
-      const result = await updateConsumerProfile({ ...values, lastName: values.lastName.trim(), firstName: values.firstName.trim(), phone: values.phone.replace(/-/g, ""), prefectureId: values.prefectureId ? Number(values.prefectureId) : null });
+      const result = await updateConsumerProfile({ ...values, ...profilePhoneField(values.phone), lastName: values.lastName.trim(), firstName: values.firstName.trim(), prefectureId: values.prefectureId ? Number(values.prefectureId) : null });
       setUser(result.user);
       setNotice("プロフィールを保存しました。");
     } catch (cause) {

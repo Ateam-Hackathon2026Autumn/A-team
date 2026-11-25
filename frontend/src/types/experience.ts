@@ -23,3 +23,12 @@ export type ExperienceReceipt = {
   phone: string; message: string | null; totalAmount: number; status: 'confirmed';
   policyAgreedAt: string; createdAt: string;
 };
+
+export type ExperienceApplicationStatus = 'applied' | 'confirmed' | 'canceled' | 'attended';
+export type MyExperienceApplication = {
+  id: number; reservationNo: string;
+  experience: { id: number; title: string | null; isPublic: boolean };
+  slot: { id: number; startAt: string; durationMin: number; status: 'open' | 'closed' | 'canceled' };
+  adultCount: number; childCount: number; infantCount: number; totalAmount: number;
+  status: ExperienceApplicationStatus; cancellable?: boolean; cancelDeadlineAt?: string | null; createdAt: string;
+};

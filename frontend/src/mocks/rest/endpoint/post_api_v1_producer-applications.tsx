@@ -1,5 +1,6 @@
 import { hoursFromNow } from '../../helpers';
 import type { RestMock } from '../../types';
+import { postMockProducerApplication } from '../store/producerApplications';
 
 // 生産者登録API POST /api/v1/producer-applications
 //
@@ -32,6 +33,7 @@ const producerApplicationCreate: RestMock = {
     isProducer: false,
     submittedAt: hoursFromNow(0),
   },
+  handler: (_url, init) => postMockProducerApplication(init),
 };
 
 export { producerApplicationCreate };

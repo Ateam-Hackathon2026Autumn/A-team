@@ -36,7 +36,7 @@ export default function CartItemRow({
         className="block w-20 shrink-0 no-underline sm:w-24"
       >
         <ProductImage
-          src={product?.thumbnailUrl ?? null}
+          src={item.thumbnailUrl ?? product?.thumbnailUrl ?? null}
           alt=""
           className="aspect-square rounded-xl"
         />
@@ -50,7 +50,7 @@ export default function CartItemRow({
         </Link>
         <p className="m-0 mt-1 text-xs text-marche-muted">
           {item.unitPrice === null ? "価格を取得できません" : `${yen(item.unitPrice)}（税込）`}
-          {product?.volume ? ` · ${product.volume}` : ""}
+          {item.volume ? ` · ${item.volume}` : ""}
         </p>
         {!item.purchasable && (
           <p className="m-0 mt-2 text-xs font-bold text-red-800">
