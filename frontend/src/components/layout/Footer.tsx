@@ -13,12 +13,7 @@ export default function Footer() {
             to="/"
             className="inline-flex items-center gap-2 font-serif text-lg font-bold text-marche-ink no-underline hover:no-underline"
           >
-            <span
-              aria-hidden="true"
-              className="grid size-8 place-items-center rounded-full bg-marche-green text-white"
-            >
-              つ
-            </span>
+            <img src="/favicon.svg" alt="" aria-hidden="true" className="size-8 shrink-0 rounded-full" />
             つながるマルシェ
           </Link>
 
