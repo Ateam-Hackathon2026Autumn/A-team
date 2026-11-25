@@ -1,10 +1,10 @@
 import type { RestMock } from '../../types';
-import { daysFromNow, hoursFromNow } from '../../helpers';
+import { listSlots } from '../store/dashboardExperiences';
 
-// 体験予約枠一覧取得API GET /api/v1/dashboard/experiences/:experienceId/slots
+// 体験予約枠一覧取得API GET /api/v1/dashboard/experiences/:experienceId/slots?page=&pageSize=
 //
-// どの experienceId でも体験1の予約枠を開始日時の早い順で返す（過去枠・満席も含む）
-// remainingCapacity = max(capacity - reservedCount, 0)
+// 指定した体験の予約枠を開始日時の早い順で返す（過去枠・満席・中止も含む）
+// reservedCount は申込中・確定・参加済みの人数、remainingCapacity = max(capacity - reservedCount, 0)
 // etag は枠ごとの ETag。予約枠の更新・削除のとき If-Match にそのまま渡す（体験の ETag とは別）
 //
 // 予約枠が0件の場合:
@@ -16,40 +16,7 @@ const dashboardExperienceSlotsList: RestMock = {
   method: 'GET',
   path: '/api/v1/dashboard/experiences/:experienceId/slots',
   status: 200,
-  body: {
-    items: [
-      {
-        id: 1,
-        experienceId: 1,
-        startAt: `${daysFromNow(10)}T10:00:00+09:00`,
-        durationMin: 180,
-        capacity: 20,
-        status: 'open',
-        reservedCount: 16,
-        remainingCapacity: 4,
-        etag: '"slot-1-v8"',
-        createdAt: hoursFromNow(-24 * 30),
-        updatedAt: hoursFromNow(-3),
-      },
-      {
-        id: 2,
-        experienceId: 1,
-        startAt: `${daysFromNow(17)}T10:00:00+09:00`,
-        durationMin: 180,
-        capacity: 20,
-        status: 'open',
-        reservedCount: 3,
-        remainingCapacity: 17,
-        etag: '"slot-2-v2"',
-        createdAt: hoursFromNow(-24 * 14),
-        updatedAt: hoursFromNow(-24 * 2),
-      },
-    ],
-    total: 2,
-    page: 1,
-    pageSize: 20,
-    totalPages: 1,
-  },
+  handler: (url) => listSlots(url),
 };
 
 export { dashboardExperienceSlotsList };

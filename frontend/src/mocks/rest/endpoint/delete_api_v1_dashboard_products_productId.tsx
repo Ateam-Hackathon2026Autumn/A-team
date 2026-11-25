@@ -1,4 +1,5 @@
 import type { RestMock } from '../../types';
+import { deleteProduct } from '../store/dashboardProducts';
 
 // 商品削除API DELETE /api/v1/dashboard/products/:productId
 //
@@ -13,6 +14,7 @@ const dashboardProductDelete: RestMock = {
   method: 'DELETE',
   path: '/api/v1/dashboard/products/:productId',
   status: 204,
+  handler: (url, init) => deleteProduct(url, init),
 };
 
 export { dashboardProductDelete };

@@ -27,18 +27,18 @@ export default function Footer() {
             className="flex flex-wrap gap-5 text-sm text-marche-green"
           >
             {isLoggedIn ? (
-              <Link to="/mypage" className="hover:underline">
+              <Link to="/mypage" className="no-underline text-inherit hover:underline">
                 マイページ
               </Link>
             ) : (
               <>
-                <Link to="/signup?purpose=producer" className="hover:underline">
+                <Link to="/signup?purpose=producer" className="no-underline text-inherit hover:underline">
                   生産者の方へ
                 </Link>
-                <Link to="/signin" className="hover:underline">
+                <Link to="/signin" className="no-underline text-inherit hover:underline">
                   ログイン
                 </Link>
-                <Link to="/signup" className="hover:underline">
+                <Link to="/signup" className="no-underline text-inherit hover:underline">
                   新規登録
                 </Link>
               </>
@@ -46,7 +46,7 @@ export default function Footer() {
           </nav>
         </div>
 
-        <p className="mt-6 text-xs text-marche-muted">
+        <p className="m-0 mt-6 text-xs text-marche-muted">
           © 2026 つながるマルシェ · Hackathon prototype
         </p>
       </div>

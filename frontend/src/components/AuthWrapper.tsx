@@ -101,14 +101,10 @@ function AuthWrapper() {
     return <Navigate to="/signin" replace state={{ from: location }} />;
   }
 
-  // 生産者でないのに生産者管理画面にいる場合は、申請の状態に応じた画面へ
+  // 生産者でないのに生産者管理画面にいる場合（URL を直接入力した場合など）はホームへ
+  // 未申請・却下・利用停止中が該当（審査中は canUseDashboard で許可）
   if (isProducerOnlyPage && userInfo !== null && !canUseDashboard(userInfo)) {
-    const to =
-      userInfo.producerApplicationStatus === 'not_applied'
-        ? '/producer-application/new'
-        : '/producer-application';
-
-    return <Navigate to={to} replace />;
+    return <Navigate to="/" replace />;
   }
 
   // 認証チェックを通過したら、実際のページを表示

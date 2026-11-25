@@ -1,9 +1,11 @@
+import type { Experience, ExperienceDetail } from '../../../types/experience';
+import { experiencesList } from './get_api_v1_experiences';
 import type { RestMock } from '../../types';
 import { daysFromNow } from '../../helpers';
 
 // 体験詳細取得API GET /api/v1/experiences/{experienceId}
 //
-// どの experienceId でも体験1（蜜入りりんごの収穫体験とアップルパイづくり）を返す
+// 一覧のIDに対応する詳細を返す。体験1以外の詳細は画面確認用の簡易データ。
 // slots は将来の開催枠（満席も含む）。remainingCapacity = 定員 - 予約数（満席は 0）
 // quoteToken は申込API（POST /api/v1/experiences/:experienceId/applications）にそのまま渡す
 //
@@ -43,11 +45,11 @@ const experienceDetail: RestMock = {
     place: '長野県安曇野市 山本農園（集合：農園事務所前）',
     ageCondition: '小学生以上',
     flow: [
-      '10:00 農園事務所前に集合・あいさつ',
-      '10:15 りんご畑で収穫体験',
-      '11:30 アップルパイづくり',
-      '12:30 試食・お土産のりんごを選ぶ',
-      '13:00 解散',
+      { time: '10:00', text: '農園事務所前に集合・あいさつ' },
+      { time: '10:15', text: 'りんご畑で収穫体験' },
+      { time: '11:30', text: 'アップルパイづくり' },
+      { time: '12:30', text: '試食・お土産のりんごを選ぶ' },
+      { time: '13:00', text: '解散' },
     ],
     belongings: ['汚れてもよい服装', '長靴または歩きやすい靴', '軍手', 'エプロン'],
     notes: ['雨天時は収穫を中止し、アップルパイづくりのみ行います。', '収穫したりんごは 1 人 2kg までお持ち帰りいただけます。'],
@@ -80,3 +82,28 @@ const experienceDetail: RestMock = {
 };
 
 export { experienceDetail };
+
+export function getMockExperience(id: number): ExperienceDetail | undefined {
+  const item = (experiencesList.body as { items: Experience[] }).items.find(item => item.id === id);
+  if (!item) return undefined;
+  const original = experienceDetail.body as ExperienceDetail;
+  if (id === 1) return original;
+  return {
+    ...original, ...item,
+    description: `${item.producer.businessName}が案内する「${item.title}」の体験です。詳細の説明はデモ用のサンプルです。`,
+    images: item.thumbnailUrl ? [{ id: 1, url: item.thumbnailUrl, sortOrder: 0 }] : [],
+    place: `${item.prefectureName} ${item.producer.city} ${item.producer.businessName}`,
+    ageCondition: item.familyOk ? '小学生以上（子どもは保護者同伴）' : '大人対象',
+    flow: [
+      { time: '10:00', text: '集合・体験内容の説明' },
+      { time: '10:30', text: '生産者と一緒に体験' },
+      { time: '11:30', text: '振り返り・解散' },
+    ],
+    belongings: ['汚れてもよい服装', '飲み物'], notes: ['天候によって内容が変更になる場合があります。'],
+    slots: { items: item.nextStartAt ? [{ id: id * 10, startAt: item.nextStartAt, durationMin: 120, capacity: 10, remainingCapacity: 5, quoteToken: `mock-quote-${id}` }] : [], total: item.nextStartAt ? 1 : 0, page: 1, pageSize: 20, totalPages: 1 },
+  };
+}
+experienceDetail.handler = url => {
+  const detail = getMockExperience(Number(url.pathname.split('/').at(-1)));
+  return detail ? { status: 200, body: detail } : { status: 404, body: { errorCode: 'NOT_FOUND', errorMsg: '体験が見つかりません。' } };
+};

@@ -1,3 +1,4 @@
+import { myOrderDetail } from './endpoint/get_api_v1_users_me_orders_orderId';
 import type { RestMock } from '../types';
 import { cartItemDelete } from './endpoint/delete_api_v1_cart_items_itemId';
 import { dashboardExperienceDelete } from './endpoint/delete_api_v1_dashboard_experiences_experienceId';
@@ -18,6 +19,7 @@ import { dashboardJobApplicationsList } from './endpoint/get_api_v1_dashboard_jo
 import { dashboardOrdersList } from './endpoint/get_api_v1_dashboard_orders';
 import { dashboardOrderDetail } from './endpoint/get_api_v1_dashboard_orders_orderId';
 import { dashboardProductsList } from './endpoint/get_api_v1_dashboard_products';
+import { dashboardShippingSettings } from './endpoint/get_api_v1_dashboard_shipping-settings';
 import { dashboardProductDetail } from './endpoint/get_api_v1_dashboard_products_productId';
 import { dashboardProfile } from './endpoint/get_api_v1_dashboard_profile';
 import { dashboardStory } from './endpoint/get_api_v1_dashboard_story';
@@ -114,6 +116,7 @@ const restMocks: RestMock[] = [
   dashboardPayoutAccountLink,
   dashboardProductsList,
   dashboardProductCreate,
+  dashboardShippingSettings,
   dashboardProductDetail,
   dashboardProductUpdate,
   dashboardProductDelete,
@@ -146,6 +149,7 @@ const restMocks: RestMock[] = [
   myJobApplications,
   myJobApplicationWithdraw,
   myOrdersList,
+  myOrderDetail,
 ];
 
 export { restMocks };

@@ -7,6 +7,7 @@ import io
 
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from PIL import Image
 from rest_framework import serializers
 
@@ -63,6 +64,14 @@ class ImageUploadTests(ApiTestCase):
         res = self.post_multipart(URL, {"file": image_file("logo.png", "PNG")})
         self.assertEqual(res.status_code, 201)
         self.assertTrue(res.json()["key"].endswith(".png"))
+
+    @override_settings(PUBLIC_IMAGE_BASE_URL="https://images-test.cloudfront.net")
+    def test_upload_returns_cloudfront_url_for_public_image(self):
+        res = self.post_multipart(URL, {"file": image_file()})
+        self.assertEqual(res.status_code, 201)
+        body = res.json()
+        self.assertTrue(default_storage.exists(body["key"]))
+        self.assertEqual(body["url"], f"https://images-test.cloudfront.net/{body['key']}")
 
     def test_invalid_files_are_400(self):
         gif = image_file("anim.gif", "GIF")

@@ -37,19 +37,19 @@ docker compose exec backend python manage.py createsuperuser # 初回のみ実�
 
 ### 開発用のデータ
 
-画面の確認に使うデータ（会員・生産者・商品・体験・求人・注文・レビュー）をまとめて入れます。カテゴリーと都道府県のマスタも一緒に入ります。
+カテゴリー・エリア・都道府県のマスタは Compose の起動時に投入されます。画面確認用の会員・商品などが必要な場合は `seed_dev` を実行します。
 データを流し込んで本物のAPIに繋ぐフロー
 # 1. 最新の dev を取る
 git switch dev
 git pull
 
-# 2. 起動する（backend は起動時に自動でマイグレーションする）
+# 2. 起動する（backend はマイグレーション後にマスタを投入する）
 docker compose up --build -d
 
 # 3. フロントの部品を入れ直す（frontend/package.jsonが変わった or 初めてpackage.jsonを取得した）
 docker compose exec frontend npm install
 
-# 4. 確認用のデータを入れる（マスタと写真も一緒に入る）
+# 4. 確認用の会員・商品・写真などを入れる（必要な場合）
 docker compose exec backend python manage.py seed_dev
 
 # 5. フロントを本物の API につなぐ

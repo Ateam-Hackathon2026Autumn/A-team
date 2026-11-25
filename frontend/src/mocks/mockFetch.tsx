@@ -1,6 +1,6 @@
 import { restMocks } from './rest';
 import { delayMs as defaultDelayMs } from './rest/settings';
-import type { RestMock } from './types';
+import type { MockResult, RestMock } from './types';
 
 // 通常、編集不要
 // mocks/rest/ に書かれた内容から Response を組み立てる fetch 互換の関数
@@ -40,14 +40,18 @@ function findMock(method: string, pathname: string): RestMock | undefined {
   );
 }
 
-function toResponse(status: number, body: unknown): Response {
+function toResponse(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Response {
   if (body === undefined || NO_BODY_STATUSES.includes(status)) {
-    return new Response(null, { status });
+    return new Response(null, { status, headers });
   }
 
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=UTF-8' },
+    headers: { 'content-type': 'application/json; charset=UTF-8', ...headers },
   });
 }
 
@@ -65,6 +69,8 @@ function toUrlString(input: RequestInfo | URL): string {
 }
 
 const mockFetch: typeof fetch = async (input, init) => {
+  const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+  signal?.throwIfAborted();
   const method = (
     init?.method ?? (input instanceof Request ? input.method : 'GET')
   ).toUpperCase();
@@ -78,6 +84,7 @@ const mockFetch: typeof fetch = async (input, init) => {
   if (delay > 0) {
     await sleep(delay);
   }
+  signal?.throwIfAborted();
 
   if (mock === undefined) {
     console.warn(
@@ -90,9 +97,10 @@ const mockFetch: typeof fetch = async (input, init) => {
     });
   }
 
-  console.info(`[mock] ${key} -> ${mock.status}`);
-
-  return toResponse(mock.status, mock.body);
+  // statusを書き換えるだけで、動的なモックでも障害時の画面を確認できる。
+  const result: MockResult = mock.status >= 400 ? mock : mock.handler?.(url, init) ?? mock;
+  console.info(`[mock] ${key} -> ${result.status}`);
+  return toResponse(result.status, result.body, result.headers);
 };
 
 export { mockFetch };
