@@ -33,6 +33,7 @@ function ExperienceForm({ id }: { id: number }) {
   const [agreed, setAgreed] = useState(false);
   const [eligibilityConfirmed, setEligibilityConfirmed] = useState(false);
   const [loginRequired, setLoginRequired] = useState(false);
+  const [applicationClosed, setApplicationClosed] = useState<"applied" | "own" | null>(null);
   const [step, setStep] = useState<"input" | "confirm">("input");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -90,7 +91,13 @@ function ExperienceForm({ id }: { id: number }) {
         expectedTotalAmount: total,
       }));
     } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 409
+      if (cause instanceof ApiError && cause.status === 409 && cause.errorCode === "ALREADY_APPLIED") {
+        setApplicationClosed("applied");
+        setError("");
+      } else if (cause instanceof ApiError && cause.status === 409 && cause.errorCode === "CANNOT_APPLY_OWN") {
+        setApplicationClosed("own");
+        setError("");
+      } else if (cause instanceof ApiError && cause.status === 409
           && ["QUOTE_CHANGED", "CAPACITY_EXCEEDED", "BOOKING_CLOSED"].includes(cause.errorCode ?? "")) {
         setStep("input"); setSlotId(""); setAgreed(false); setEligibilityConfirmed(false); setErrors({});
         setError(`${cause.message} 最新の開催日・料金・人数・同意内容を確認してください。`);
@@ -151,6 +158,11 @@ function ExperienceForm({ id }: { id: number }) {
               >
                 体験一覧へ戻る →
               </Link>
+            </section>
+          ) : applicationClosed ? (
+            <section role="status" className={panelClass}>
+              <p>{applicationClosed === "applied" ? "この日程にはすでに申し込んでいます。" : "自分の体験には申し込めません。"}</p>
+              {applicationClosed === "applied" && <Link to="/mypage/experiences" className={textLinkClass}>体験申込状況を確認する →</Link>}
             </section>
           ) : !slots.length ? (
             <p

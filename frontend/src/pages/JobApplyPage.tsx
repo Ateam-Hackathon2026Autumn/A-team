@@ -26,6 +26,7 @@ function JobForm({ id }: { id: number }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loginRequired, setLoginRequired] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [ownApplication, setOwnApplication] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [dateError, setDateError] = useState(false);
@@ -83,6 +84,9 @@ function JobForm({ id }: { id: number }) {
             .map(([key, messages]) => [key, messages.join(' ')])));
         } else if (cause.status === 409 && cause.errorCode === 'ALREADY_APPLIED') {
           setAlreadyApplied(true);
+        } else if (cause.status === 409 && cause.errorCode === 'CANNOT_APPLY_OWN') {
+          setOwnApplication(true);
+          setError('');
         } else if (cause.status === 409 && ['JOB_NOT_ACCEPTING', 'WORK_DATE_UNAVAILABLE'].includes(cause.errorCode ?? '')) {
           setConfirming(false); setDates([]); setRequirementsConfirmed(false); setFieldErrors({});
           state.retry();
@@ -133,6 +137,8 @@ function JobForm({ id }: { id: number }) {
                 応募状況を見る →
               </Link>
             </section>
+          ) : ownApplication ? (
+            <p className={panelClass}>自分の求人には応募できません。</p>
           ) : job.hasApplied || alreadyApplied ? (
             <p className={panelClass}>この求人には応募済みです。<Link to="/mypage/jobs" className={textLinkClass}>応募状況を見る →</Link></p>
           ) : !job.isAcceptingApplications || (!withoutDates && !available.length) ? (

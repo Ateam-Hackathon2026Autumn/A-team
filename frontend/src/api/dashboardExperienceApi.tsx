@@ -12,7 +12,6 @@ import type {
   ExperienceWriteResult,
 } from '../types/dashboardExperience';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';
 
 const BASE_PATH = '/api/v1/dashboard/experiences';
@@ -36,8 +35,7 @@ async function sendRequest(
   method: 'POST' | 'PATCH' | 'DELETE',
   options: { body?: unknown; etag?: string | null; idempotencyKey?: string } = {},
 ): Promise<Response> {
-  const csrfToken = await getCsrfToken();
-  const headers: Record<string, string> = { 'X-CSRFToken': csrfToken };
+  const headers: Record<string, string> = {};
 
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json';

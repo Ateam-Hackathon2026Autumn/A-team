@@ -1,6 +1,5 @@
 import type { DashboardStory, StoryInput } from '../types/dashboardStory';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';
 
 // 生産者ストーリー（学ぶページ）の取得・保存
@@ -21,10 +20,9 @@ async function getDashboardStory(signal?: AbortSignal): Promise<DashboardStory> 
 // 400: 項目ごとの入力エラー（公開に本文が足りないときは details.publishStatus）
 // 409: PRODUCER_SUSPENDED（生産者が掲載停止中）／STORY_SUSPENDED（ストーリーが掲載停止中）
 async function updateDashboardStory(input: StoryInput): Promise<DashboardStory> {
-  const csrfToken = await getCsrfToken();
   const response = await apiFetch('/api/v1/dashboard/story', {
     method: 'PUT',
-    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
 

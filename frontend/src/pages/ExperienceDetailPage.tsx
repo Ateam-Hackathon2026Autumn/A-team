@@ -98,7 +98,6 @@ export default function ExperienceDetailPage() {
                   残り{slot.remainingCapacity}名 ／定員{slot.capacity}名
                   <br />
                   申込締切：{dateLabel(slot.bookingDeadlineAt)} {timeLabel(slot.bookingDeadlineAt)}
-                  {!isExperienceSlotBookable(slot) && <span className="block">受付終了・満席</span>}
                 </p>
               ))}
               {slots.length ? (

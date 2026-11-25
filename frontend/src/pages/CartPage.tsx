@@ -361,7 +361,6 @@ export default function CartPage() {
                 {busy ? "更新しています…" : "購入手続きへ"}
               </Button>
             )}
-            <p className="m-0 mt-3 text-xs leading-6 text-marche-muted">購入手続き画面は準備中です。現在はカートの確認・変更まで利用できます。</p>
             <Link
               to="/products"
               className={`mt-4 flex min-h-11 items-center justify-center text-sm ${linkClass}`}
