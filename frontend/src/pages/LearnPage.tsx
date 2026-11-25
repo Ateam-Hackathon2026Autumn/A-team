@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router";
 import { getStories, storyLead } from "../api/storyApi";
 import { producerGenres } from "../components/producers/ProducerSummaryCard";
-import { ContentImage, ContentPage, ContentStatus, EmptyContent, panelClass, textLinkClass } from "../components/ui/ContentPage";
+import { ContentImage, ContentPage, ContentStatus, EmptyContent, textLinkClass } from "../components/ui/ContentPage";
 import { usePublicContent } from "../hooks/usePublicContent";
 export default function LearnPage() {
   const state = usePublicContent(getStories);
@@ -39,56 +39,57 @@ export default function LearnPage() {
           </nav>
           {featured ? (
             <>
-              <article className="grid overflow-hidden rounded-2xl border border-marche-line bg-white md:grid-cols-2">
-                <ContentImage
-                  src={featured.producer.coverImageUrl}
-                  alt={featured.producer.businessName}
-                  className="aspect-[4/3] h-full"
-                />
-                <div className="p-6 sm:p-10">
-                  <p className="text-sm font-bold text-marche-green">特集 ・ {producerGenres[featured.producer.genre] ?? featured.producer.genre}</p>
-                  <h2 className="font-serif text-2xl leading-relaxed">
-                    <Link
-                      to={`/learn/${featured.id}`}
-                      className="text-marche-ink no-underline hover:underline"
-                    >
+              <article className="overflow-hidden rounded-2xl border border-marche-line bg-white">
+                <Link
+                  to={`/learn/${featured.id}`}
+                  aria-label={featured.producer.businessName}
+                  className="group grid h-full text-marche-ink no-underline hover:bg-marche-sage/40 focus-visible:-outline-offset-3 md:grid-cols-2"
+                >
+                  <ContentImage
+                    src={featured.producer.coverImageUrl}
+                    alt={featured.producer.businessName}
+                    className="aspect-[4/3] h-full"
+                  />
+                  <div className="p-6 sm:p-10">
+                    <p className="text-sm font-bold text-marche-green">特集 ・ {producerGenres[featured.producer.genre] ?? featured.producer.genre}</p>
+                    <h2 className="font-serif text-2xl leading-relaxed group-hover:underline">
                       {featured.producer.businessName}
-                    </Link>
-                  </h2>
-                  <p className="line-clamp-4 whitespace-pre-line">{storyLead(featured)}</p>
-                  <p className="text-sm text-marche-muted">
-                    {featured.producer.prefectureName} {featured.producer.city}
-                  </p>
-                  <Link
-                    to={`/learn/${featured.id}`}
-                    className={textLinkClass}
-                  >
-                    ストーリーを読む →
-                  </Link>
-                </div>
+                    </h2>
+                    <p className="line-clamp-4 whitespace-pre-line">{storyLead(featured)}</p>
+                    <p className="text-sm text-marche-muted">
+                      {featured.producer.prefectureName} {featured.producer.city}
+                    </p>
+                    <span className={textLinkClass}>
+                      ストーリーを読む →
+                    </span>
+                  </div>
+                </Link>
               </article>
               {articles.length > 1 && (
                 <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {articles.slice(1).map((story) => (
                     <article
                       key={story.id}
-                      className={panelClass}
+                      className="overflow-hidden rounded-2xl border border-marche-line bg-white"
                     >
-                      <ContentImage
-                        src={story.producer.coverImageUrl}
-                        alt={story.producer.businessName}
-                        className="aspect-[4/3] rounded-xl"
-                      />
-                      <p className="text-sm text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p>
-                      <h2 className="font-serif text-xl">
-                        <Link
-                          to={`/learn/${story.id}`}
-                          className={textLinkClass}
-                        >
-                          {story.producer.businessName}
-                        </Link>
-                      </h2>
-                      <p className="line-clamp-3">{storyLead(story)}</p>
+                      <Link
+                        to={`/learn/${story.id}`}
+                        aria-label={story.producer.businessName}
+                        className="group block h-full p-5 text-marche-ink no-underline hover:bg-marche-sage/40 focus-visible:-outline-offset-3 sm:p-8"
+                      >
+                        <ContentImage
+                          src={story.producer.coverImageUrl}
+                          alt={story.producer.businessName}
+                          className="aspect-[4/3] rounded-xl"
+                        />
+                        <p className="text-sm text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p>
+                        <h2 className="font-serif text-xl">
+                          <span className={textLinkClass}>
+                            {story.producer.businessName}
+                          </span>
+                        </h2>
+                        <p className="line-clamp-3">{storyLead(story)}</p>
+                      </Link>
                     </article>
                   ))}
                 </div>
