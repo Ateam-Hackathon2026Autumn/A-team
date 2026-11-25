@@ -7,7 +7,7 @@ import { ContentPage, ContentStatus, dateLabel, timeLabel, fieldClass, panelClas
 import { USE_MOCK } from "../config/env";
 import { usePublicContent } from "../hooks/usePublicContent";
 import ApiError from "../api/apiError";
-import { validateExperienceApply } from "../utils/experienceValidation";
+import { isExperienceSlotBookable, validateExperienceApply } from "../utils/experienceValidation";
 import type { ExperienceReceipt } from "../types/experience";
 
 export default function ExperienceApplyPage() {
@@ -25,10 +25,15 @@ function ExperienceForm({ id }: { id: number }) {
   const [slotId, setSlotId] = useState("");
   const [adult, setAdult] = useState("1");
   const [child, setChild] = useState("0");
-  const [name, setName] = useState("");
+  const [infant, setInfant] = useState("0");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [eligibilityConfirmed, setEligibilityConfirmed] = useState(false);
+  const [loginRequired, setLoginRequired] = useState(false);
+  const [applicationClosed, setApplicationClosed] = useState<"applied" | "own" | null>(null);
   const [step, setStep] = useState<"input" | "confirm">("input");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -40,10 +45,11 @@ function ExperienceForm({ id }: { id: number }) {
     if (step === "confirm" || receipt) formPanel.current?.focus();
   }, [step, receipt]);
   const item = state.data;
-  const slots = item?.slots.items.filter((slot) => slot.remainingCapacity > 0 && new Date(slot.startAt).getTime() > Date.now()) ?? [];
+  const slots = item?.slots.items.filter((slot) => isExperienceSlotBookable(slot)) ?? [];
   const selected = slots.find((slot) => slot.id === Number(slotId));
   const adultCount = Number(adult);
   const childCount = Number(child);
+  const infantCount = Number(infant);
   const quoteRefreshPending = useRef(false);
   const quoteRefreshLoading = useRef(false);
   useEffect(() => {
@@ -55,7 +61,8 @@ function ExperienceForm({ id }: { id: number }) {
     if (!quoteRefreshPending.current) return;
     if (state.loading) quoteRefreshLoading.current = true;
     if (quoteRefreshLoading.current && !state.loading && item) {
-      if (item.priceChild === null) setChild("0");
+      if (!item.familyOk || item.priceChild === null) setChild("0");
+      if (!item.familyOk) setInfant("0");
       (formPanel.current?.querySelector<HTMLElement>('#slot') ?? formPanel.current)?.focus();
       quoteRefreshPending.current = false;
       quoteRefreshLoading.current = false;
@@ -63,7 +70,9 @@ function ExperienceForm({ id }: { id: number }) {
   }, [state.loading, item]);
   const total = item ? adultCount * item.priceAdult + childCount * (item.priceChild ?? 0) : 0;
   function validate() {
-    const next = validateExperienceApply({ adult, child, name, phone, agreed, selected, childAllowed: item?.priceChild !== null });
+    const next = validateExperienceApply({ adult, child, infant, lastName, firstName, phone, message,
+      agreed, eligibilityConfirmed, selected, familyOk: item?.familyOk ?? false,
+      childAllowed: item?.priceChild != null, total });
     if (Object.keys(next).length) setStep("input");
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -73,16 +82,38 @@ function ExperienceForm({ id }: { id: number }) {
     locked.current = true;
     setSending(true);
     setError("");
+    setLoginRequired(false);
     try {
-      setReceipt(await applyExperience(id, { slotId: selected.id, quoteToken: selected.quoteToken, adultCount, childCount, representativeName: name.trim(), phone: phone.trim(), message: message.trim(), policyAgreed: agreed }));
+      setReceipt(await applyExperience(id, {
+        slotId: selected.id, adultCount, childCount, infantCount,
+        lastName: lastName.trim(), firstName: firstName.trim(), phone: phone.trim(),
+        message: message.trim() || null, agreedToCancelPolicy: agreed, eligibilityConfirmed,
+        expectedTotalAmount: total,
+      }));
     } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 409 && cause.errorCode === "QUOTE_CHANGED") {
-        setStep("input"); setSlotId(""); setAgreed(false); setErrors({});
+      if (cause instanceof ApiError && cause.status === 409 && cause.errorCode === "ALREADY_APPLIED") {
+        setApplicationClosed("applied");
+        setError("");
+      } else if (cause instanceof ApiError && cause.status === 409 && cause.errorCode === "CANNOT_APPLY_OWN") {
+        setApplicationClosed("own");
+        setError("");
+      } else if (cause instanceof ApiError && cause.status === 409
+          && ["QUOTE_CHANGED", "CAPACITY_EXCEEDED", "BOOKING_CLOSED"].includes(cause.errorCode ?? "")) {
+        setStep("input"); setSlotId(""); setAgreed(false); setEligibilityConfirmed(false); setErrors({});
         setError(`${cause.message} 最新の開催日・料金・人数・同意内容を確認してください。`);
         quoteRefreshPending.current = true;
         quoteRefreshLoading.current = false;
         state.retry();
+      } else if (cause instanceof ApiError && cause.status === 400) {
+        const fields: Record<string, string> = { slotId: 'slot', adultCount: 'adult', childCount: 'child',
+          infantCount: 'infant', lastName: 'lastName', firstName: 'firstName', phone: 'phone', message: 'message',
+          agreedToCancelPolicy: 'agreed', eligibilityConfirmed: 'eligibilityConfirmed', expectedTotalAmount: 'total' };
+        setErrors(Object.fromEntries(Object.entries(cause.details)
+          .filter(([key]) => fields[key]).map(([key, messages]) => [fields[key], messages.join(' ')])));
+        setStep("input");
+        setError(cause.message);
       } else {
+        setLoginRequired(cause instanceof ApiError && cause.status === 401);
         setError(cause instanceof Error ? cause.message : "申込できませんでした。");
       }
     } finally {
@@ -103,6 +134,7 @@ function ExperienceForm({ id }: { id: number }) {
       </Link>
       <ContentStatus {...state} notFoundTo="/experiences" />
       {error && <p role="alert" className="text-marche-red">{error}</p>}
+      {loginRequired && <Link to="/signin" state={{ from: `/experiences/${id}/apply` }} className={textLinkClass}>ログインして申し込む →</Link>}
       {item && (
         <div
           ref={formPanel}
@@ -118,13 +150,19 @@ function ExperienceForm({ id }: { id: number }) {
               <h2 className="font-serif text-2xl">{USE_MOCK ? "デモ申込を受け付けました" : "申込を受け付けました"}</h2>
               <p>予約番号：{receipt.reservationNo}</p>
               <p>合計：{yen(receipt.totalAmount)}</p>
-              <p>実際の予約・決済・メール送信は行いません。</p>
+              {USE_MOCK && <p>実際の予約・決済・メール送信は行いません。</p>}
+              {!USE_MOCK && <Link to="/mypage/experiences" className={textLinkClass}>申込状況を確認する →</Link>}
               <Link
                 to="/experiences"
                 className={textLinkClass}
               >
                 体験一覧へ戻る →
               </Link>
+            </section>
+          ) : applicationClosed ? (
+            <section role="status" className={panelClass}>
+              <p>{applicationClosed === "applied" ? "この日程にはすでに申し込んでいます。" : "自分の体験には申し込めません。"}</p>
+              {applicationClosed === "applied" && <Link to="/mypage/experiences" className={textLinkClass}>体験申込状況を確認する →</Link>}
             </section>
           ) : !slots.length ? (
             <p
@@ -208,20 +246,20 @@ function ExperienceForm({ id }: { id: number }) {
                         label="大人の人数"
                         type="number"
                         min="1"
-                        max={selected ? String(selected.remainingCapacity) : undefined}
+                        max={String(Math.min(99, selected?.remainingCapacity ?? 99))}
                         value={adult}
                         onChange={setAdult}
                         error={errors.adult}
                         invalid={Boolean(errors.capacity)}
                         describedBy={errors.capacity ? "capacity-error" : undefined}
                       />
-                      {item.priceChild !== null && (
+                      {item.familyOk && item.priceChild !== null && (
                         <FormField
                           name="child"
                           label="子どもの人数"
                           type="number"
                           min="0"
-                          max={selected ? String(selected.remainingCapacity) : undefined}
+                          max={String(Math.min(99, selected?.remainingCapacity ?? 99))}
                           value={child}
                           onChange={setChild}
                           error={errors.child}
@@ -229,21 +267,25 @@ function ExperienceForm({ id }: { id: number }) {
                           describedBy={errors.capacity ? "capacity-error" : undefined}
                         />
                       )}
+                      {item.familyOk && (
+                        <FormField name="infant" label="未就学児の人数（無料）" type="number" min="0"
+                          max={String(Math.min(99, selected?.remainingCapacity ?? 99))}
+                          value={infant} onChange={setInfant} error={errors.infant}
+                          invalid={Boolean(errors.capacity)} describedBy={errors.capacity ? "capacity-error" : undefined} />
+                      )}
                     </div>
                     {errors.capacity && <p id="capacity-error" role="alert" className="text-marche-red">{errors.capacity}</p>}
                     <p className="text-sm">
-                      対象：{item.ageCondition}。大人{yen(item.priceAdult)}
-                      {item.priceChild !== null && ` ／子ども${yen(item.priceChild)}`}
+                      対象：{item.ageCondition || "条件の指定なし"}。大人{yen(item.priceAdult)}
+                      {item.familyOk && item.priceChild !== null && ` ／子ども${yen(item.priceChild)}`}
+                      {item.familyOk && " ／未就学児は無料（定員に含みます）"}
                     </p>
-                    <FormField
-                      name="representative"
-                      label="代表者氏名"
-                      autoComplete="name"
-                      maxLength={100}
-                      value={name}
-                      onChange={setName}
-                      error={errors.name}
-                    />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <FormField name="lastName" label="代表者の姓" autoComplete="family-name" maxLength={50}
+                        value={lastName} onChange={setLastName} error={errors.lastName} />
+                      <FormField name="firstName" label="代表者の名" autoComplete="given-name" maxLength={50}
+                        value={firstName} onChange={setFirstName} error={errors.firstName} />
+                    </div>
                     <FormField
                       name="phone"
                       label="電話番号"
@@ -266,13 +308,16 @@ function ExperienceForm({ id }: { id: number }) {
                       rows={4}
                       maxLength={2000}
                       value={message}
+                      aria-invalid={Boolean(errors.message)}
+                      aria-describedby={errors.message ? "message-error" : undefined}
                       onChange={(event) => setMessage(event.target.value)}
                     />
+                    {errors.message && <p id="message-error" role="alert" className="text-marche-red">{errors.message}</p>}
                     <h3 className="mt-6 text-base">キャンセルポリシー</h3>
                     <p>{item.cancelPolicy}</p>
                     <h3 className="text-base">注意事項</h3>
                     <ul className="pl-5">
-                      {item.notes.map((note) => (
+                      {(item.notes ?? []).map((note) => (
                         <li key={note}>{note}</li>
                       ))}
                     </ul>
@@ -297,6 +342,14 @@ function ExperienceForm({ id }: { id: number }) {
                         {errors.agreed}
                       </p>
                     )}
+                    <label className="flex min-h-11 items-start gap-3">
+                      <input id="eligibility-confirmed" type="checkbox" className="mt-2 size-5 shrink-0 accent-marche-green"
+                        checked={eligibilityConfirmed} onChange={(event) => setEligibilityConfirmed(event.target.checked)}
+                        aria-invalid={Boolean(errors.eligibilityConfirmed)}
+                        aria-describedby={errors.eligibilityConfirmed ? "eligibility-error" : undefined} />
+                      参加対象・参加条件を確認しました
+                    </label>
+                    {errors.eligibilityConfirmed && <p id="eligibility-error" role="alert" className="text-marche-red">{errors.eligibilityConfirmed}</p>}
                   </>
                 ) : (
                   <section aria-label="申込内容の確認">
@@ -309,15 +362,16 @@ function ExperienceForm({ id }: { id: number }) {
                     <p>{selected && `${dateLabel(selected.startAt)} ${timeLabel(selected.startAt)}〜`}</p>
                     <p>場所：{item.place}</p>
                     <p>
-                      大人{adultCount}名 ／子ども{childCount}名
+                      大人{adultCount}名 ／子ども{childCount}名 ／未就学児{infantCount}名
                     </p>
                     <p>
-                      代表者：{name}
+                      代表者：{lastName.trim()} {firstName.trim()}
                       <br />
                       電話番号：{phone}
                     </p>
                     <p className="whitespace-pre-wrap">メッセージ：{message || "なし"}</p>
                     <p>キャンセルポリシーと注意事項：同意済み</p>
+                    <p>参加対象・参加条件：確認済み</p>
                   </section>
                 )}
                 <p
@@ -325,7 +379,7 @@ function ExperienceForm({ id }: { id: number }) {
                 >
                   合計：{Number.isFinite(total) && total >= 0 ? yen(total) : "人数を確認してください"}
                 </p>
-                {!USE_MOCK && <p className="text-marche-red">実際の申込送信は準備中です。</p>}
+                {errors.total && <p role="alert" className="text-marche-red">{errors.total}</p>}
                 <div className="mt-6 flex flex-wrap gap-3">
                   {step === "confirm" && (
                     <Button
@@ -341,9 +395,9 @@ function ExperienceForm({ id }: { id: number }) {
                   )}
                   <Button
                     type="submit"
-                    disabled={sending || (step === "confirm" && !USE_MOCK)}
+                    disabled={sending}
                   >
-                    {sending ? "送信中…" : step === "input" ? "申込内容を確認する" : "デモ申込を送信する"}
+                    {sending ? "送信中…" : step === "input" ? "申込内容を確認する" : USE_MOCK ? "デモ申込を送信する" : "申込を送信する"}
                   </Button>
                 </div>
               </form>

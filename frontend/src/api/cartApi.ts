@@ -1,15 +1,10 @@
-import { toApiError } from "./apiError";
+import ApiError, { toApiError } from "./apiError";
 import { apiFetch } from "./client";
-import { USE_MOCK } from "../config/env";
 import type { Cart } from "../types/cart";
-function requireMock(): void {
-  if (!USE_MOCK) {
-    throw new Error("カートの更新は認証・CSRF連携の接続確認後に利用できます。");
-  }
-}
 
-async function checkResponse(response: Response): Promise<void> {
-  if (response.ok) return;
+async function checkResponse(response: Response, expectedStatus = 200): Promise<void> {
+  if (response.status === expectedStatus) return;
+  if (response.ok) throw new ApiError(response.status, 'カートの処理結果を確認できませんでした。カートを再読み込みしてください。');
   const fallback = response.status === 409
     ? "在庫が不足しているか、販売状況が変わりました。"
     : response.status === 412
@@ -31,14 +26,14 @@ export async function getCart(signal?: AbortSignal): Promise<Cart> {
 export async function addCartItem(
   productId: number,
   quantity: number,
-): Promise<void> {
-  requireMock();
+): Promise<Cart> {
   const response = await apiFetch("/api/v1/cart/items", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ productId, quantity }),
   });
   await checkResponse(response);
+  return response.json() as Promise<Cart>;
 }
 
 export async function updateCartItem(
@@ -46,7 +41,6 @@ export async function updateCartItem(
   quantity: number,
   signal?: AbortSignal,
 ): Promise<Cart> {
-  requireMock();
   const response = await apiFetch(`/api/v1/cart/items/${itemId}`, {
     method: "PATCH",
     signal,
@@ -61,10 +55,9 @@ export async function removeCartItem(
   itemId: number,
   signal?: AbortSignal,
 ): Promise<void> {
-  requireMock();
   const response = await apiFetch(`/api/v1/cart/items/${itemId}`, {
     method: "DELETE",
     signal,
   });
-  await checkResponse(response);
+  await checkResponse(response, 204);
 }

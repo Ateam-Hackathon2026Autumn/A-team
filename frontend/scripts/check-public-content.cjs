@@ -38,35 +38,40 @@ for (const job of jobsList.body.items) {
 assert.equal(experienceDetail.handler(url('/api/v1/experiences/999')).status, 404);
 assert.equal(jobDetail.handler(url('/api/v1/jobs/999')).status, 404);
 const slot = getMockExperience(1).slots.items[0];
-const input = { slotId: slot.id, quoteToken: slot.quoteToken, adultCount: 2, childCount: 1, representativeName: 'デモ利用者', phone: '090-0000-0000', message: '確認用', policyAgreed: true };
+const input = { slotId: slot.id, adultCount: 2, childCount: 1, infantCount: 1, lastName: 'デモ', firstName: '利用者', phone: '090-0000-0000', message: '確認用', agreedToCancelPolicy: true, eligibilityConfirmed: true, expectedTotalAmount: 9000 };
 const success = send(experienceApply, '/api/v1/experiences/1/applications', input);
 assert.equal(success.status, 201);
 assert.equal(success.body.totalAmount, 9000);
-assert.equal(success.body.representativeName, input.representativeName);
+assert.equal(success.body.representativeName, 'デモ 利用者');
+assert.equal(success.body.status, 'confirmed');
 assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, adultCount: 5 }).status, 409);
-assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, quoteToken: 'expired' }).status, 409);
+assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, expectedTotalAmount: 1 }).status, 409);
+assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, quoteToken: 'expired' }).status, 400);
 assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, adultCount: 1.5 }).status, 400);
-assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, policyAgreed: false }).status, 400);
+assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, agreedToCancelPolicy: false }).status, 400);
+assert.equal(send(experienceApply, '/api/v1/experiences/1/applications', { ...input, eligibilityConfirmed: false }).status, 400);
 for (const initial of initialJobApplications) {
   const detail = getMockJob(initial.job.id);
   for (const date of initial.workDates) assert.ok(detail.workDates.items.some(day => day.id === date.id && day.workDate === date.workDate));
 }
 const initialJob = getMockJob(3);
-const initialDuplicate = send(jobApply, '/api/v1/jobs/3/applications', { workDateIds: [initialJob.workDates.items[0].id], message: '', answers: [] });
+const initialDuplicate = send(jobApply, '/api/v1/jobs/3/applications', { workDateIds: [initialJob.workDates.items[0].id], message: '', answers: [], requirementsConfirmed: true });
 assert.equal(initialDuplicate.status, 409);
 assert.equal(initialDuplicate.body.errorCode, 'ALREADY_APPLIED');
 assert.equal(demoJobApplications.length, 0);
 assert.equal(myJobApplications.handler().body.items.filter(item => item.job.id === 3).length, 1);
 const job = getMockJob(2);
-const application = { workDateIds: [job.workDates.items[0].id], message: '確認用', answers: [] };
+const application = { workDateIds: [job.workDates.items[0].id], message: '確認用', answers: [], requirementsConfirmed: true };
 assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, workDateIds: [] }).status, 400);
-assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, workDateIds: [999] }).status, 409);
+assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, workDateIds: [999] }).status, 400);
+assert.equal(send(jobApply, '/api/v1/jobs/2/applications', { ...application, requirementsConfirmed: false }).status, 400);
 assert.equal(send(jobApply, '/api/v1/jobs/2/applications', application).status, 201);
 const history = myJobApplications.handler().body;
 assert.equal(history.items[0].job.id, 2);
 assert.deepEqual(history.items[0].workDates.map(day => day.id), application.workDateIds);
 assert.equal(send(jobApply, '/api/v1/jobs/2/applications', application).status, 409);
 assert.equal(demoJobApplications.length, 1);
+assert.equal(getMockJob(2).hasApplied, true);
 const story = producerStory.handler(url('/api/v1/producers/2/story'));
 assert.equal(story.status, 200);
 assert.equal(story.body.producerId, 2);
@@ -75,7 +80,7 @@ assert.equal(producerStory.handler(url('/api/v1/producers/999/story')).status, 4
 console.log('PASS: list/detail consistency, invalid IDs, experience totals/capacity/quote/consent, job dates/history/duplicates, story identifiers');
 
 const { validateExperienceApply } = require('../src/utils/experienceValidation.ts');
-const validFields = { adult: '2', child: '1', name: 'テスト', phone: '090-0000-0000', agreed: true, childAllowed: true, selected: slot };
+const validFields = { adult: '2', child: '1', infant: '1', lastName: 'テスト', firstName: '太郎', phone: '090-0000-0000', message: '', agreed: true, eligibilityConfirmed: true, familyOk: true, childAllowed: true, total: 9000, selected: slot };
 assert.deepEqual(validateExperienceApply(validFields), {});
 const bothInvalid = validateExperienceApply({ ...validFields, adult: '0', child: '-1' });
 assert.ok(bothInvalid.adult);

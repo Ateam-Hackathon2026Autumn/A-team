@@ -180,7 +180,7 @@ function validateLines(value: string, label: string): string | undefined {
   return undefined;
 }
 
-const FLOW_LINE = /^([01]\d|2[0-3]):[0-5]\d\s+(.+)$/;
+const FLOW_LINE = /^((?:[01]\d|2[0-3]):[0-5]\d)\s+(.+)$/;
 
 function validateFlow(value: string): string | undefined {
   const items = toLines(value);

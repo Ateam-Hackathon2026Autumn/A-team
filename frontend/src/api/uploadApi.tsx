@@ -1,5 +1,4 @@
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';
 
 // 画像アップロードAPIのレスポンス
@@ -12,7 +11,6 @@ type UploadedImage = {
 
 // 画像（JPEG・PNG、5MB以下）をアップロードし、保存用のキーを受け取る
 async function uploadImage(file: File): Promise<UploadedImage> {
-  const csrfToken = await getCsrfToken();
   const formData = new FormData();
   // 実API は multipart の file を受け取る
   formData.append('file', file);
@@ -20,7 +18,6 @@ async function uploadImage(file: File): Promise<UploadedImage> {
   // Content-Type は FormData から自動で付く（境界文字列が必要なため指定しない）
   const response = await apiFetch('/api/v1/uploads/images', {
     method: 'POST',
-    headers: { 'X-CSRFToken': csrfToken },
     body: formData,
   });
 

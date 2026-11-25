@@ -1,6 +1,5 @@
 import type { DashboardProfile, ProfileUpdateInput } from '../types/dashboardProfile';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';
 
 // 生産者プロフィールの取得・更新
@@ -21,10 +20,9 @@ async function getDashboardProfile(signal?: AbortSignal): Promise<DashboardProfi
 // 400: 項目ごとの入力エラー（空のオブジェクト・未知の項目も 400）
 // 409: PRODUCER_SUSPENDED（掲載停止中に publishStatus を送った）
 async function updateDashboardProfile(input: ProfileUpdateInput): Promise<DashboardProfile> {
-  const csrfToken = await getCsrfToken();
   const response = await apiFetch('/api/v1/dashboard/profile', {
     method: 'PATCH',
-    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
 

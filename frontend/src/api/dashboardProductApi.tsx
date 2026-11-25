@@ -8,7 +8,6 @@ import type {
   ShippingSetting,
 } from '../types/product';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';
 
 // 公開・非公開の切り替えや在庫更新の結果のうち、一覧に反映するもの
@@ -24,12 +23,10 @@ async function sendProductRequest(
   etag?: string,
   body?: unknown,
 ): Promise<Response> {
-  const csrfToken = await getCsrfToken();
 
   return apiFetch(path, {
     method,
     headers: {
-      'X-CSRFToken': csrfToken,
       ...(etag ? { 'If-Match': etag } : {}),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
@@ -92,11 +89,9 @@ async function getShippingSettings(): Promise<ShippingSetting[]> {
 async function createProduct(
   input: ProductCreateInput,
 ): Promise<DashboardProduct> {
-  const csrfToken = await getCsrfToken();
   const response = await apiFetch('/api/v1/dashboard/products', {
     method: 'POST',
     headers: {
-      'X-CSRFToken': csrfToken,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(input),

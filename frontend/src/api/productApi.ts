@@ -15,8 +15,7 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-// 既存フロントエンドモックのcamelCaseに合わせたクエリ。
-// 実API接続前にバックエンドのパラメーター名・レスポンス形式と統一する。
+// true/falseは対象商品／対象外商品、未指定は絞り込みなし。
 export function getProducts(
   query: ProductQuery = {},
   signal?: AbortSignal,
@@ -30,8 +29,8 @@ export function getProducts(
   if (query.categoryId !== undefined) params.set("categoryId", String(query.categoryId));
   if (query.producerId !== undefined) params.set("producerId", String(query.producerId));
   if (query.price && query.price !== "all") params.set("price", query.price);
-  if (query.subscription) params.set("subscription", "1");
-  if (query.preorder) params.set("preorder", "1");
+  if (query.subscription !== undefined) params.set("subscription", String(query.subscription));
+  if (query.preorder !== undefined) params.set("preorder", String(query.preorder));
   return getJson<ProductListResponse>(`/api/v1/products?${params}`, signal);
 }
 

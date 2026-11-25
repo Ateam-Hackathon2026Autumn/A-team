@@ -1,5 +1,6 @@
 import { hoursFromNow } from '../../helpers';
 import type { RestMock } from '../../types';
+import { getMockProducerApplication } from '../store/producerApplications';
 
 // 生産者申請状況取得API GET /api/v1/producer-applications/me
 //
@@ -8,7 +9,7 @@ import type { RestMock } from '../../types';
 // 状態を切り替えたい場合は status / reviewComment / reviewedAt / canResubmit を書き換える
 //   審査中    : 'pending'  / null                                   / null               / false
 //   差し戻し  : 'returned' / '生産品目を具体的に記載してください。' / hoursFromNow(-24) / true
-//   却下      : 'rejected' / '（却下理由）'                         / hoursFromNow(-24) / false
+//   却下      : 'rejected' / '（却下理由）'                         / hoursFromNow(-24) / true
 //
 // 申請が一度もない（404）:
 //   { errorCode: 'APPLICATION_NOT_FOUND', errorMsg: '生産者登録申請はありません。' }
@@ -42,10 +43,13 @@ const producerApplicationMe: RestMock = {
       // S3 のキー
       profileImage: 'producers/yamamoto-farm-profile.jpg',
       coverImage: 'producers/yamamoto-farm-cover.jpg',
+      profileImageUrl: 'https://picsum.photos/seed/producer1-profile/800/600',
+      coverImageUrl: 'https://picsum.photos/seed/producer1-cover/800/600',
       applicationReason:
         '祖父の代から続く園地を、次の世代にも残したいと思い会社を辞めて戻りました。',
     },
   },
+  handler: () => getMockProducerApplication(),
 };
 
 export { producerApplicationMe };

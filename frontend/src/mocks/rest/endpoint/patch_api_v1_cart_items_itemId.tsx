@@ -13,8 +13,7 @@ import { productSamples } from './get_api_v1_products';
 // 在庫不足など（409）:
 //   { errorCode: 'CONFLICT', errorMsg: '在庫が不足しているため、数量を変更できません。' }
 //
-// カートが他で更新されていた（412）:
-//   { errorCode: 'CART_CHANGED', errorMsg: 'カートの内容が変更されました。もう一度ご確認ください。' }
+// 実APIはETag・If-Matchを使わない。
 const cartItemUpdate: RestMock = {
   method: 'PATCH',
   path: '/api/v1/cart/items/:itemId',
@@ -27,12 +26,15 @@ const cartItemUpdate: RestMock = {
     let input: unknown;
     try { input = JSON.parse(String(init?.body ?? '')); }
     catch { return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } }; }
-    if (typeof input !== 'object' || input === null || !('quantity' in input)
+    if (typeof input !== 'object' || input === null || Array.isArray(input) || Object.keys(input).some(key => key !== 'quantity') || !('quantity' in input)
       || typeof input.quantity !== 'number' || !Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 10) {
       return { status: 400, body: { errorCode: 'VALIDATION_ERROR' } };
     }
     const product = productSamples.find((p) => p.id === item.productId);
-    if (!product || product.stock < input.quantity) return { status: 409, body: { errorCode: 'CONFLICT' } };
+    if (!product) return { status: 409, body: { errorCode: 'PRODUCT_UNAVAILABLE', errorMsg: 'この商品は現在購入できません。カートから削除してください。' } };
+    if (product.isSubscription) return { status: 409, body: { errorCode: 'UNSUPPORTED_PRODUCT', errorMsg: '定期便の商品は、現在カートからは購入できません。' } };
+    if (product.stock === 0) return { status: 409, body: { errorCode: 'OUT_OF_STOCK', errorMsg: 'この商品は売り切れです。' } };
+    if (product.stock !== null && product.stock < input.quantity) return { status: 409, body: { errorCode: 'QUANTITY_EXCEEDS_STOCK', errorMsg: '在庫が足りません。' } };
     item.quantity = input.quantity;
     return { status: 200, body: refreshMockCart(true) };
   },

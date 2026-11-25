@@ -25,6 +25,8 @@ const cartSnapshot = {
         id: 1,
         productId: 1,
         productName: '安曇野ふじ 家庭用 5kg',
+        volume: '5kg（14〜20玉）',
+        thumbnailUrl: 'https://picsum.photos/seed/product1/800/600',
         quantity: 1,
         unitPrice: 4800,
         subtotal: 4800,
@@ -35,6 +37,8 @@ const cartSnapshot = {
         id: 2,
         productId: 6,
         productName: '沼津 あじの開き干し 10枚',
+        volume: '10枚',
+        thumbnailUrl: 'https://picsum.photos/seed/product6/800/600',
         quantity: 2,
         unitPrice: 3200,
         subtotal: 6400,
@@ -71,7 +75,7 @@ function restoreCart(): Cart | null {
       ids.add(item.id);
       productIds.add(item.productId);
       items.push({ id: item.id, productId: item.productId, quantity: item.quantity,
-        productName: null, unitPrice: null, subtotal: null, purchasable: false, unavailableReason: null });
+        productName: null, volume: null, thumbnailUrl: null, unitPrice: null, subtotal: null, purchasable: false, unavailableReason: null });
     }
     revision = Number(saved.revision);
     return { items, shipments: [], itemsTotal: 0, shippingTotal: 0, total: 0, canCheckout: false };
@@ -98,6 +102,8 @@ export function refreshMockCart(changed = false): Cart {
   for (const item of mockCartBody.items) {
     const product = productSamples.find((p) => p.id === item.productId);
     item.productName = product?.name ?? null;
+    item.volume = product?.volume ?? null;
+    item.thumbnailUrl = product?.thumbnailUrl ?? null;
     item.unitPrice = product?.salePrice ?? null;
     item.subtotal = product ? product.salePrice * item.quantity : null;
     item.purchasable = Boolean(product && (product.stock === null || product.stock >= item.quantity));
