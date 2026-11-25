@@ -23,6 +23,7 @@ export default function Button({
       {...props}
       type={type}
       className={[
+        "font-sans cursor-pointer disabled:cursor-not-allowed",
         "inline-flex min-h-12 items-center justify-center gap-2",
         "rounded-full border border-marche-green px-6 py-3",
         "text-sm font-bold transition-colors",

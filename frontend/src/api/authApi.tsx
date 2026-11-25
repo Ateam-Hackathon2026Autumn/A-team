@@ -18,5 +18,18 @@ async function checkSession(): Promise<SessionResponse> {
   throw new ApiError(response.status, 'ログイン状態の確認に失敗しました');
 }
 
-export { checkSession };
+// 更新系APIの X-CSRFToken ヘッダーに使うトークンを取得
+async function getCsrfToken(): Promise<string> {
+  const response = await apiFetch('/api/v1/auth/csrf');
+
+  if (response.ok) {
+    const { csrfToken } = (await response.json()) as { csrfToken: string };
+
+    return csrfToken;
+  }
+
+  throw new ApiError(response.status, 'CSRFトークンの取得に失敗しました');
+}
+
+export { checkSession, getCsrfToken };
 export type { SessionResponse };

@@ -100,4 +100,24 @@ const jobsList: RestMock = {
   },
 };
 
+// エラーメッセージ確認用
+// const jobsList: RestMock ={
+//   method: 'GET',
+//   path: '/api/v1/jobs',
+//   status: 500,
+//   body: {
+//   errorMsg: 'テスト用の取得エラーです。'
+//   },
+// };
+
 export { jobsList };
+
+// 実APIと同じく、生産者で絞り込んでからページングする。
+jobsList.handler = url => {
+ const source = jobsList.body as { items: import('../../../types/job').Job[] };
+ const producerId = url.searchParams.get('producerId');
+ const items = source.items.filter(item => !producerId || item.producer.id === Number(producerId));
+ const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+ const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
+ return { status: 200, body: { items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length, page, pageSize, totalPages: Math.ceil(items.length / pageSize) } };
+};

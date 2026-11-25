@@ -1,3 +1,4 @@
+import { createDemoConsumerOrder } from '../store/consumerOrders';
 import type { RestMock } from '../../types';
 import { hoursFromNow } from '../../helpers';
 
@@ -33,3 +34,5 @@ const orderCreate: RestMock = {
 };
 
 export { orderCreate };
+
+orderCreate.handler = createDemoConsumerOrder;
