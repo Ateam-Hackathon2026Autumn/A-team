@@ -33,7 +33,7 @@ docker compose exec backend python manage.py createsuperuser # 初回のみ実�
 
 - フロントエンド: <http://localhost:5173>
 - Django API: <http://localhost:8000/api/health/>
-- Django管理画面: <http://localhost:8000/admin/>
+- Django管理画面（データ確認用）: <http://localhost:8000/api/django-admin/>（`createsuperuser` で作ったメールアドレスでログイン。削除はできない）
 
 ### 開発用のデータ
 
