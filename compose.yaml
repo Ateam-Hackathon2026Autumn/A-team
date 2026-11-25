@@ -23,7 +23,10 @@ services:
     command:
       - sh
       - -c
-      - python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000
+      - >-
+        python manage.py migrate --noinput &&
+        python manage.py seed_dev --masters-only &&
+        python manage.py runserver 0.0.0.0:8000
     ports:
       - "8000:8000"
     volumes:
@@ -45,9 +48,12 @@ services:
       DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-}
       DJANGO_DEFAULT_FROM_EMAIL: ${DJANGO_DEFAULT_FROM_EMAIL:-}
       DJANGO_MEDIA_URL: ${DJANGO_MEDIA_URL:-}
-      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-}
+      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-${AWS_TEST_UPLOADS_BUCKET_NAME:-}}
       AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-}
       AWS_S3_CUSTOM_DOMAIN: ${AWS_S3_CUSTOM_DOMAIN:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       TERMS_VERSION: ${TERMS_VERSION:-}

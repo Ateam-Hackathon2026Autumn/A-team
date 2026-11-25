@@ -7,6 +7,7 @@ import io
 
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from PIL import Image
 from rest_framework import serializers
 
@@ -48,10 +49,29 @@ class ImageUploadTests(ApiTestCase):
             self.assertEqual(image.size, (30, 40))  # 向きを反映して縦長になる
             self.assertEqual(len(image.getexif()), 0)  # 位置情報などは消えている
 
+    def test_large_jpeg_is_resized_before_saving(self):
+        photo = image_file(size=(4032, 3024), exif=gps_exif())
+        original_bytes = photo.size
+        res = self.post_multipart(URL, {"file": photo})
+        self.assertEqual(res.status_code, 201)
+        with default_storage.open(res.json()["key"]) as saved:
+            self.assertLess(saved.size, original_bytes)
+            with Image.open(saved) as image:
+                self.assertEqual(image.size, (1440, 1920))
+                self.assertEqual(len(image.getexif()), 0)
+
     def test_upload_png(self):
         res = self.post_multipart(URL, {"file": image_file("logo.png", "PNG")})
         self.assertEqual(res.status_code, 201)
         self.assertTrue(res.json()["key"].endswith(".png"))
+
+    @override_settings(PUBLIC_IMAGE_BASE_URL="https://images-test.cloudfront.net")
+    def test_upload_returns_cloudfront_url_for_public_image(self):
+        res = self.post_multipart(URL, {"file": image_file()})
+        self.assertEqual(res.status_code, 201)
+        body = res.json()
+        self.assertTrue(default_storage.exists(body["key"]))
+        self.assertEqual(body["url"], f"https://images-test.cloudfront.net/{body['key']}")
 
     def test_invalid_files_are_400(self):
         gif = image_file("anim.gif", "GIF")
