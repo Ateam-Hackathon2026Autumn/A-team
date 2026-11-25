@@ -1,0 +1,2 @@
+# 単体モック検証時のロック。実運用は bootstrap のロックを使う。
+.terraform.lock.hcl

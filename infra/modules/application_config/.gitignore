@@ -1,0 +1,2 @@
+# 単体テスト用。dev の実行時は environments/dev のロックファイルを使用する。
+.terraform.lock.hcl

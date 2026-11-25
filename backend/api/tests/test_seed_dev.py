@@ -32,6 +32,20 @@ class SeedDevTests(ApiTestCase):
                 seed()
         self.assertFalse(User.objects.exists())
 
+    @override_settings(DEBUG=False)
+    def test_masters_only_preserves_existing_data_on_repeat(self):
+        seed("--masters-only")
+        vegetables = Category.objects.get(name="野菜")
+        vegetables.sort_order = 99
+        vegetables.save(update_fields=["sort_order"])
+
+        seed("--masters-only")
+        vegetables.refresh_from_db()
+        self.assertEqual(vegetables.sort_order, 99)
+        self.assertEqual((Category.objects.count(), Area.objects.count(), Prefecture.objects.count()), (8, 7, 47))
+        self.assertFalse(User.objects.exists())
+        self.assertFalse(Product.objects.exists())
+
     def test_creates_data(self):
         output = seed()
         self.assertIn("buyer1@example.com", output)

@@ -3,8 +3,9 @@
 使い方:
     docker compose exec backend python manage.py seed_dev           # データを入れる
     docker compose exec backend python manage.py seed_dev --reset   # このコマンドのデータを消して入れ直す
+    docker compose exec backend python manage.py seed_dev --masters-only  # マスタだけ入れる
 
-- DEBUG=True のときだけ動く（本番 DB でのデモ投入も明示的に DEBUG=True を指定する）
+- 開発用のアカウントやサンプルデータの投入は DEBUG=True のときだけ動く（本番 DB でのデモ投入も明示的に DEBUG=True を指定する）
 - 何回実行しても増えない（開発用アカウントがもうあれば、何もしないで終わる）
 - ほかのデータは消さない。--reset が消すのは、開発用アカウントとその人たちに紐づくデータだけ
 - マスタ（カテゴリー・都道府県）も一緒に入れる（marche/fixtures/ の内容。もうある行はそのままにする）
@@ -224,16 +225,22 @@ def dummy_image(color):
 
 
 class Command(BaseCommand):
-    help = "【開発用】画面の確認に使うデータを入れる。DEBUG のときだけ使える"
+    help = "画面の確認に使う開発用データ、またはマスターデータだけを入れる"
 
     def add_arguments(self, parser):
-        parser.add_argument("--reset", action="store_true",
-                            help="このコマンドが作ったアカウントと、その人たちのデータを消してから入れ直す")
+        mode = parser.add_mutually_exclusive_group()
+        mode.add_argument("--reset", action="store_true",
+                          help="このコマンドが作ったアカウントと、その人たちのデータを消してから入れ直す")
+        mode.add_argument("--masters-only", action="store_true",
+                          help="カテゴリー・エリア・都道府県の不足分だけを入れる")
 
     def handle(self, *args, **options):
-        if not settings.DEBUG:
-            raise CommandError("このコマンドは開発環境（DEBUG=True）でだけ使えます。")
+        if not options["masters_only"] and not settings.DEBUG:
+            raise CommandError("開発用データは DEBUG=True のときだけ投入できます。")
         self.load_masters()
+        if options["masters_only"]:
+            self.stdout.write(self.style.SUCCESS("マスターデータを確認し、不足分を登録しました。"))
+            return
 
         exists = User.objects.filter(email__in=SEED_EMAILS).exists()
         if exists and not options["reset"]:
@@ -252,6 +259,7 @@ class Command(BaseCommand):
             f"レビュー {ProductReview.objects.filter(user__email__in=SEED_EMAILS).count()}"))
         self.print_accounts()
 
+    @transaction.atomic
     def load_masters(self):
         """カテゴリー・エリア・都道府県のマスタを入れる（marche/fixtures/ の内容）
 
