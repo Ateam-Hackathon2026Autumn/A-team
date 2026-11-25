@@ -48,6 +48,17 @@ class ImageUploadTests(ApiTestCase):
             self.assertEqual(image.size, (30, 40))  # 向きを反映して縦長になる
             self.assertEqual(len(image.getexif()), 0)  # 位置情報などは消えている
 
+    def test_large_jpeg_is_resized_before_saving(self):
+        photo = image_file(size=(4032, 3024), exif=gps_exif())
+        original_bytes = photo.size
+        res = self.post_multipart(URL, {"file": photo})
+        self.assertEqual(res.status_code, 201)
+        with default_storage.open(res.json()["key"]) as saved:
+            self.assertLess(saved.size, original_bytes)
+            with Image.open(saved) as image:
+                self.assertEqual(image.size, (1440, 1920))
+                self.assertEqual(len(image.getexif()), 0)
+
     def test_upload_png(self):
         res = self.post_multipart(URL, {"file": image_file("logo.png", "PNG")})
         self.assertEqual(res.status_code, 201)
