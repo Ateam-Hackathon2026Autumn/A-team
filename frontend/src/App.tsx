@@ -56,21 +56,6 @@ import DashboardProductNewPage from './pages/dashboard/DashboardProductNewPage';
 import DashboardProfileEditPage from './pages/dashboard/DashboardProfileEditPage';
 import DashboardStoryEditPage from './pages/dashboard/DashboardStoryEditPage';
 
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminExperienceDetailPage from './pages/admin/AdminExperienceDetailPage';
-import AdminExperienceListPage from './pages/admin/AdminExperienceListPage';
-import AdminJobDetailPage from './pages/admin/AdminJobDetailPage';
-import AdminJobListPage from './pages/admin/AdminJobListPage';
-import AdminProducerApplicationDetailPage from './pages/admin/AdminProducerApplicationDetailPage';
-import AdminProducerApplicationListPage from './pages/admin/AdminProducerApplicationListPage';
-import AdminProducerDetailPage from './pages/admin/AdminProducerDetailPage';
-import AdminProducerListPage from './pages/admin/AdminProducerListPage';
-import AdminProductDetailPage from './pages/admin/AdminProductDetailPage';
-import AdminProductListPage from './pages/admin/AdminProductListPage';
-import AdminSigninPage from './pages/admin/AdminSigninPage';
-import AdminStoryDetailPage from './pages/admin/AdminStoryDetailPage';
-import AdminStoryListPage from './pages/admin/AdminStoryListPage';
-
 function NumericRoute({ name, children }: { name: string; children: ReactNode }) {
   const params = useParams();
   return isValidRouteId(params[name]) ? children : <Navigate to="/404" replace />;
@@ -195,38 +180,6 @@ function App() {
         </Route>
       </Route>
 
-      {/* 管理者（管理者用のログインチェックAPIで別途制御する） */}
-      <Route path="/admin">
-        <Route path="signin" element={<AdminSigninPage />} />
-        <Route index element={<AdminDashboardPage />} />
-        <Route
-          path="producer-applications"
-          element={<AdminProducerApplicationListPage />}
-        />
-        <Route
-          path="producer-applications/:applicationId"
-          element={<AdminProducerApplicationDetailPage />}
-        />
-        <Route path="producers" element={<AdminProducerListPage />} />
-        <Route
-          path="producers/:producerId"
-          element={<AdminProducerDetailPage />}
-        />
-        <Route path="products" element={<AdminProductListPage />} />
-        <Route
-          path="products/:productId"
-          element={<AdminProductDetailPage />}
-        />
-        <Route path="jobs" element={<AdminJobListPage />} />
-        <Route path="jobs/:jobId" element={<AdminJobDetailPage />} />
-        <Route path="experiences" element={<AdminExperienceListPage />} />
-        <Route
-          path="experiences/:experienceId"
-          element={<AdminExperienceDetailPage />}
-        />
-        <Route path="stories" element={<AdminStoryListPage />} />
-        <Route path="stories/:storyId" element={<AdminStoryDetailPage />} />
-      </Route>
 
       <Route path="/404" element={<NotFoundPage />} />
       <Route path="/500" element={<InternalServerErrorPage />} />
