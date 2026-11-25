@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Link, useParams } from 'react-router';
 import { getStory } from '../api/storyApi';
 import { getProducts } from '../api/productApi';
+import { SUPPLEMENTARY_FETCH } from '../api/client';
 import ProductCard from '../components/products/ProductCard';
 import { producerGenres } from '../components/producers/ProducerSummaryCard';
 import { ContentImage, ContentPage, ContentSection, ContentStatus, dateLabel, panelClass, textLinkClass } from '../components/ui/ContentPage';
@@ -30,7 +31,7 @@ export default function StoryDetailPage() {
 }
 
 function RelatedProducts({ producerId }: { producerId: number }) {
-  const loader = useCallback((signal: AbortSignal) => getProducts({ producerId, pageSize: 3 }, signal), [producerId]);
+  const loader = useCallback((signal: AbortSignal) => getProducts({ producerId, pageSize: 3 }, signal, SUPPLEMENTARY_FETCH), [producerId]);
   const state = usePublicContent(loader);
   return <section className="mt-10"><h2 className="font-serif text-xl">この生産者の商品</h2><ContentStatus {...state} />{state.data && (state.data.items.length ? <div className="grid gap-4 sm:grid-cols-2">{state.data.items.map(product => <ProductCard key={product.id} product={product} />)}</div> : <p>現在公開中の商品はありません。</p>)}</section>;
 }

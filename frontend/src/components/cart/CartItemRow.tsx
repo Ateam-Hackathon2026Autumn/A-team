@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import { ProductImage, yen } from "../products/ProductCard";
-import { USE_MOCK } from "../../config/env";
 import type { CartItem } from "../../types/cart";
 import type { ProductDetail } from "../../types/publicProduct";
 
@@ -21,7 +20,7 @@ export default function CartItemRow({
 }: Props) {
   const name = item.productName ?? "販売を終了した商品";
   const unavailable = item.unavailableReason === "PRODUCT_UNAVAILABLE";
-  const disabled = busy || !USE_MOCK;
+  const disabled = busy;
   // nullは在庫管理なしとして10点まで。詳細未取得とは区別する。
   const maxQuantity = product ? Math.min(10, product.stock ?? 10) : 0;
   const quantityDisabled = disabled || unavailable || !product || maxQuantity < 1;
@@ -37,7 +36,7 @@ export default function CartItemRow({
         className="block w-20 shrink-0 no-underline sm:w-24"
       >
         <ProductImage
-          src={product?.thumbnailUrl ?? null}
+          src={item.thumbnailUrl ?? product?.thumbnailUrl ?? null}
           alt=""
           className="aspect-square rounded-xl"
         />
@@ -51,7 +50,7 @@ export default function CartItemRow({
         </Link>
         <p className="m-0 mt-1 text-xs text-marche-muted">
           {item.unitPrice === null ? "価格を取得できません" : `${yen(item.unitPrice)}（税込）`}
-          {product?.volume ? ` · ${product.volume}` : ""}
+          {item.volume ? ` · ${item.volume}` : ""}
         </p>
         {!item.purchasable && (
           <p className="m-0 mt-2 text-xs font-bold text-red-800">

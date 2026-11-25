@@ -3,20 +3,18 @@ import type { RestMock } from '../../types';
 // 生産者一覧取得API GET /api/v1/producers
 //
 // 公開中の生産者6件。並び順は sort=newest（承認日時の新しい順、既定）を想定。
-// badges はサーバーが導出し、該当するものだけを次の順で返す:
-//   featured（注目） / new_farmer（就業5年以内の新規就農） / new_participant（承認から30日未満の新規参加）
+// badges はサーバーが導出し、該当するものだけを次の順で返す（注目は badges に含めない）:
+//   new_farmer（就業5年以内の新規就農） / new_participant（承認から30日未満の新規参加）
 //   / accepts_experience（体験受け入れ中） / recruiting（担い手募集中）
+//
+// 注目生産者（?featured=true）は実APIと同じく featured_score > 0 の生産者だけを返す。
+// モックでは FEATURED_IDS（id 1・2・3・4）をその代わりにする。
 //
 // 該当なし（絞り込み結果0件、ページ範囲外など）:
 //   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
-//
-// 新規就農者だけ（?newFarmer=true）の場合は id 5・6 の2件、total: 2
-const producersList: RestMock = {
-  method: 'GET',
-  path: '/api/v1/producers',
-  status: 200,
-  body: {
-    items: [
+const FEATURED_IDS = new Set([1, 2, 3, 4]);
+
+const allProducers = [
       {
         id: 5,
         businessName: 'そら野菜畑',
@@ -63,7 +61,7 @@ const producersList: RestMock = {
         foundedYear: 1962,
         acceptsExperience: true,
         recruiting: true,
-        badges: ['featured', 'accepts_experience', 'recruiting'],
+        badges: ['accepts_experience', 'recruiting'],
       },
       {
         id: 2,
@@ -79,7 +77,7 @@ const producersList: RestMock = {
         foundedYear: 1975,
         acceptsExperience: true,
         recruiting: true,
-        badges: ['featured', 'accepts_experience', 'recruiting'],
+        badges: ['accepts_experience', 'recruiting'],
       },
       {
         id: 3,
@@ -95,7 +93,7 @@ const producersList: RestMock = {
         foundedYear: 1988,
         acceptsExperience: true,
         recruiting: true,
-        badges: ['featured', 'accepts_experience', 'recruiting'],
+        badges: ['accepts_experience', 'recruiting'],
       },
       {
         // 画像なし（null）の表示確認用
@@ -112,13 +110,29 @@ const producersList: RestMock = {
         foundedYear: 1950,
         acceptsExperience: false,
         recruiting: false,
-        badges: ['featured'],
+        badges: [],
       },
-    ],
-    total: 6,
+    ];
+
+function producersBody(items: typeof allProducers) {
+  return {
+    items,
+    total: items.length,
     page: 1,
     pageSize: 20,
-    totalPages: 1,
+    totalPages: items.length > 0 ? 1 : 0,
+  };
+}
+
+const producersList: RestMock = {
+  method: 'GET',
+  path: '/api/v1/producers',
+  status: 200,
+  body: producersBody(allProducers),
+  handler: (url) => {
+    const featured = url.searchParams.get('featured') === 'true';
+    const items = featured ? allProducers.filter((producer) => FEATURED_IDS.has(producer.id)) : allProducers;
+    return { status: 200, body: producersBody(items) };
   },
 };
 

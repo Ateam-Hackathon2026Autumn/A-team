@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import ApiError from "../api/apiError";
 import { getCart, removeCartItem, updateCartItem } from "../api/cartApi";
 import { getProduct } from "../api/productApi";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
 import CartItemRow from "../components/cart/CartItemRow";
 import { yen } from "../components/products/ProductCard";
@@ -50,7 +51,7 @@ export default function CartPage() {
         setCart(result);
         // 補足情報の取得に失敗しても、カートの商品・金額・削除操作は表示する。
         const ids = [...new Set(result.items.map((item) => item.productId))];
-        const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal)));
+        const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)));
         if (request.signal.aborted) return;
         const available: Record<number, ProductDetail> = {};
         for (const detail of details) if (detail.status === "fulfilled") available[detail.value.id] = detail.value;
@@ -80,7 +81,7 @@ export default function CartPage() {
 
   async function changeItem(item: CartItem, quantity?: number) {
     const request = controller.current;
-    if (!request || request.signal.aborted || operationLock.current || !USE_MOCK) return;
+    if (!request || request.signal.aborted || operationLock.current) return;
     operationLock.current = true;
     setBusy(true);
     setActionError("");
@@ -104,7 +105,7 @@ export default function CartPage() {
           const latest = await getCart(request.signal);
           if (!request.signal.aborted) setCart(latest);
           const ids = [...new Set(latest.items.map((line) => line.productId))];
-          const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal)));
+          const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)));
           if (!request.signal.aborted) {
             const available: Record<number, ProductDetail> = {};
             for (const detail of details) {
@@ -348,7 +349,7 @@ export default function CartPage() {
             {canProceed && !busy ? (
               <Link
                 to={loggedIn ? "/checkout" : "/signin"}
-                state={loggedIn ? undefined : { from: { pathname: "/cart" } }}
+                state={loggedIn ? undefined : { from: { pathname: "/checkout" } }}
                 className="mt-5 flex min-h-12 items-center justify-center rounded-full bg-marche-green px-4 py-3 text-sm font-bold text-white no-underline hover:bg-marche-green-dark"
               >
                 {loggedIn ? "購入手続きへ →" : "ログインして購入手続きへ"}
@@ -361,8 +362,6 @@ export default function CartPage() {
                 {busy ? "更新しています…" : "購入手続きへ"}
               </Button>
             )}
-            <p className="m-0 mt-3 text-xs leading-6 text-marche-muted">購入手続き画面は準備中です。現在はカートの確認・変更まで利用できます。</p>
-            {!USE_MOCK && <p className="m-0 mt-3 text-xs text-marche-muted">数量変更・削除は認証・CSRF連携の接続確認後に利用できます。</p>}
             <Link
               to="/products"
               className={`mt-4 flex min-h-11 items-center justify-center text-sm ${linkClass}`}

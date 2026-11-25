@@ -8,8 +8,7 @@ import type {
   ShippingSetting,
 } from '../types/product';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
-import { apiFetch } from './client';
+import { apiFetch, type ApiFetchOptions } from './client';
 
 // 公開・非公開の切り替えや在庫更新の結果のうち、一覧に反映するもの
 type ProductUpdateResult = {
@@ -24,12 +23,10 @@ async function sendProductRequest(
   etag?: string,
   body?: unknown,
 ): Promise<Response> {
-  const csrfToken = await getCsrfToken();
 
   return apiFetch(path, {
     method,
     headers: {
-      'X-CSRFToken': csrfToken,
       ...(etag ? { 'If-Match': etag } : {}),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
@@ -61,9 +58,9 @@ async function getDashboardProduct(productId: number): Promise<DashboardProduct>
   throw await toApiError(response, '商品を取得できませんでした');
 }
 
-// カテゴリー一覧を取得
-async function getCategories(): Promise<Category[]> {
-  const response = await apiFetch('/api/v1/categories');
+// カテゴリー一覧を取得（一覧画面の補足情報は options に SUPPLEMENTARY_FETCH を渡す）
+async function getCategories(options: ApiFetchOptions = {}): Promise<Category[]> {
+  const response = await apiFetch('/api/v1/categories', {}, options);
 
   if (response.ok) {
     const { items } = (await response.json()) as { items: Category[] };
@@ -92,11 +89,9 @@ async function getShippingSettings(): Promise<ShippingSetting[]> {
 async function createProduct(
   input: ProductCreateInput,
 ): Promise<DashboardProduct> {
-  const csrfToken = await getCsrfToken();
   const response = await apiFetch('/api/v1/dashboard/products', {
     method: 'POST',
     headers: {
-      'X-CSRFToken': csrfToken,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(input),

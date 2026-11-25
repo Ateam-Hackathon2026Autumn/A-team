@@ -88,7 +88,7 @@ export default function JobDetailPage() {
                 {dateLabel(day.workDate)} ・ {day.isSelectable && day.remainingCount > 0 ? `残り${day.remainingCount}名` : "受付終了"}
               </p>
             ))}
-            {job.isAcceptingApplications && selectable ? (
+            {job.hasApplied ? <Link to="/mypage/jobs" className={textLinkClass}>応募済み：応募状況を確認する →</Link> : job.isAcceptingApplications && (selectable || job.workDates.total === 0) ? (
               <Link
                 className={linkClass}
                 to={`/jobs/${job.id}/apply`}

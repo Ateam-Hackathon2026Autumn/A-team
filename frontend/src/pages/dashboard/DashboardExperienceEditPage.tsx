@@ -2,11 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useAtomValue } from 'jotai';
 
+import { useScrollDashboardToTop } from '../../Layouts/dashboardScroll';
 import ApiError from '../../api/apiError';
 import { getDashboardExperience, updateExperience } from '../../api/dashboardExperienceApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardExperienceForm from '../../components/DashboardExperienceForm';
 import DashboardExperienceSlots from '../../components/DashboardExperienceSlots';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { DashboardExperience, ExperienceInput } from '../../types/dashboardExperience';
 
@@ -37,6 +39,8 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 function DashboardExperienceEditPage() {
+  const scrollToTop = useScrollDashboardToTop();
+  const redirectToSignin = useSigninRedirect();
   const navigate = useNavigate();
   const location = useLocation();
   const { experienceId: experienceIdParam } = useParams();
@@ -83,7 +87,7 @@ function DashboardExperienceEditPage() {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -140,7 +144,7 @@ function DashboardExperienceEditPage() {
       if (error instanceof ApiError && error.status === 412) {
         setNotice(STALE_MESSAGE);
         reload();
-        window.scrollTo({ top: 0 });
+        scrollToTop();
         return;
       }
 

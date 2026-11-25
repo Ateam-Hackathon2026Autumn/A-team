@@ -1,12 +1,13 @@
 import { useAtomValue } from "jotai";
-import { Link, useLocation } from "react-router";
+import { Link } from "react-router";
 import { loginStatusAtom, userInfoAtom } from "../../stores/userAtom";
+import { USE_MOCK } from "../../config/env";
 
 const links = [
-  { href: "#products", label: "買う" },
-  { href: "#experiences", label: "体験する" },
-  { href: "#jobs", label: "働く" },
-  { href: "#learn", label: "学ぶ" },
+  { to: "/products", label: "買う" },
+  { to: "/experiences", label: "体験する" },
+  { to: "/jobs", label: "働く" },
+  { to: "/learn", label: "学ぶ" },
 ];
 
 const actionClass =
@@ -15,7 +16,6 @@ const actionClass =
   "no-underline transition-colors sm:px-6 sm:text-base";
 
 export default function Header() {
-  const isHome = useLocation().pathname === "/";
   const loginStatus = useAtomValue(loginStatusAtom);
   const isLoggedIn = loginStatus === "loggedIn";
   const user = useAtomValue(userInfoAtom);
@@ -30,9 +30,9 @@ export default function Header() {
         本文へ
       </a>
 
-      <div className="bg-marche-sage px-4 py-1.5 text-center text-[11px] text-marche-muted">
+      {USE_MOCK && <div className="bg-marche-sage px-4 py-1.5 text-center text-[11px] text-marche-muted">
         2026 秋ハッカソン · 画面サンプル｜掲載情報は架空です
-      </div>
+      </div>}
 
       <header className="sticky top-0 z-30 border-b border-marche-line bg-marche-ivory">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-8 lg:gap-6">
@@ -40,31 +40,24 @@ export default function Header() {
             to="/"
             className="inline-flex items-center gap-2 whitespace-nowrap font-serif text-base font-bold text-marche-ink no-underline hover:no-underline sm:text-xl"
           >
-            <span
-              aria-hidden="true"
-              className="grid size-9 place-items-center rounded-full bg-marche-green text-xl text-white"
-            >
-              つ
-            </span>
+            <img src="/favicon.svg" alt="" aria-hidden="true" className="size-9 shrink-0 rounded-full" />
             つながるマルシェ
           </Link>
 
-          {isHome && (
-            <nav
-              aria-label="メインメニュー"
-              className="order-3 flex w-full justify-around gap-3 text-sm font-bold lg:order-none lg:ml-auto lg:w-auto lg:gap-6"
-            >
-              {links.map(({ href, label }) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="py-2 text-marche-ink no-underline hover:text-marche-green hover:underline"
-                >
-                  {label}
-                </a>
-              ))}
-            </nav>
-          )}
+          <nav
+            aria-label="メインメニュー"
+            className="order-3 flex w-full justify-around gap-3 text-sm font-bold lg:order-none lg:ml-auto lg:w-auto lg:gap-6"
+          >
+            {links.map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className="py-2 text-marche-ink no-underline hover:text-marche-green hover:underline"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
 
           <div className="ml-auto flex flex-wrap items-center gap-2 lg:ml-0">
             <Link to="/cart" className={`${actionClass} bg-white text-marche-green hover:bg-marche-sage`}>

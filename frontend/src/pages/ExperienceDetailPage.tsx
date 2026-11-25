@@ -3,13 +3,14 @@ import { Link, useParams } from "react-router";
 import { getExperience } from "../api/experienceApi";
 import { ContentImage, ContentPage, ContentSection, ContentStatus, dateLabel, timeLabel, yen, linkClass, panelClass, textLinkClass } from "../components/ui/ContentPage";
 import { usePublicContent } from "../hooks/usePublicContent";
+import { isExperienceSlotBookable } from "../utils/experienceValidation";
 
 export default function ExperienceDetailPage() {
   const { experienceId } = useParams();
   const loader = useCallback((signal: AbortSignal) => getExperience(Number(experienceId), signal), [experienceId]);
   const state = usePublicContent(loader);
   const item = state.data;
-  const slots = item?.slots.items.filter((slot) => slot.remainingCapacity > 0 && new Date(slot.startAt).getTime() > Date.now()) ?? [];
+  const slots = item?.slots.items.filter((slot) => isExperienceSlotBookable(slot)) ?? [];
   return (
     <ContentPage
       eyebrow="EXPERIENCE"
@@ -56,19 +57,19 @@ export default function ExperienceDetailPage() {
               />
               <ContentSection
                 title="参加対象"
-                text={item.ageCondition}
+                text={item.ageCondition?.trim() || null}
               />
               <ContentSection
                 title="当日の流れ"
-                items={item.flow}
+                items={item.flow ?? []}
               />
               <ContentSection
                 title="持ち物"
-                items={item.belongings}
+                items={item.belongings ?? []}
               />
               <ContentSection
                 title="注意事項"
-                items={item.notes}
+                items={item.notes ?? []}
               />
               <ContentSection
                 title="キャンセルポリシー"
@@ -95,6 +96,8 @@ export default function ExperienceDetailPage() {
                   {timeLabel(slot.startAt)}〜（{slot.durationMin}分）
                   <br />
                   残り{slot.remainingCapacity}名 ／定員{slot.capacity}名
+                  <br />
+                  申込締切：{dateLabel(slot.bookingDeadlineAt)} {timeLabel(slot.bookingDeadlineAt)}
                 </p>
               ))}
               {slots.length ? (

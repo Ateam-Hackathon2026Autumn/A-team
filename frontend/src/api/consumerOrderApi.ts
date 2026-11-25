@@ -1,7 +1,6 @@
 import { contentJson } from './publicContentApi';
 import { apiFetch } from './client';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import type { OrderSummary, OrderDetail, OrderInput, OrderReceipt, OrderQuery } from '../types/consumerOrder';
 import type { PageResult } from '../types/experience';
 
@@ -14,7 +13,7 @@ export const getConsumerOrder = (id: number, signal?: AbortSignal) => contentJso
 
 export async function createConsumerOrder(input: OrderInput, key: string): Promise<OrderReceipt> {
   const response = await apiFetch('/api/v1/orders', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': await getCsrfToken(), 'Idempotency-Key': key },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
     // StrictSerializerが受け付ける項目のみ送る。
     body: JSON.stringify({
       ...(input.shippingAddress ? { shippingAddress: input.shippingAddress } : { addressId: input.addressId }),

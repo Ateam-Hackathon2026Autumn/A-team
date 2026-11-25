@@ -10,6 +10,7 @@ import {
 } from '../../api/dashboardExperienceApi';
 import DashboardButton from '../../components/DashboardButton';
 import { controlClassName } from '../../components/DashboardFormParts';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
   ExperienceApplication,
@@ -127,6 +128,7 @@ function ApplicationRow({ application }: { application: ExperienceApplication })
 }
 
 function DashboardExperienceParticipantsPage() {
+  const redirectToSignin = useSigninRedirect();
   const { experienceId: experienceIdParam } = useParams();
   const experienceId = Number(experienceIdParam);
   const isValidId = Number.isInteger(experienceId) && experienceId > 0;
@@ -196,7 +198,7 @@ function DashboardExperienceParticipantsPage() {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 

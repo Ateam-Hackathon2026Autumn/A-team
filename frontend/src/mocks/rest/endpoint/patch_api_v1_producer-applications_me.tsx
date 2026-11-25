@@ -1,5 +1,6 @@
 import { hoursFromNow } from '../../helpers';
 import type { RestMock } from '../../types';
+import { patchMockProducerApplication } from '../store/producerApplications';
 
 // 生産者申請修正・再申請API（差し戻し時） PATCH /api/v1/producer-applications/me
 //
@@ -10,7 +11,7 @@ import type { RestMock } from '../../types';
 //   { errorCode: 'APPLICATION_CONFLICT', errorMsg: '申請情報が更新されました。再取得してください。' }
 //
 // 差し戻し以外の状態（409）:
-//   { errorCode: 'APPLICATION_NOT_RETURNED', errorMsg: '差し戻し中の申請のみ再申請できます。' }
+//   { errorCode: 'APPLICATION_NOT_RETURNED', errorMsg: '差し戻し・却下された申請のみ再申請できます。' }
 //
 // 本人の申請が存在しない（404）:
 //   { errorCode: 'APPLICATION_NOT_FOUND', errorMsg: '生産者登録申請はありません。' }
@@ -28,6 +29,7 @@ const producerApplicationResubmit: RestMock = {
     isProducer: false,
     submittedAt: hoursFromNow(0),
   },
+  handler: (_url, init) => patchMockProducerApplication(init),
 };
 
 export { producerApplicationResubmit };

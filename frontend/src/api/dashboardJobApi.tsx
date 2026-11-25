@@ -10,7 +10,6 @@ import type {
   JobPublishStatus,
 } from '../types/dashboardJob';
 import { toApiError } from './apiError';
-import { getCsrfToken } from './authApi';
 import { apiFetch } from './client';
 
 const BASE_PATH = '/api/v1/dashboard/jobs';
@@ -23,8 +22,7 @@ async function sendRequest(
   method: 'POST' | 'PATCH' | 'DELETE',
   body?: unknown,
 ): Promise<Response> {
-  const csrfToken = await getCsrfToken();
-  const headers: Record<string, string> = { 'X-CSRFToken': csrfToken };
+  const headers: Record<string, string> = {};
 
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';

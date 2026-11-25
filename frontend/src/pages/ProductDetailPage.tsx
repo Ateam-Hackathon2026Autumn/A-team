@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import ApiError from "../api/apiError";
 import { getProduct, getProducts } from "../api/productApi";
 import { addCartItem } from "../api/cartApi";
+import { addFavoriteProduct, removeFavoriteProduct } from "../api/favoriteApi";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
+import { loginStatusAtom } from "../stores/userAtom";
 import ProductCard, { ProductImage, yen } from "../components/products/ProductCard";
 import { StarIcon } from "../components/Icons";
 import Button from "../components/ui/Button";
 import { USE_MOCK } from "../config/env";
-import { loginStatusAtom } from "../stores/userAtom";
 import type { Product, ProductDetail } from "../types/publicProduct";
 
 // IDが変わった際に画像・数量・メッセージをリセットする。
@@ -35,7 +37,15 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState("");
   const [cartError, setCartError] = useState("");
-  const loggedIn = useAtomValue(loginStatusAtom) === "loggedIn";
+  const addLock = useRef(false);
+  const loginStatus = useAtomValue(loginStatusAtom);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [favorited, setFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [favoriteError, setFavoriteError] = useState("");
+  const [favoriteNotice, setFavoriteNotice] = useState("");
+  const favoriteLock = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -53,8 +63,9 @@ function ProductDetailContent({ productId }: { productId: string }) {
       .then((result) => {
         if (controller.signal.aborted) return;
         setProduct(result);
+        setFavorited(result.isFavorited === true);
         // 関連商品の失敗で、商品詳細そのものを非表示にしない。
-        void getProducts({ producerId: result.producer.id, page: 1, pageSize: 5 }, controller.signal)
+        void getProducts({ producerId: result.producer.id, page: 1, pageSize: 5 }, controller.signal, SUPPLEMENTARY_FETCH)
           .then((list) => {
             if (!controller.signal.aborted) setRelated(list.items.filter((p) => p.producer.id === result.producer.id && p.id !== result.id).slice(0, 4));
           })
@@ -71,17 +82,44 @@ function ProductDetailContent({ productId }: { productId: string }) {
     return () => controller.abort();
   }, [productId, retry]);
 
+  // お気に入りの登録・解除。未ログインの場合はサインイン後に元の商品詳細へ戻れるよう遷移元を渡す。
+  async function toggleFavorite() {
+    if (!product || favoriteLock.current) return;
+    if (loginStatus !== "loggedIn") {
+      navigate("/signin", { state: { from: location } });
+      return;
+    }
+    const next = !favorited;
+    favoriteLock.current = true;
+    setFavoriteBusy(true);
+    setFavoriteError("");
+    setFavoriteNotice("");
+    try {
+      if (next) await addFavoriteProduct(product.id);
+      else await removeFavoriteProduct(product.id);
+      setFavorited(next);
+      setFavoriteNotice(next ? "お気に入りに登録しました。" : "お気に入りを解除しました。");
+    } catch (cause) {
+      setFavoriteError(apiErrorMessage(cause, "お気に入りの更新に失敗しました。時間をおいて再度お試しください。"));
+    } finally {
+      favoriteLock.current = false;
+      setFavoriteBusy(false);
+    }
+  }
+
   async function addToCart() {
-    if (!product || adding || !loggedIn || !USE_MOCK || product.stock === 0) return;
+    if (!product || addLock.current || product.stock === 0 || product.isSubscription) return;
+    addLock.current = true;
     setAdding(true);
     setMessage("");
     setCartError("");
     try {
       await addCartItem(product.id, quantity);
-      setMessage(`${product.name}を${quantity}点、デモカートに追加しました。`);
+      setMessage(`${product.name}を${quantity}点、${USE_MOCK ? "デモカート" : "カート"}に追加しました。`);
     } catch (cause) {
       setCartError(apiErrorMessage(cause, "カートに追加できませんでした。", "quantity"));
     } finally {
+      addLock.current = false;
       setAdding(false);
     }
   }
@@ -261,25 +299,16 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 </select>
                 <span className="text-sm text-marche-muted">小計 {yen(product.salePrice * quantity)}</span>
               </div>
-              {loggedIn ? (
                 <Button
                   className="mt-4 w-full"
-                  disabled={adding || !USE_MOCK}
+                  disabled={adding || product.isSubscription}
                   onClick={() => void addToCart()}
                 >
-                  {adding ? "追加しています…" : "カートに追加"}
+                  {adding ? "追加しています…" : product.isSubscription ? "定期便は現在購入できません" : "カートに追加"}
                 </Button>
-              ) : (
-                <Link
-                  to="/signin"
-                  className="mt-4 flex min-h-12 items-center justify-center rounded-full bg-marche-green px-6 py-3 text-sm font-bold text-white no-underline hover:bg-marche-green-dark"
-                >
-                  ログインしてカートに追加
-                </Link>
-              )}
             </>
           )}
-          <p className="m-0 mt-3 text-xs text-marche-muted">{USE_MOCK ? "商品情報・画像・カートは画面確認用デモです。実際の購入は行われません。" : "カート追加は認証・CSRF連携の接続確認後に利用できます。"}</p>
+          {USE_MOCK && <p className="m-0 mt-3 text-xs text-marche-muted">商品情報・画像・カートは画面確認用デモです。実際の購入は行われません。</p>}
           {message && (
             <div
               role="status"
@@ -339,7 +368,27 @@ function ProductDetailContent({ productId }: { productId: string }) {
           >
             プロフィールを見る →
           </Link>
-          <p className="m-0 mt-4 text-xs text-marche-muted">お気に入り登録・レビュー本文の表示は今後対応予定です。</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              variant={favorited ? "primary" : "outline"}
+              aria-busy={favoriteBusy ? "true" : undefined}
+              disabled={favoriteBusy}
+              onClick={() => void toggleFavorite()}
+            >
+              {favorited ? "お気に入りを解除する" : "お気に入りに登録する"}
+            </Button>
+            {favoriteNotice && (
+              <span role="status" className="text-sm font-bold text-marche-green">
+                {favoriteNotice}
+              </span>
+            )}
+            {favoriteError && (
+              <span role="alert" className="text-sm font-bold text-red-800">
+                {favoriteError}
+              </span>
+            )}
+          </div>
+          <p className="m-0 mt-4 text-xs text-marche-muted">レビュー本文の表示は今後対応予定です。</p>
         </aside>
       </div>
       {related.length > 0 && (

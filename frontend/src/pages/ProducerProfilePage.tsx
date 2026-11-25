@@ -1,8 +1,11 @@
-import { useCallback } from "react";
-import { Link, useParams } from "react-router";
+import { useCallback, useState } from "react";
+import { useAtomValue } from "jotai";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import ApiError from "../api/apiError";
+import { addFavoriteProducer, removeFavoriteProducer } from "../api/favoriteApi";
 import { getProducer } from "../api/producerApi";
 import { getProducts } from "../api/productApi";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
 import { getExperiences } from "../api/experienceApi";
 import { getJobs } from "../api/jobApi";
 import { contentJson } from "../api/publicContentApi";
@@ -15,9 +18,18 @@ import ExperienceCard from "../components/experiences/ExperienceCard";
 import JobCard from "../components/jobs/JobCard";
 import { producerGenres, producerBadges } from "../components/producers/ProducerSummaryCard";
 import Button from "../components/ui/Button";
+import { loginStatusAtom } from "../stores/userAtom";
 
 export default function ProducerProfilePage() {
   const { producerId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const loginStatus = useAtomValue(loginStatusAtom);
+  const [favoriteOverride, setFavoriteOverride] = useState<{ id: number; favorited: boolean } | null>(null);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [favoriteError, setFavoriteError] = useState("");
+  const [favoriteNotice, setFavoriteNotice] = useState("");
+
   const loader = useCallback(
     async (signal: AbortSignal) => {
       if (!producerId || !/^[1-9]\d*$/.test(producerId) || !Number.isSafeInteger(Number(producerId))) throw new ApiError(404, "生産者が見つかりません。");
@@ -27,10 +39,44 @@ export default function ProducerProfilePage() {
   );
   const state = usePublicContent(loader);
   const producer = state.data;
+  const isFavorited =
+    producer && favoriteOverride?.id === producer.id
+      ? favoriteOverride.favorited
+      : Boolean(producer?.isFavorited);
+
+  const toggleFavorite = async () => {
+    if (!producer || favoriteBusy) return;
+    if (loginStatus !== "loggedIn") {
+      navigate("/signin", { state: { from: location } });
+      return;
+    }
+    const previous = isFavorited;
+    const next = !previous;
+    setFavoriteOverride({ id: producer.id, favorited: next });
+    setFavoriteBusy(true);
+    setFavoriteError("");
+    setFavoriteNotice("");
+    try {
+      if (next) {
+        await addFavoriteProducer(producer.id);
+        setFavoriteNotice("お気に入り（フォロー）に登録しました。");
+      } else {
+        await removeFavoriteProducer(producer.id);
+        setFavoriteNotice("お気に入り（フォロー）を解除しました。");
+      }
+    } catch (cause) {
+      setFavoriteOverride({ id: producer.id, favorited: previous });
+      setFavoriteError(
+        cause instanceof Error ? cause.message : "お気に入りの更新に失敗しました。",
+      );
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
   const relatedLoader = useCallback(
     async (signal: AbortSignal) => {
       if (!producer) return null;
-      const results = await Promise.allSettled([getProducts({ producerId: producer.id, pageSize: 6 }, signal), getExperiences(signal, { producerId: producer.id }), getJobs(signal, { producerId: producer.id }), producer.hasPublicStory ? contentJson<Story>(`/api/v1/producers/${producer.id}/story`, signal) : Promise.resolve(null)]);
+      const results = await Promise.allSettled([getProducts({ producerId: producer.id, pageSize: 6 }, signal, SUPPLEMENTARY_FETCH), getExperiences(signal, { producerId: producer.id }, SUPPLEMENTARY_FETCH), getJobs(signal, { producerId: producer.id }, SUPPLEMENTARY_FETCH), producer.hasPublicStory ? contentJson<Story>(`/api/v1/producers/${producer.id}/story`, signal, SUPPLEMENTARY_FETCH) : Promise.resolve(null)]);
       return { products: results[0], experiences: results[1], jobs: results[2], story: results[3] };
     },
     [producer],
@@ -93,12 +139,30 @@ export default function ProducerProfilePage() {
                   producer.careerStartYear !== null ? `${producer.careerStartYear}年から生産に従事` : null,
                 ].filter(Boolean).join(" · ")}
               </p>}
-            <Button
-              disabled
-              variant="outline"
-            >
-              お気に入り登録（準備中）
-            </Button>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button
+                variant={isFavorited ? "primary" : "outline"}
+                aria-pressed={isFavorited}
+                disabled={favoriteBusy}
+                onClick={() => void toggleFavorite()}
+              >
+                {favoriteBusy
+                  ? "更新中…"
+                  : isFavorited
+                    ? "お気に入り登録済み（解除する）"
+                    : "お気に入りに登録する"}
+              </Button>
+              {favoriteNotice && (
+                <span role="status" className="text-sm font-bold text-marche-green">
+                  {favoriteNotice}
+                </span>
+              )}
+              {favoriteError && (
+                <span role="alert" className="text-sm font-bold text-marche-red">
+                  {favoriteError}
+                </span>
+              )}
+            </div>
           </section>
           <nav
             aria-label="生産者のコンテンツ"

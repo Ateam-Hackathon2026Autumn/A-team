@@ -8,6 +8,7 @@ import {
 
 import ApiError from '../api/apiError';
 import { uploadImage } from '../api/uploadApi';
+import { useSigninRedirect } from '../hooks/useSigninRedirect';
 import type {
   DashboardJob,
   JobInput,
@@ -378,6 +379,7 @@ function DashboardJobForm({
   onSubmit,
   cancelTo,
 }: DashboardJobFormProps) {
+  const redirectToSignin = useSigninRedirect();
   const isEdit = job !== undefined;
   // 運営による掲載停止中は、内容は編集できるが公開状態は変えられない
   const isSuspended = job?.publishStatus === 'suspended';
@@ -525,7 +527,7 @@ function DashboardJobForm({
       await onSubmit(toInput(values, rows, coverImage, status));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

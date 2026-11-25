@@ -12,6 +12,7 @@ import type { ShippingAddress } from "../types/consumerOrder";
 import { ContentPage, ContentStatus, EmptyContent, fieldClass, panelClass, textLinkClass, yen, linkClass } from "../components/ui/ContentPage";
 import { OrderTotals, temperatureLabels } from "../components/mypage/ConsumerOrderParts";
 import Button from "../components/ui/Button";
+import { safeCheckoutUrl } from "../utils/checkoutUrl";
 
 async function loadCheckout(signal: AbortSignal) {
   const cart = await getCart(signal);
@@ -37,6 +38,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const key = useRef<string | null>(null);
   const locked = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -49,7 +51,7 @@ export default function CheckoutPage() {
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (locked.current || !data || !data.canCheckout) return;
+    if (locked.current || createdOrderId !== null || !data || !data.canCheckout) return;
     if (step === 1) {
       if (!/^0\d{9,10}$/.test(address.phone.replace(/-/g, ""))) {
         setError("電話番号は0から始まる10〜11桁で入力してください。");
@@ -65,23 +67,37 @@ export default function CheckoutPage() {
     locked.current = true;
     setBusy(true);
     setError("");
+    let acceptedOrderId: number | null = null;
     try {
       key.current ??= crypto.randomUUID();
       const receipt = await createConsumerOrder({ shippingAddress: address, paymentMethod: "card", expectedGrandTotal: data.total }, key.current);
+      acceptedOrderId = receipt.id;
       if (USE_MOCK) {
         navigate(receipt.checkoutUrl, { replace: true });
       } else {
-        window.location.assign(receipt.checkoutUrl);
+        const checkoutUrl = safeCheckoutUrl(receipt.checkoutUrl, window.location.origin);
+        if (!checkoutUrl) {
+          setCreatedOrderId(receipt.id);
+          setError("注文は作成済みですが、決済画面を開けませんでした。注文履歴から状況をご確認ください。");
+          setBusy(false);
+          return;
+        }
+        window.location.assign(checkoutUrl);
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "注文を受け付けられませんでした。");
+      if (acceptedOrderId !== null) {
+        setCreatedOrderId(acceptedOrderId);
+        setError("注文は作成済みですが、決済画面を開けませんでした。注文履歴から状況をご確認ください。");
+      } else {
+        setError(cause instanceof Error ? cause.message : "注文を受け付けられませんでした。");
+      }
       if (cause instanceof ApiError && cause.status === 409) {
         state.retry();
         setStep(1);
         key.current = null;
       }
       // 受付成功後は遷移が完了するまで再送できないようにする。
-      locked.current = false;
+      if (acceptedOrderId === null) locked.current = false;
       setBusy(false);
     }
   }
@@ -187,7 +203,7 @@ export default function CheckoutPage() {
                           >
                             <option value="">選択してください</option>
                             {PREFECTURES.map((p) => (
-                              <option key={p.id}>{p.name}</option>
+                              <option key={p.id} value={p.name}>{p.name}</option>
                             ))}
                           </select>
                         </label>
@@ -258,14 +274,15 @@ export default function CheckoutPage() {
                       {error}
                     </p>
                   )}
+                  {createdOrderId !== null && <Link to={`/mypage/orders/${createdOrderId}`} className={textLinkClass}>作成済みの注文を確認する →</Link>}
                   <Button
                     type="submit"
                     block
-                    disabled={busy}
+                    disabled={busy || createdOrderId !== null}
                   >
                     {busy ? "注文を送信中…" : step === 1 ? "注文内容を確認する" : USE_MOCK ? "デモ注文を受け付ける" : "注文してお支払いへ進む"}
                   </Button>
-                  {step === 2 && (
+                  {step === 2 && createdOrderId === null && (
                     <Button
                       variant="outline"
                       block
