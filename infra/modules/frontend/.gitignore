@@ -1,0 +1,3 @@
+# 単体テストでこのディレクトリをルートとして init した際のロックファイル。
+# 実際の dev デプロイでは environments/dev/.terraform.lock.hcl を使用する。
+.terraform.lock.hcl
