@@ -41,12 +41,7 @@ export default function Header() {
             to="/"
             className="inline-flex items-center gap-2 whitespace-nowrap font-serif text-base font-bold text-marche-ink no-underline hover:no-underline sm:text-xl"
           >
-            <span
-              aria-hidden="true"
-              className="grid size-9 place-items-center rounded-full bg-marche-green text-xl text-white"
-            >
-              つ
-            </span>
+            <img src="/favicon.svg" alt="" aria-hidden="true" className="size-9 shrink-0 rounded-full" />
             つながるマルシェ
           </Link>
 

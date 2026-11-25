@@ -60,9 +60,7 @@ function DashboardLayout() {
             to="/dashboard"
             className="flex min-w-0 items-center gap-3 px-5 pt-4 pb-3 text-marche-ink no-underline md:pt-6 md:pb-5"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-marche-green text-base font-bold text-white">
-              つ
-            </span>
+            <img src="/favicon.svg" alt="" aria-hidden="true" className="size-9 shrink-0 rounded-full" />
             <span className="leading-tight">
               <span className="block text-sm font-bold">つながるマルシェ</span>
               <span className="block text-xs text-marche-muted">
