@@ -18,6 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# 管理画面の CSS・JavaScript を staticfiles/ に集める（本番は whitenoise が /api/static/ で返す）
+RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
 # 本番（AWS）用の起動コマンド。ローカルは compose.yaml の command（migrate → runserver）が優先される。

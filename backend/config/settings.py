@@ -1,4 +1,5 @@
 import os
+import warnings
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -58,6 +59,8 @@ MIDDLEWARE = [
     # ALB のヘルスチェック（/api/health/）は ALLOWED_HOSTS の確認より前に 200 を返す（api/common/middleware.py）
     "api.common.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # 管理画面の CSS・JavaScript（/api/static/）を gunicorn だけで返す
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -120,14 +123,14 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage" if USE_S3 else "django.core.files.storage.FileSystemStorage"
     },
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 MEDIA_ROOT = BASE_DIR / "media"
 # ブラウザは frontend（localhost:5173）を開いているので、画像は backend（localhost:8000）のURLで返す
 MEDIA_URL = env("DJANGO_MEDIA_URL", "http://localhost:8000/media/")
 AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "ap-northeast-1")
-# CloudFront から画像を配信するときのドメイン（例: d123.cloudfront.net）。空なら S3 の URL を返す
-AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN") or None
+# 公開画像（images/ の下）を配信する URL の頭（本番は CloudFront。例: https://d123.cloudfront.net）。
+# AWS の S3 は外から直接読めないので、本番では必ず入れる。空なら保存先の URL（ローカルは MEDIA_URL）
 PUBLIC_IMAGE_BASE_URL = env("DJANGO_PUBLIC_IMAGE_BASE_URL").rstrip("/")
 
 # 公開画像は CloudFront のURLで返す（api/common/images.py）。
@@ -246,5 +249,15 @@ TIME_ZONE = "Asia/Tokyo"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+# 管理画面（Django 標準）の CSS・JavaScript。CloudFront は /api/* だけをバックエンドに流すので /api/static/ に置く。
+# 本番は Docker のイメージを作るときに collectstatic で STATIC_ROOT に集め、whitenoise が返す
+STATIC_URL = "/api/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+# 開発・テストでは collectstatic をしないので、staticfiles/ がないという whitenoise の警告は出さない
+# （DEBUG のときは whitenoise が各アプリのフォルダーから直接返す）
+warnings.filterwarnings("ignore", message="No directory at", module="whitenoise.base")
+
+# Django 標準の管理画面（/api/django-admin/。marche/admin.py）を開くか。
+# 本番の全データを直接書き換えられる画面なので、本番（DEBUG=false）は既定でオフ。使うときだけ true にする
+DJANGO_ADMIN_ENABLED = env("DJANGO_ADMIN_ENABLED", "true" if DEBUG else "false").lower() in {"1", "true", "yes", "on"}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

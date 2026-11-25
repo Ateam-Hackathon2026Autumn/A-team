@@ -4,10 +4,14 @@ from django.contrib import admin
 from django.urls import include, path
 
 
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("api/", include("api.urls")),
-]
+urlpatterns = []
+
+# Django 標準の管理画面（marche/admin.py）。CloudFront は /api/* だけをバックエンドに流すので /api/ の下に置く。
+# 本番（DEBUG=false）は環境変数 DJANGO_ADMIN_ENABLED=true のときだけ開ける
+if settings.DJANGO_ADMIN_ENABLED:
+    urlpatterns.append(path("api/django-admin/", admin.site.urls))
+
+urlpatterns.append(path("api/", include("api.urls")))
 
 # 開発用：backend/media/ に保存した画像を /media/ で返す（S3 を使わないとき。static() は DEBUG のときだけ有効）
 if not settings.USE_S3:
