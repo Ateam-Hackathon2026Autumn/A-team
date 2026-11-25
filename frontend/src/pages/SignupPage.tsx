@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router";
 import PurposeStep from "../components/signup/PurposeStep";
 import AccountStep from "../components/signup/AccountStep";
 import CompleteStep from "../components/signup/CompleteStep";
+import { CheckIcon } from "../components/Icons";
 import { initialSignupValues } from "../types/authForm";
 import type {
   Purpose,
@@ -82,7 +83,7 @@ export default function SignupPage() {
                     : "border-marche-line"
                 }`}
               >
-                {completed ? "✓" : number}
+                {completed ? <><span className="sr-only">完了: </span><CheckIcon className="size-4" /></> : number}
               </span>
               {title}
             </li>
@@ -112,9 +113,9 @@ export default function SignupPage() {
       {step === 3 && purpose && <CompleteStep purpose={purpose} />}
 
       {step !== 3 && (
-        <p className="mt-6 text-center text-sm">
+        <p className="m-0 mt-6 text-center text-sm">
           アカウントをお持ちの方は{" "}
-          <Link to="/signin" className="text-marche-green underline">
+          <Link to="/signin" className="no-underline text-marche-green underline">
             ログイン
           </Link>
         </p>

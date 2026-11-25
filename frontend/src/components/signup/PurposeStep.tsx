@@ -10,13 +10,13 @@ type Props = {
 const choices = [
   {
     value: "consumer",
-    icon: "🧺",
+    image: "/images/categories/buy.webp",
     title: "買う・体験する・働く",
     description: "商品の購入、体験への参加、仕事への応募",
   },
   {
     value: "producer",
-    icon: "🌱",
+    image: "/images/categories/producer.webp",
     title: "生産者として利用する",
     description: "商品販売・体験・求人を掲載したい",
   },
@@ -29,15 +29,15 @@ export default function PurposeStep({
 }: Props) {
   return (
     <>
-      <p className="text-xs font-bold tracking-widest text-marche-green">
+      <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
         CREATE YOUR ACCOUNT
       </p>
-      <h1 className="mt-2 text-3xl font-bold leading-relaxed">
+      <h1 className="m-0 font-serif mt-2 text-3xl font-bold leading-relaxed">
         どのように
         <br />
         利用しますか？
       </h1>
-      <p className="mt-3 text-sm text-marche-muted">
+      <p className="m-0 mt-3 text-sm text-marche-muted">
         はじめに、利用目的を教えてください。
       </p>
 
@@ -47,7 +47,7 @@ export default function PurposeStep({
           if (purpose) onNext();
         }}
       >
-        {choices.map(({ value, icon, title, description }) => (
+        {choices.map(({ value, image, title, description }) => (
           <label
             key={value}
             className={`mt-4 flex cursor-pointer items-center gap-3 rounded-xl border p-4 ${
@@ -62,12 +62,17 @@ export default function PurposeStep({
               value={value}
               checked={purpose === value}
               onChange={() => onChange(value)}
-              className="size-4 shrink-0 accent-marche-green"
+              className="font-sans size-4 shrink-0 accent-marche-green"
             />
 
-            <span aria-hidden="true" className="text-3xl">
-              {icon}
-            </span>
+            <img
+              src={image}
+              width={512}
+              height={512}
+              decoding="async"
+              alt=""
+              className="size-14 shrink-0 rounded-xl object-cover"
+            />
 
             <span>
               <span className="block text-sm font-bold">{title}</span>
@@ -78,7 +83,7 @@ export default function PurposeStep({
           </label>
         ))}
 
-        <p className="mt-4 text-xs text-marche-muted">
+        <p className="m-0 mt-4 text-xs text-marche-muted">
           生産者の方も、共通アカウントの作成後に登録申請へ進みます。
         </p>
 

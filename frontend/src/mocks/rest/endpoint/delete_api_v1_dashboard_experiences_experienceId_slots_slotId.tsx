@@ -1,4 +1,5 @@
 import type { RestMock } from '../../types';
+import { deleteSlot } from '../store/dashboardExperiences';
 
 // 体験予約枠削除API DELETE /api/v1/dashboard/experiences/:experienceId/slots/:slotId
 //
@@ -16,6 +17,7 @@ const dashboardExperienceSlotDelete: RestMock = {
   method: 'DELETE',
   path: '/api/v1/dashboard/experiences/:experienceId/slots/:slotId',
   status: 204,
+  handler: (url, init) => deleteSlot(url, init),
 };
 
 export { dashboardExperienceSlotDelete };

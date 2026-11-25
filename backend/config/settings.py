@@ -128,8 +128,9 @@ MEDIA_URL = env("DJANGO_MEDIA_URL", "http://localhost:8000/media/")
 AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "ap-northeast-1")
 # CloudFront から画像を配信するときのドメイン（例: d123.cloudfront.net）。空なら S3 の URL を返す
 AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN") or None
+PUBLIC_IMAGE_BASE_URL = env("DJANGO_PUBLIC_IMAGE_BASE_URL").rstrip("/")
 
-# 公開用の画像（商品・農園・体験など）は署名なしのURLで返す。
+# 公開画像は CloudFront のURLで返す（api/common/images.py）。
 # 申請書類・チャット添付など非公開のファイルは、表示のたびに期限付きURLを個別に発行する（api-spec「ファイル」）
 AWS_QUERYSTRING_AUTH = False
 # 非公開ファイル（申請書類・チャット添付）の期限付きURLの有効期間（秒）→ api/services/storage.py

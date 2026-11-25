@@ -1,4 +1,5 @@
 import type { RestMock } from '../../types';
+import { registerUploadedImage } from '../store/common';
 
 // 画像アップロードAPI POST /api/v1/uploads/images
 //
@@ -19,13 +20,46 @@ import type { RestMock } from '../../types';
 //   { errorCode: 'UNAUTHENTICATED', errorMsg: 'ログインしてください。' }
 // サイズ超過（status: 413。上限 5MB）:
 //   { errorCode: 'PAYLOAD_TOO_LARGE', errorMsg: '画像は5MB以下にしてください。' }
+//
+// 本物の API は画像ごとに別のキーを返すため、モックも呼ばれるたびに連番で別のキー・URL を返す
+// （同じキーだと、複数枚追加しても保存時に1枚にまとまってしまう）
+// キーは毎回別の UUID（再読み込み後も、登録済みの画像とキーが重ならないように）
+// 返したキーと URL は、商品・体験の登録・更新モックで画像を表示するために記録する
 const uploadsImageCreate: RestMock = {
   method: 'POST',
   path: '/api/v1/uploads/images',
   status: 201,
-  body: {
-    key: 'images/1/3f2b8c1e-6a4d-4f0e-9b7a-2d5c8e1f4a90.jpg',
-    url: 'https://picsum.photos/seed/upload1/800/600',
+  handler: (_url, init) => {
+    const form = init?.body instanceof FormData ? init.body : null;
+    const file = form?.get('file');
+    if (!(file instanceof File) || [...(form?.keys() ?? [])].some((key) => key !== 'file')) {
+      return {
+        status: 400,
+        body: {
+          errorCode: 'VALIDATION_ERROR',
+          errorMsg: '入力内容に誤りがあります。',
+          details: { file: ['画像を選んでください。'] },
+        },
+      };
+    }
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      return {
+        status: 400,
+        body: {
+          errorCode: 'VALIDATION_ERROR',
+          errorMsg: '入力内容に誤りがあります。',
+          details: { file: ['JPEGまたはPNGの画像を選択してください。'] },
+        },
+      };
+    }
+    const uuid = crypto.randomUUID();
+    const image = {
+      key: `images/1/${uuid}.jpg`,
+      url: `https://picsum.photos/seed/${uuid}/800/600`,
+    };
+    registerUploadedImage(image.key, image.url);
+
+    return { status: 201, body: image };
   },
 };
 
