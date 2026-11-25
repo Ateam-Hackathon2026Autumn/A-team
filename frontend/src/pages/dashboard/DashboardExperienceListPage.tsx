@@ -10,6 +10,7 @@ import {
 } from '../../api/dashboardExperienceApi';
 import DashboardButton from '../../components/DashboardButton';
 import { PlusIcon } from '../../components/DashboardIcons';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
   DashboardExperienceSummary,
@@ -122,6 +123,7 @@ function ExperienceRow({
 }
 
 function DashboardExperienceListPage() {
+  const redirectToSignin = useSigninRedirect();
   const userInfo = useAtomValue(userInfoAtom);
   // 審査中は管理画面に入れるが、体験のAPIは承認済みの生産者のみ使える
   const canManage = userInfo?.isProducer === true;
@@ -181,7 +183,7 @@ function DashboardExperienceListPage() {
         setTotalPages(data.totalPages);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -245,7 +247,7 @@ function DashboardExperienceListPage() {
       setReloadCount((count) => count + 1);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

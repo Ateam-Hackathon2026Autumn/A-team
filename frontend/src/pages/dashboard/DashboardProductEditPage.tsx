@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAtomValue } from 'jotai';
 
+import { useScrollDashboardToTop } from '../../Layouts/dashboardScroll';
 import ApiError from '../../api/apiError';
 import {
   getCategories,
@@ -12,6 +13,7 @@ import {
 } from '../../api/dashboardProductApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardProductForm from '../../components/DashboardProductForm';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
   Category,
@@ -41,6 +43,8 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 function DashboardProductEditPage() {
+  const scrollToTop = useScrollDashboardToTop();
+  const redirectToSignin = useSigninRedirect();
   const navigate = useNavigate();
   const { productId: productIdParam } = useParams();
   const productId = Number(productIdParam);
@@ -79,7 +83,7 @@ function DashboardProductEditPage() {
         }
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -138,7 +142,7 @@ function DashboardProductEditPage() {
       }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 
@@ -155,14 +159,14 @@ function DashboardProductEditPage() {
           `${savedPart}は保存しましたが、${failedPart}は保存できませんでした${reason}。保存済みの内容を読み込み直したので、${failedPart}を確認してもう一度保存してください。`,
         );
         reload();
-        window.scrollTo({ top: 0 });
+        scrollToTop();
         return;
       }
 
       if (error instanceof ApiError && error.status === 412) {
         setNotice(STALE_MESSAGE);
         reload();
-        window.scrollTo({ top: 0 });
+        scrollToTop();
         return;
       }
 

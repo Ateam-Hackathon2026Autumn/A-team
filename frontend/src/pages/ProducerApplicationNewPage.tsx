@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 
 import { createProducerApplication } from '../api/producerApplicationApi';
 import ProducerApplicationForm from '../components/producer/ProducerApplicationForm';
@@ -12,6 +12,9 @@ export default function ProducerApplicationNewPage() {
   const [userInfo, setUserInfo] = useAtom(userInfoAtom);
   const alreadyApplied = userInfo?.producerApplicationStatus === 'pending' ||
     userInfo?.producerApplicationStatus === 'approved' || userInfo?.isProducer === true;
+  // 差し戻し・却下の申請は新規作成できない（バックエンドは 409 APPLICATION_RESUBMIT_REQUIRED）。修正して再申請する編集画面へ案内する。
+  const needsResubmit = userInfo?.producerApplicationStatus === 'returned' ||
+    userInfo?.producerApplicationStatus === 'rejected';
 
   const handleSubmit = async (input: ProducerApplicationInput) => {
     const accepted = await createProducerApplication(input);
@@ -24,6 +27,8 @@ export default function ProducerApplicationNewPage() {
     }
     navigate('/producer-application', { replace: true });
   };
+
+  if (needsResubmit) return <Navigate to="/producer-application/edit" replace />;
 
   return (
     <ContentPage

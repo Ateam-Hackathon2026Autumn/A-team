@@ -1,5 +1,5 @@
 import { toApiError } from "./apiError";
-import { apiFetch } from "./client";
+import { apiFetch, type ApiFetchOptions } from "./client";
 import type {
   Category,
   ProductDetail,
@@ -7,8 +7,8 @@ import type {
   ProductQuery,
 } from "../types/publicProduct";
 
-async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await apiFetch(path, { signal });
+async function getJson<T>(path: string, signal?: AbortSignal, options?: ApiFetchOptions): Promise<T> {
+  const response = await apiFetch(path, { signal }, options);
   if (!response.ok) {
     throw await toApiError(response, "商品情報の取得に失敗しました。");
   }
@@ -19,6 +19,7 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 export function getProducts(
   query: ProductQuery = {},
   signal?: AbortSignal,
+  options?: ApiFetchOptions,
 ): Promise<ProductListResponse> {
   const params = new URLSearchParams({
     page: String(query.page ?? 1),
@@ -31,11 +32,11 @@ export function getProducts(
   if (query.price && query.price !== "all") params.set("price", query.price);
   if (query.subscription !== undefined) params.set("subscription", String(query.subscription));
   if (query.preorder !== undefined) params.set("preorder", String(query.preorder));
-  return getJson<ProductListResponse>(`/api/v1/products?${params}`, signal);
+  return getJson<ProductListResponse>(`/api/v1/products?${params}`, signal, options);
 }
 
-export const getCategories = (signal?: AbortSignal) =>
-  getJson<{ items: Category[] }>("/api/v1/categories", signal);
+export const getCategories = (signal?: AbortSignal, options?: ApiFetchOptions) =>
+  getJson<{ items: Category[] }>("/api/v1/categories", signal, options);
 
-export const getProduct = (id: number, signal?: AbortSignal) =>
-  getJson<ProductDetail>(`/api/v1/products/${id}`, signal);
+export const getProduct = (id: number, signal?: AbortSignal, options?: ApiFetchOptions) =>
+  getJson<ProductDetail>(`/api/v1/products/${id}`, signal, options);

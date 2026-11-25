@@ -1,22 +1,22 @@
-import { apiFetch } from './client';
+import { apiFetch, type ApiFetchOptions } from './client';
 import ApiError, { toApiError } from './apiError';
 import type { PageResult } from '../types/experience';
 
-export async function contentJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await apiFetch(path, { signal });
+export async function contentJson<T>(path: string, signal?: AbortSignal, options?: ApiFetchOptions): Promise<T> {
+  const response = await apiFetch(path, { signal }, options);
   if (!response.ok) throw await toApiError(response, '情報を取得できませんでした。');
   return response.json() as Promise<T>;
 }
 
 // 絞り込み条件をサーバーに渡し、その条件に一致する全ページを取得する。
-export async function contentItems<T>(path: string, signal?: AbortSignal, query: Record<string, string | number> = {}): Promise<T[]> {
+export async function contentItems<T>(path: string, signal?: AbortSignal, query: Record<string, string | number> = {}, options?: ApiFetchOptions): Promise<T[]> {
   const params = new URLSearchParams({ page: '1', pageSize: '20' });
   for (const [key, value] of Object.entries(query)) params.set(key, String(value));
-  const first = await contentJson<PageResult<T>>(`${path}?${params}`, signal);
+  const first = await contentJson<PageResult<T>>(`${path}?${params}`, signal, options);
   const items = [...first.items];
   for (let page = 2; page <= first.totalPages; page++) {
     params.set('page', String(page));
-    items.push(...(await contentJson<PageResult<T>>(`${path}?${params}`, signal)).items);
+    items.push(...(await contentJson<PageResult<T>>(`${path}?${params}`, signal, options)).items);
   }
   return items;
 }

@@ -16,6 +16,7 @@ import {
   describedBy,
   type PublishStatusOption,
 } from '../../components/DashboardFormParts';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
   DashboardProfile,
@@ -594,6 +595,7 @@ function ProfilePreview({
 // ---------------------------------------------------------------------------
 
 function DashboardProfileEditPage() {
+  const redirectToSignin = useSigninRedirect();
   const userInfo = useAtomValue(userInfoAtom);
   // 審査中は管理画面に入れるが、プロフィールのAPIは承認済みの生産者のみ使える
   const canManage = userInfo?.isProducer === true;
@@ -648,7 +650,7 @@ function DashboardProfileEditPage() {
         }
 
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -889,7 +891,7 @@ function DashboardProfileEditPage() {
       setToast('プロフィールを保存しました。');
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

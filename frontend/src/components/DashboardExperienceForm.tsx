@@ -8,6 +8,7 @@ import {
 
 import ApiError from '../api/apiError';
 import { uploadImage } from '../api/uploadApi';
+import { useSigninRedirect } from '../hooks/useSigninRedirect';
 import type {
   DashboardExperience,
   ExperienceFlowItem,
@@ -293,6 +294,7 @@ function DashboardExperienceForm({
   onSubmit,
   cancelTo,
 }: DashboardExperienceFormProps) {
+  const redirectToSignin = useSigninRedirect();
   const isEdit = experience !== undefined;
 
   const [values, setValues] = useState<ExperienceFormValues>(() =>
@@ -432,7 +434,7 @@ function DashboardExperienceForm({
       await onSubmit(toInput(values, uploadedKeys, status));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

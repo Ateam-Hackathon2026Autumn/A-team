@@ -1,7 +1,8 @@
 import { contentItems, contentJson, submitContent } from './publicContentApi';
 import type { Job, JobDetail, JobApplication, JobInput, JobReceipt } from '../types/job';
 import ApiError from './apiError';
-export const getJobs = (signal?: AbortSignal, query: { producerId?: number } = {}) => contentItems<Job>('/api/v1/jobs', signal, query);
+import type { ApiFetchOptions } from './client';
+export const getJobs = (signal?: AbortSignal, query: { producerId?: number } = {}, options?: ApiFetchOptions) => contentItems<Job>('/api/v1/jobs', signal, query, options);
 export const getJob = (id: number, signal?: AbortSignal) => contentJson<JobDetail>(`/api/v1/jobs/${id}`, signal);
 export const getJobApplications = (signal?: AbortSignal) => contentItems<JobApplication>('/api/v1/users/me/job-applications', signal);
 export async function applyJob(id: number, input: JobInput): Promise<JobReceipt> {

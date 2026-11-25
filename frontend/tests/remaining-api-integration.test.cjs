@@ -48,7 +48,7 @@ test('real-mode cart row keeps quantity/remove controls available to guests', ()
 
 test('guest product page adds to real cart and locks simultaneous clicks', async () => {
   const hooks = hooksFixture(), pending = deferred(); let product;
-  const r = runtime({ overrides: { react: hooks.react, 'react-router': { ...require('react-router'), useParams: () => ({ productId: '1' }) } }, reply: (url) => {
+  const r = runtime({ overrides: { react: hooks.react, jotai: { ...require('jotai'), useAtomValue: () => 'loggedOut' }, 'react-router': { ...require('react-router'), useParams: () => ({ productId: '1' }), useLocation: () => ({ pathname: '/products/1', search: '', hash: '' }), useNavigate: () => () => {} } }, reply: (url) => {
     if (url === '/api/v1/products/1') return json(product);
     if (url.startsWith('/api/v1/products?')) return json(page([]));
     if (url.endsWith('/csrf')) return json({ csrfToken: 'guest' });
@@ -206,9 +206,9 @@ test('C4: story API works without title/category and distinguishes story ID from
   assert.ok(r.calls.some(c => c.url === '/api/v1/producers/7/story'));
 });
 for (const allNull of [false, true]) for (const name of ['HomePage', 'LearnPage', 'StoryDetailPage']) test(`C4: ${name} renders API-shaped story (allNull=${allNull})`, () => {
-  const data = { ...story, reason: allNull ? null : story.reason }; let count = 0, storiesLoader;
-  const r = runtime({ overrides: { '../hooks/usePublicContent': { usePublicContent: loader => ({ data: name === 'HomePage' ? (loader === storiesLoader ? [data] : null) : name === 'StoryDetailPage' ? (count++ === 0 ? data : page([])) : [data], loading: false, error: '', retry() {} }) } } });
-  storiesLoader = r.load('api/storyApi.ts').getStories;
+  const data = { ...story, reason: allNull ? null : story.reason }; let count = 0;
+  // HomePage は補足取得オプションを渡すため、ストーリーの読み込みは loadStories（名前で識別）になる
+  const r = runtime({ overrides: { '../hooks/usePublicContent': { usePublicContent: loader => ({ data: name === 'HomePage' ? (loader.name === 'loadStories' ? [data] : null) : name === 'StoryDetailPage' ? (count++ === 0 ? data : page([])) : [data], loading: false, error: '', retry() {} }) } } });
   const Component = r.load(`pages/${name}.tsx`).default;
   const html = renderToStaticMarkup(React.createElement(MemoryRouter, null, React.createElement(Component)));
   assert.ok(html.includes('北の農園')); assert.equal(html.includes('土を大切にする'), !allNull);

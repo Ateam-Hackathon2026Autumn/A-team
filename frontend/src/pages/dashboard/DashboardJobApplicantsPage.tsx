@@ -10,6 +10,7 @@ import {
 } from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
 import { controlClassName } from '../../components/DashboardFormParts';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
   DashboardJob,
@@ -197,6 +198,7 @@ function ApplicationRow({
 }
 
 function DashboardJobApplicantsPage() {
+  const redirectToSignin = useSigninRedirect();
   const { jobId: jobIdParam } = useParams();
   const jobId = Number(jobIdParam);
   const isValidId = Number.isInteger(jobId) && jobId > 0;
@@ -260,7 +262,7 @@ function DashboardJobApplicantsPage() {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -326,7 +328,7 @@ function DashboardJobApplicantsPage() {
         .catch(() => {});
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

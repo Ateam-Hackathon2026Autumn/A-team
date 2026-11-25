@@ -5,6 +5,7 @@ import ApiError from "../api/apiError";
 import { addFavoriteProducer, removeFavoriteProducer } from "../api/favoriteApi";
 import { getProducer } from "../api/producerApi";
 import { getProducts } from "../api/productApi";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
 import { getExperiences } from "../api/experienceApi";
 import { getJobs } from "../api/jobApi";
 import { contentJson } from "../api/publicContentApi";
@@ -75,7 +76,7 @@ export default function ProducerProfilePage() {
   const relatedLoader = useCallback(
     async (signal: AbortSignal) => {
       if (!producer) return null;
-      const results = await Promise.allSettled([getProducts({ producerId: producer.id, pageSize: 6 }, signal), getExperiences(signal, { producerId: producer.id }), getJobs(signal, { producerId: producer.id }), producer.hasPublicStory ? contentJson<Story>(`/api/v1/producers/${producer.id}/story`, signal) : Promise.resolve(null)]);
+      const results = await Promise.allSettled([getProducts({ producerId: producer.id, pageSize: 6 }, signal, SUPPLEMENTARY_FETCH), getExperiences(signal, { producerId: producer.id }, SUPPLEMENTARY_FETCH), getJobs(signal, { producerId: producer.id }, SUPPLEMENTARY_FETCH), producer.hasPublicStory ? contentJson<Story>(`/api/v1/producers/${producer.id}/story`, signal, SUPPLEMENTARY_FETCH) : Promise.resolve(null)]);
       return { products: results[0], experiences: results[1], jobs: results[2], story: results[3] };
     },
     [producer],

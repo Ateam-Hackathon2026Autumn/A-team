@@ -8,6 +8,7 @@ import {
 
 import ApiError from '../api/apiError';
 import { uploadImage } from '../api/uploadApi';
+import { useSigninRedirect } from '../hooks/useSigninRedirect';
 import type {
   Category,
   DashboardProduct,
@@ -291,6 +292,7 @@ function DashboardProductForm({
   onSubmit,
   cancelTo,
 }: DashboardProductFormProps) {
+  const redirectToSignin = useSigninRedirect();
   const isEdit = product !== undefined;
 
   const [values, setValues] = useState<ProductFormValues>(() =>
@@ -427,7 +429,7 @@ function DashboardProductForm({
       await onSubmit(toCreateInput(values, uploadedKeys, status));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

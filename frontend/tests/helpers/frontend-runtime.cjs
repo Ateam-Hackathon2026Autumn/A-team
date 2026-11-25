@@ -8,7 +8,7 @@ const React = require('react');
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 function runtime({ replies = [], reply, overrides = {}, mock = false } = {}) {
-  const calls = [], cache = new Map(), storage = new Map();
+  const calls = [], scrolls = [], cache = new Map(), storage = new Map();
   function load(filename) {
     if (cache.has(filename)) return cache.get(filename).exports;
     const source = fs.readFileSync(filename, 'utf8').replaceAll('import.meta.env', JSON.stringify({ DEV: true, VITE_USE_MOCK: String(mock) }));
@@ -18,7 +18,7 @@ function runtime({ replies = [], reply, overrides = {}, mock = false } = {}) {
     const context = vm.createContext({ module, exports: module.exports, Response, Request, Headers, URL, URLSearchParams,
       AbortController, AbortSignal, FormData, Blob, File, console, setTimeout, clearTimeout, structuredClone,
       crypto: require('node:crypto').webcrypto,
-      window: { location: { origin: 'http://localhost' }, sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) } },
+      window: { location: { origin: 'http://localhost' }, scrollTo: (x, y) => scrolls.push([x, y]), sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) } },
       fetch: async (url, init) => {
         calls.push({ url, init });
         if (reply) return reply(url, init);
@@ -39,7 +39,7 @@ function runtime({ replies = [], reply, overrides = {}, mock = false } = {}) {
     new vm.Script(code, { filename }).runInContext(context);
     return module.exports;
   }
-  return { calls, load: name => load(path.resolve(__dirname, '../../src', name)) };
+  return { calls, scrolls, load: name => load(path.resolve(__dirname, '../../src', name)) };
 }
 
 // 画面本体の状態とイベントを確認する軽量fixture。DOM・ブラウザーの代用ではない。

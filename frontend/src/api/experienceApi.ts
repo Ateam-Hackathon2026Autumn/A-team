@@ -1,8 +1,8 @@
 import { contentItems, contentJson } from './publicContentApi';
 import ApiError, { toApiError } from './apiError';
-import { apiFetch } from './client';
+import { apiFetch, type ApiFetchOptions } from './client';
 import type { Experience, ExperienceDetail, ExperienceApplyInput, ExperienceReceipt, MyExperienceApplication } from '../types/experience';
-export const getExperiences = (signal?: AbortSignal, query: { producerId?: number } = {}) => contentItems<Experience>('/api/v1/experiences', signal, query);
+export const getExperiences = (signal?: AbortSignal, query: { producerId?: number } = {}, options?: ApiFetchOptions) => contentItems<Experience>('/api/v1/experiences', signal, query, options);
 export const getExperience = (id: number, signal?: AbortSignal) => contentJson<ExperienceDetail>(`/api/v1/experiences/${id}`, signal);
 
 export async function applyExperience(id: number, input: ExperienceApplyInput): Promise<ExperienceReceipt> {
