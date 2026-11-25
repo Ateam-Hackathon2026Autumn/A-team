@@ -45,14 +45,14 @@ function AuthWrapper() {
   const isProducerOnlyPage = matchesAny(producerOnlyPaths, location.pathname);
 
   useEffect(() => {
-    setApiFailureHandler((status, path) => {
+    setApiFailureHandler((status, path, method) => {
       if (status === 401) {
         // ログイン失敗や未ログイン状態の公開 API は画面でエラーを表示する。
         if (loginStatus !== "loggedIn" || path === "/api/v1/auth/signin") return;
         setUserInfo(null);
         setLoginStatus("loggedOut");
         navigate("/signin", { replace: true, state: { from: getAuthReturnPath(location) } });
-      } else if (status >= 500 && location.pathname !== "/500") {
+      } else if (status >= 500 && method === 'GET' && location.pathname !== "/500") {
         navigate("/500", { replace: true });
       }
     });

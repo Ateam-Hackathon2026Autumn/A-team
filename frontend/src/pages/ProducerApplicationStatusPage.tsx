@@ -104,7 +104,7 @@ export default function ProducerApplicationStatusPage() {
             )}
 
             <div className="mt-6 flex flex-wrap gap-4">
-              {(application.status === 'returned' || application.canResubmit) && (
+              {application.canResubmit && (
                 <Link to="/producer-application/edit" className={linkClass}>
                   申請内容を修正して再申請する
                 </Link>

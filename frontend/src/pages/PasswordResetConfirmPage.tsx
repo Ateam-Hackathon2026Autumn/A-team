@@ -24,6 +24,7 @@ export default function PasswordResetConfirmPage() {
     setError('');
     try {
       await confirmPasswordReset(uid, token, password);
+      window.history.replaceState(window.history.state, '', window.location.pathname);
       setPassword(''); setConfirmation(''); setDone(true);
     } catch (cause) {
       if (cause instanceof ApiError) setError(cause.details.newPassword?.join(' ') || cause.message);
@@ -36,8 +37,8 @@ export default function PasswordResetConfirmPage() {
     {!validLink ? <p role="alert">再設定リンクが無効です。もう一度再設定を申請してください。</p> : done ? <>
       <p role="status">パスワードを再設定しました。</p><Link to="/signin">ログインへ</Link>
     </> : <form onSubmit={submit} aria-busy={busy} className="space-y-5">
-      <label className="block">新しいパスワード<input className={fieldClass} type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} onChange={event => setPassword(event.target.value)} /></label>
-      <label className="block">新しいパスワード（確認）<input className={fieldClass} type="password" autoComplete="new-password" required value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
+      <label className="block">新しいパスワード<input className={fieldClass} type="password" autoComplete="new-password" minLength={8} maxLength={30} required value={password} onChange={event => setPassword(event.target.value)} /></label>
+      <label className="block">新しいパスワード（確認）<input className={fieldClass} type="password" autoComplete="new-password" minLength={8} maxLength={30} required value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
       {error && <p role="alert" className="text-marche-red">{error}</p>}
       <Button type="submit" disabled={busy}>{busy ? '再設定中…' : 'パスワードを変更する'}</Button>
     </form>}

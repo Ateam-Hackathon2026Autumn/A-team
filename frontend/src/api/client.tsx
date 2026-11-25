@@ -1,7 +1,7 @@
 import { USE_MOCK, VITE_API_URL } from "../config/env";
 import ApiError from './apiError';
 
-type ApiFailureHandler = (status: number, path: string) => void;
+type ApiFailureHandler = (status: number, path: string, method: string) => void;
 let apiFailureHandler: ApiFailureHandler | null = null;
 
 export function setApiFailureHandler(handler: ApiFailureHandler | null) {
@@ -26,7 +26,7 @@ async function rawFetch(path: string, init: RequestInit = {}): Promise<Response>
 function notifyFailure(status: number, path: string, requestMethod?: string) {
   const method = (requestMethod ?? 'GET').toUpperCase();
   if (status === 401 || (method === 'GET' && status >= 500 && path !== '/api/v1/auth/csrf')) {
-    apiFailureHandler?.(status, path);
+    apiFailureHandler?.(status, path, method);
   }
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -50,8 +50,11 @@ export default function ExperienceApplicationsPage() {
   const [cancelError, setCancelError] = useState<{ id: number; message: string } | null>(null);
   const [cancelNotice, setCancelNotice] = useState<{ id: number; message: string } | null>(null);
 
+  const cancelLock = useRef(false);
   const handleCancel = async (applicationId: number) => {
-    if (cancelingId !== null) return;
+    if (cancelLock.current) return;
+    if (!window.confirm('この予約をキャンセルしますか？キャンセルは取り消せず、生産者に通知されます。')) return;
+    cancelLock.current = true;
     setCancelingId(applicationId);
     setCancelError(null);
     setCancelNotice(null);
@@ -65,6 +68,7 @@ export default function ExperienceApplicationsPage() {
         message: cause instanceof Error ? cause.message : '予約をキャンセルできませんでした。',
       });
     } finally {
+      cancelLock.current = false;
       setCancelingId(null);
     }
   };
@@ -163,7 +167,7 @@ export default function ExperienceApplicationsPage() {
                     {application.cancellable && (
                       <Button
                         variant="outline"
-                        disabled={isCanceling}
+                        disabled={cancelingId !== null}
                         onClick={() => void handleCancel(application.id)}
                       >
                         {isCanceling ? 'キャンセル中…' : '予約をキャンセルする'}

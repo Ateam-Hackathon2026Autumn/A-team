@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import { Link, useLocation } from "react-router";
 import { loginStatusAtom, userInfoAtom } from "../../stores/userAtom";
+import { USE_MOCK } from "../../config/env";
 
 const links = [
   { href: "#products", label: "買う" },
@@ -30,9 +31,9 @@ export default function Header() {
         本文へ
       </a>
 
-      <div className="bg-marche-sage px-4 py-1.5 text-center text-[11px] text-marche-muted">
+      {USE_MOCK && <div className="bg-marche-sage px-4 py-1.5 text-center text-[11px] text-marche-muted">
         2026 秋ハッカソン · 画面サンプル｜掲載情報は架空です
-      </div>
+      </div>}
 
       <header className="sticky top-0 z-30 border-b border-marche-line bg-marche-ivory">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-8 lg:gap-6">

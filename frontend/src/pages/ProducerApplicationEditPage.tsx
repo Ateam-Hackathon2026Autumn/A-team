@@ -73,7 +73,7 @@ export default function ProducerApplicationEditPage() {
       )}
 
       {application && (
-        application.canResubmit || application.status === 'returned' || application.status === 'rejected' ? (
+        application.canResubmit ? (
           <ProducerApplicationForm
             key={application.applicationId}
             mode="edit"
@@ -88,7 +88,7 @@ export default function ProducerApplicationEditPage() {
           <section className={`${panelClass} mt-6`}>
             <h2 className="mt-0 font-serif text-xl">現在は申請の修正・再申請はできません</h2>
             <p className="text-sm text-marche-muted">
-              再申請ができるのは、差し戻しまたは却下された申請のみです。現在の審査状況は申請状況画面でご確認ください。
+              現在の申請は再申請できません。掲載停止中などの理由や審査状況は申請状況画面でご確認ください。
             </p>
             <Link to="/producer-application" className={linkClass}>
               申請状況を確認する

@@ -10,6 +10,8 @@ import type { ProducerApplicationInput } from '../types/producerApplication';
 export default function ProducerApplicationNewPage() {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useAtom(userInfoAtom);
+  const alreadyApplied = userInfo?.producerApplicationStatus === 'pending' ||
+    userInfo?.producerApplicationStatus === 'approved' || userInfo?.isProducer === true;
 
   const handleSubmit = async (input: ProducerApplicationInput) => {
     const accepted = await createProducerApplication(input);
@@ -37,13 +39,15 @@ export default function ProducerApplicationNewPage() {
           申請状況を確認する →
         </Link>
       </div>
-      <ProducerApplicationForm
+      {alreadyApplied ? <p role="status" className="mt-6">
+        生産者登録申請は既に受け付けています。<Link to="/producer-application" className={textLinkClass}>申請状況を確認する →</Link>
+      </p> : <ProducerApplicationForm
         mode="create"
         submitLabel="生産者登録を申請する"
         submittingLabel="申請を送信中…"
         cancelTo="/mypage"
         onSubmit={handleSubmit}
-      />
+      />}
     </ContentPage>
   );
 }
