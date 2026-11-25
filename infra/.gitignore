@@ -46,7 +46,9 @@ terraform.rc
 !.terraform-version
 !.terraform.lock.hcl
 
-scripts/
+/scripts/*
+!/scripts/ensure_django_secret.py
+!/scripts/run_migration.py
 
 DEPLOYMENT_TODO.md
 

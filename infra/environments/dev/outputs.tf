@@ -120,4 +120,3 @@ output "deletion_policy" {
     django_secret_recovery_window_in_days = module.ecs.django_secret_recovery_window_in_days
   }
 }
-
