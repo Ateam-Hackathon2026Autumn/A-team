@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { getCategories, getProducts } from "../api/productApi";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
 import ProductCard from "../components/products/ProductCard";
 import Button from "../components/ui/Button";
@@ -55,7 +56,7 @@ export default function ProductListPage() {
         },
         controller.signal,
       ),
-      getCategories(controller.signal),
+      getCategories(controller.signal, SUPPLEMENTARY_FETCH),
     ])
       .then(([result, categoryResult]) => {
         if (controller.signal.aborted) return;

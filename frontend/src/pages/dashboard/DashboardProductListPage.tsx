@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { useAtomValue } from 'jotai';
 
 import ApiError from '../../api/apiError';
+import { SUPPLEMENTARY_FETCH } from '../../api/client';
 import {
   deleteProduct,
   getCategories,
@@ -13,6 +14,7 @@ import {
 import DashboardButton from '../../components/DashboardButton';
 import { PlusIcon } from '../../components/DashboardIcons';
 import DashboardProductRow from '../../components/DashboardProductRow';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { Category, DashboardProduct } from '../../types/product';
 
@@ -31,6 +33,7 @@ function ProductRowSkeleton() {
 }
 
 function DashboardProductListPage() {
+  const redirectToSignin = useSigninRedirect();
   const userInfo = useAtomValue(userInfoAtom);
   // 審査中は管理画面に入れるが、商品のAPIは承認済みの生産者のみ使える
   const canManageProducts = userInfo?.isProducer === true;
@@ -89,9 +92,9 @@ function DashboardProductListPage() {
         setTotal(data.total);
         setTotalPages(data.totalPages);
       } catch (error) {
-        // セッション切れ。ログイン状態を確認し直すため再読み込みする
+        // セッション切れ。サインイン画面へ移動し、ログイン後に元の画面へ戻れるようにする
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -116,7 +119,7 @@ function DashboardProductListPage() {
     let isActive = true;
 
     // カテゴリー名は補足情報のため、取得できなくても一覧は表示する
-    getCategories()
+    getCategories(SUPPLEMENTARY_FETCH)
       .then((items) => {
         if (isActive) {
           setCategories(items);
@@ -153,7 +156,7 @@ function DashboardProductListPage() {
       await action();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

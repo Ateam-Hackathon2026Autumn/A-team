@@ -247,7 +247,7 @@ test('C2: actual public detail renders time/text flow and null optional fields',
 test('C2: management form preserves object flow on edit/save and sends null for empty flow', async () => {
   for (const flow of [detail.flow, null]) {
     const hooks = hooksFixture();
-    const r = runtime([], { react: hooks.react });
+    const r = runtime([], { react: hooks.react, '../hooks/useSigninRedirect': { useSigninRedirect: () => () => {} } });
     const Form = r.loadSource('components/DashboardExperienceForm.tsx').default;
     const experience = { ...detail, prefectureId: 1, publishStatus: 'draft', images: [], flow };
     let saved;

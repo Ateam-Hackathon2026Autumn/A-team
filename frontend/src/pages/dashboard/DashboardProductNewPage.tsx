@@ -10,6 +10,7 @@ import {
 } from '../../api/dashboardProductApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardProductForm from '../../components/DashboardProductForm';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { Category, ProductCreateInput, ShippingSetting } from '../../types/product';
 
@@ -21,6 +22,7 @@ type Choices = {
 };
 
 function DashboardProductNewPage() {
+  const redirectToSignin = useSigninRedirect();
   const navigate = useNavigate();
   const userInfo = useAtomValue(userInfoAtom);
   // 審査中は管理画面に入れるが、商品のAPIは承認済みの生産者のみ使える
@@ -50,7 +52,7 @@ function DashboardProductNewPage() {
         }
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 

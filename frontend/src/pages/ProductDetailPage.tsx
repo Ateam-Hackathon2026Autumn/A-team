@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useAtomValue } from "jotai";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import ApiError from "../api/apiError";
 import { getProduct, getProducts } from "../api/productApi";
 import { addCartItem } from "../api/cartApi";
+import { addFavoriteProduct, removeFavoriteProduct } from "../api/favoriteApi";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
+import { loginStatusAtom } from "../stores/userAtom";
 import ProductCard, { ProductImage, yen } from "../components/products/ProductCard";
 import { StarIcon } from "../components/Icons";
 import Button from "../components/ui/Button";
@@ -34,6 +38,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const [message, setMessage] = useState("");
   const [cartError, setCartError] = useState("");
   const addLock = useRef(false);
+  const loginStatus = useAtomValue(loginStatusAtom);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [favorited, setFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [favoriteError, setFavoriteError] = useState("");
+  const [favoriteNotice, setFavoriteNotice] = useState("");
+  const favoriteLock = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,8 +63,9 @@ function ProductDetailContent({ productId }: { productId: string }) {
       .then((result) => {
         if (controller.signal.aborted) return;
         setProduct(result);
+        setFavorited(result.isFavorited === true);
         // 関連商品の失敗で、商品詳細そのものを非表示にしない。
-        void getProducts({ producerId: result.producer.id, page: 1, pageSize: 5 }, controller.signal)
+        void getProducts({ producerId: result.producer.id, page: 1, pageSize: 5 }, controller.signal, SUPPLEMENTARY_FETCH)
           .then((list) => {
             if (!controller.signal.aborted) setRelated(list.items.filter((p) => p.producer.id === result.producer.id && p.id !== result.id).slice(0, 4));
           })
@@ -68,6 +81,31 @@ function ProductDetailContent({ productId }: { productId: string }) {
       });
     return () => controller.abort();
   }, [productId, retry]);
+
+  // お気に入りの登録・解除。未ログインの場合はサインイン後に元の商品詳細へ戻れるよう遷移元を渡す。
+  async function toggleFavorite() {
+    if (!product || favoriteLock.current) return;
+    if (loginStatus !== "loggedIn") {
+      navigate("/signin", { state: { from: location } });
+      return;
+    }
+    const next = !favorited;
+    favoriteLock.current = true;
+    setFavoriteBusy(true);
+    setFavoriteError("");
+    setFavoriteNotice("");
+    try {
+      if (next) await addFavoriteProduct(product.id);
+      else await removeFavoriteProduct(product.id);
+      setFavorited(next);
+      setFavoriteNotice(next ? "お気に入りに登録しました。" : "お気に入りを解除しました。");
+    } catch (cause) {
+      setFavoriteError(apiErrorMessage(cause, "お気に入りの更新に失敗しました。時間をおいて再度お試しください。"));
+    } finally {
+      favoriteLock.current = false;
+      setFavoriteBusy(false);
+    }
+  }
 
   async function addToCart() {
     if (!product || addLock.current || product.stock === 0 || product.isSubscription) return;
@@ -330,7 +368,27 @@ function ProductDetailContent({ productId }: { productId: string }) {
           >
             プロフィールを見る →
           </Link>
-          <p className="m-0 mt-4 text-xs text-marche-muted">お気に入り登録・レビュー本文の表示は今後対応予定です。</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              variant={favorited ? "primary" : "outline"}
+              aria-busy={favoriteBusy ? "true" : undefined}
+              disabled={favoriteBusy}
+              onClick={() => void toggleFavorite()}
+            >
+              {favorited ? "お気に入りを解除する" : "お気に入りに登録する"}
+            </Button>
+            {favoriteNotice && (
+              <span role="status" className="text-sm font-bold text-marche-green">
+                {favoriteNotice}
+              </span>
+            )}
+            {favoriteError && (
+              <span role="alert" className="text-sm font-bold text-red-800">
+                {favoriteError}
+              </span>
+            )}
+          </div>
+          <p className="m-0 mt-4 text-xs text-marche-muted">レビュー本文の表示は今後対応予定です。</p>
         </aside>
       </div>
       {related.length > 0 && (

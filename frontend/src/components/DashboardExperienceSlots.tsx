@@ -8,6 +8,7 @@ import {
   newIdempotencyKey,
   updateExperienceSlot,
 } from '../api/dashboardExperienceApi';
+import { useSigninRedirect } from '../hooks/useSigninRedirect';
 import type {
   ExperienceSlot,
   ExperienceSlotStatus,
@@ -170,6 +171,7 @@ type DashboardExperienceSlotsProps = {
 
 // 体験の予約枠の一覧・追加・編集・受付停止・中止・削除
 function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperienceSlotsProps) {
+  const redirectToSignin = useSigninRedirect();
   const [slots, setSlots] = useState<ExperienceSlot[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [reloadCount, setReloadCount] = useState(0);
@@ -197,7 +199,7 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -240,7 +242,7 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
       return true;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return false;
       }
 

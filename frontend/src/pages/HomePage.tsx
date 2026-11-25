@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { useAtomValue } from "jotai";
 import { loginStatusAtom } from "../stores/userAtom";
 import { getCategories, getProducts } from "../api/productApi";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
 import { getProducers } from "../api/producerApi";
 import { getExperiences } from "../api/experienceApi";
 import { getJobs } from "../api/jobApi";
@@ -20,6 +21,11 @@ import type { ProductSort } from "../types/publicProduct";
 
 const pageWidth = "mx-auto max-w-[1200px] px-5 sm:px-8";
 const gridClass = "mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
+// ホームの各セクションは同格の補足情報なので、5xx でも /500 に遷移せず、セクション内でエラー表示する。
+const loadCategories = (signal: AbortSignal) => getCategories(signal, SUPPLEMENTARY_FETCH);
+const loadExperiences = (signal: AbortSignal) => getExperiences(signal, {}, SUPPLEMENTARY_FETCH);
+const loadJobs = (signal: AbortSignal) => getJobs(signal, {}, SUPPLEMENTARY_FETCH);
+const loadStories = (signal: AbortSignal) => getStories(signal, SUPPLEMENTARY_FETCH);
 const pillClass = "min-h-11 cursor-pointer rounded-full border border-marche-line bg-white px-4 py-2 font-sans text-sm text-marche-ink aria-pressed:border-marche-green aria-pressed:bg-marche-green aria-pressed:text-white";
 
 export default function HomePage() {
@@ -64,9 +70,10 @@ function HomeSection({ id, eyebrow, title, to, children }: { id: string; eyebrow
 }
 
 function HomeProducers() {
-  const state = usePublicContent(getProducers);
   const [tab, setTab] = useState("featured");
-  const producers = state.data?.filter(producer => producer.badges.includes(tab === "featured" ? "featured" : "new_farmer")).slice(0, 3);
+  const loader = useCallback((signal: AbortSignal) => getProducers(signal, { featured: tab === "featured" }, SUPPLEMENTARY_FETCH), [tab]);
+  const state = usePublicContent(loader);
+  const producers = state.data?.filter(producer => tab === "featured" || producer.badges.includes("new_farmer")).slice(0, 3);
   return <HomeSection id="producers" eyebrow="MEET THE PRODUCERS" title="つくる人を知る" to="/producers">
     <div role="group" aria-label="生産者の表示切り替え" className="my-5 flex flex-wrap gap-2"><button type="button" aria-pressed={tab === "featured"} className={pillClass} onClick={() => setTab("featured")}>注目の生産者</button><button type="button" aria-pressed={tab === "newcomer"} className={pillClass} onClick={() => setTab("newcomer")}>新規就農者</button></div>
     <ContentStatus {...state} />
@@ -77,8 +84,8 @@ function HomeProducers() {
 function HomeProducts() {
   const [category, setCategory] = useState("");
   const [sort, setSort] = useState<ProductSort>("popular");
-  const categories = usePublicContent(getCategories);
-  const loader = useCallback((signal: AbortSignal) => getProducts({ categoryId: category ? Number(category) : undefined, sort, pageSize: 6 }, signal), [category, sort]);
+  const categories = usePublicContent(loadCategories);
+  const loader = useCallback((signal: AbortSignal) => getProducts({ categoryId: category ? Number(category) : undefined, sort, pageSize: 6 }, signal, SUPPLEMENTARY_FETCH), [category, sort]);
   const state = usePublicContent(loader);
   return <HomeSection id="products" eyebrow="FRESH FROM THE PRODUCERS" title="旬のおすすめ商品" to="/products">
     <div className="my-5 flex flex-wrap items-end justify-between gap-4"><div role="group" aria-label="商品カテゴリー" className="flex flex-wrap gap-2"><button type="button" aria-pressed={!category} className={pillClass} onClick={() => setCategory("")}>すべて</button>{categories.data?.items.map(item => <button key={item.id} type="button" aria-pressed={category === String(item.id)} className={pillClass} onClick={() => setCategory(String(item.id))}>{item.name}</button>)}</div><label className="text-sm font-bold">並び替え<select className={fieldClass} value={sort} onChange={event => setSort(event.target.value as ProductSort)}><option value="popular">おすすめ順</option><option value="price_asc">価格が安い順</option><option value="price_desc">価格が高い順</option></select></label></div>
@@ -88,19 +95,19 @@ function HomeProducts() {
 }
 
 function HomeExperiences() {
-  const state = usePublicContent(getExperiences);
+  const state = usePublicContent(loadExperiences);
   const items = state.data?.filter(item => item.nextStartAt && new Date(item.nextStartAt).getTime() > Date.now()).sort((a, b) => (a.nextStartAt ?? '').localeCompare(b.nextStartAt ?? '')).slice(0, 3);
   return <HomeSection id="experiences" eyebrow="EXPERIENCE THE LOCAL LIFE" title="産地で体験する" to="/experiences"><ContentStatus {...state} />{items && (items.length ? <div className={gridClass}>{items.map(item => <ExperienceCard key={item.id} experience={item} />)}</div> : <p className="mt-5 text-marche-muted">近日開催の体験は現在ありません。</p>)}</HomeSection>;
 }
 
 function HomeJobs() {
-  const state = usePublicContent(getJobs);
+  const state = usePublicContent(loadJobs);
   const jobs = state.data?.filter(job => job.isAcceptingApplications).sort((a, b) => b.id - a.id).slice(0, 3);
   return <HomeSection id="jobs" eyebrow="WORK WITH PRODUCERS" title="産地で働く" to="/jobs"><ContentStatus {...state} />{jobs && (jobs.length ? <div className={gridClass}>{jobs.map(job => <JobCard key={job.id} job={job} />)}</div> : <p className="mt-5 text-marche-muted">現在募集中のお仕事はありません。</p>)}</HomeSection>;
 }
 
 function HomeStories() {
-  const state = usePublicContent(getStories);
+  const state = usePublicContent(loadStories);
   const story = state.data?.[0];
   return <HomeSection id="learn" eyebrow="THE STORY BEHIND FOOD" title="つくる人の物語" to="/learn"><ContentStatus {...state} />{state.data && (story ? <article className="mt-6 grid overflow-hidden rounded-3xl bg-marche-sage md:grid-cols-2"><ContentImage src={story.producer.coverImageUrl} alt={story.producer.businessName} className="aspect-[4/3] h-full" /><div className="p-6 sm:p-10"><p className="text-sm font-bold text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p><h3 className="font-serif text-2xl leading-relaxed"><Link to={`/learn/${story.id}`} className="text-inherit no-underline hover:underline">{story.producer.businessName}</Link></h3><p className="line-clamp-4 whitespace-pre-line">{storyLead(story)}</p><p className="text-sm text-marche-muted">{story.producer.businessName} ／ {story.producer.prefectureName}</p><Link to={`/learn/${story.id}`} className={textLinkClass}>ストーリーを読む →</Link></div></article> : <p className="mt-5 text-marche-muted">公開中のストーリーは現在ありません。</p>)}</HomeSection>;
 }

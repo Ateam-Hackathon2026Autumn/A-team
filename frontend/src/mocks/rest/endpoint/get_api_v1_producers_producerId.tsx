@@ -28,7 +28,7 @@ const producerProfile: RestMock = {
     foundedYear: 1962,
     acceptsExperience: true,
     recruiting: true,
-    badges: ['featured', 'accepts_experience', 'recruiting'],
+    badges: ['accepts_experience', 'recruiting'],
     representativeName: '山本 健太',
     intro: '北アルプスの雪どけ水で育てる、蜜たっぷりのりんご。三代目として減農薬栽培に取り組んでいます。',
     images: [

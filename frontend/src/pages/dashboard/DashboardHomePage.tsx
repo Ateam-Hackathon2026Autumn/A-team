@@ -13,6 +13,7 @@ import {
   ProductIcon,
   SalesIcon,
 } from '../../components/DashboardIcons';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { DashboardSummary } from '../../types/dashboard';
 
@@ -182,6 +183,7 @@ function StatCardSkeleton() {
 }
 
 function DashboardHomePage() {
+  const redirectToSignin = useSigninRedirect();
   const userInfo = useAtomValue(userInfoAtom);
   const canManage = userInfo?.isProducer === true;
 
@@ -204,7 +206,7 @@ function DashboardHomePage() {
         }
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
         if (isActive) {

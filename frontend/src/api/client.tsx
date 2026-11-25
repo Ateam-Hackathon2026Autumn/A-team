@@ -4,28 +4,36 @@ import ApiError from './apiError';
 type ApiFailureHandler = (status: number, path: string, method: string) => void;
 let apiFailureHandler: ApiFailureHandler | null = null;
 
+export type ApiFetchOptions = {
+  // false の場合、GET の 5xx を全画面エラー（/500）への遷移対象にしない。補足的な取得で使う。既定は true。
+  redirectOnServerError?: boolean;
+};
+// 関連商品・カテゴリーなど、画面の主要部分ではない補足情報の取得に使う。
+export const SUPPLEMENTARY_FETCH: ApiFetchOptions = { redirectOnServerError: false };
+
 export function setApiFailureHandler(handler: ApiFailureHandler | null) {
   apiFailureHandler = handler;
 }
 
 // CSRF取得自身はこの通信処理を使い、apiFetchへの再帰を避ける。
-async function rawFetch(path: string, init: RequestInit = {}): Promise<Response> {
+async function rawFetch(path: string, init: RequestInit = {}, fetchOptions: ApiFetchOptions = {}): Promise<Response> {
   const url = `${VITE_API_URL}${path}`;
   const options: RequestInit = { ...init, credentials: "include" };
+  const redirectOnServerError = fetchOptions.redirectOnServerError !== false;
   if (USE_MOCK) {
     const { mockFetch } = await import("../mocks/mockFetch");
     const response = await mockFetch(url, options);
-    notifyFailure(response.status, path, init.method);
+    notifyFailure(response.status, path, init.method, redirectOnServerError);
     return response;
   }
   const response = await fetch(url, options);
-  notifyFailure(response.status, path, init.method);
+  notifyFailure(response.status, path, init.method, redirectOnServerError);
   return response;
 }
 
-function notifyFailure(status: number, path: string, requestMethod?: string) {
+function notifyFailure(status: number, path: string, requestMethod: string | undefined, redirectOnServerError: boolean) {
   const method = (requestMethod ?? 'GET').toUpperCase();
-  if (status === 401 || (method === 'GET' && status >= 500 && path !== '/api/v1/auth/csrf')) {
+  if (status === 401 || (redirectOnServerError && method === 'GET' && status >= 500 && path !== '/api/v1/auth/csrf')) {
     apiFailureHandler?.(status, path, method);
   }
 }
@@ -62,15 +70,15 @@ function getCsrfToken(): Promise<string> {
   return request;
 }
 
-async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+async function apiFetch(path: string, init: RequestInit = {}, options: ApiFetchOptions = {}): Promise<Response> {
   init.signal?.throwIfAborted();
   const method = (init.method ?? 'GET').toUpperCase();
-  if (['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) return rawFetch(path, init);
+  if (['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) return rawFetch(path, init, options);
   const send = (token: string) => {
     init.signal?.throwIfAborted();
     const headers = new Headers(init.headers);
     headers.set('X-CSRFToken', token);
-    return rawFetch(path, { ...init, method, headers });
+    return rawFetch(path, { ...init, method, headers }, options);
   };
   const token = await getCsrfToken();
   const response = await send(token);

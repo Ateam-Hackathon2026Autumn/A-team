@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import ApiError from "../api/apiError";
 import { getCart, removeCartItem, updateCartItem } from "../api/cartApi";
 import { getProduct } from "../api/productApi";
+import { SUPPLEMENTARY_FETCH } from "../api/client";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
 import CartItemRow from "../components/cart/CartItemRow";
 import { yen } from "../components/products/ProductCard";
@@ -50,7 +51,7 @@ export default function CartPage() {
         setCart(result);
         // 補足情報の取得に失敗しても、カートの商品・金額・削除操作は表示する。
         const ids = [...new Set(result.items.map((item) => item.productId))];
-        const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal)));
+        const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)));
         if (request.signal.aborted) return;
         const available: Record<number, ProductDetail> = {};
         for (const detail of details) if (detail.status === "fulfilled") available[detail.value.id] = detail.value;
@@ -104,7 +105,7 @@ export default function CartPage() {
           const latest = await getCart(request.signal);
           if (!request.signal.aborted) setCart(latest);
           const ids = [...new Set(latest.items.map((line) => line.productId))];
-          const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal)));
+          const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)));
           if (!request.signal.aborted) {
             const available: Record<number, ProductDetail> = {};
             for (const detail of details) {

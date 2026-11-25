@@ -2,10 +2,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAtomValue } from 'jotai';
 
+import { useScrollDashboardToTop } from '../../Layouts/dashboardScroll';
 import ApiError from '../../api/apiError';
 import { getAllJobApplications, getDashboardJob, updateJob } from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardJobForm from '../../components/DashboardJobForm';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { DashboardJob, JobInput } from '../../types/dashboardJob';
 
@@ -31,6 +33,8 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 function DashboardJobEditPage() {
+  const scrollToTop = useScrollDashboardToTop();
+  const redirectToSignin = useSigninRedirect();
   const navigate = useNavigate();
   const { jobId: jobIdParam } = useParams();
   const jobId = Number(jobIdParam);
@@ -68,7 +72,7 @@ function DashboardJobEditPage() {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -87,7 +91,7 @@ function DashboardJobEditPage() {
     setLoadError(null);
     setLoaded(null);
     setReloadCount((count) => count + 1);
-    window.scrollTo({ top: 0 });
+    scrollToTop();
   };
 
   const handleSubmit = async (input: JobInput) => {

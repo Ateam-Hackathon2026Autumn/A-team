@@ -13,6 +13,7 @@ import {
   describedBy,
   type PublishStatusOption,
 } from '../../components/DashboardFormParts';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
   DashboardStory,
@@ -273,6 +274,7 @@ function StoryPreview({ values }: { values: FormValues }) {
 }
 
 function DashboardStoryEditPage() {
+  const redirectToSignin = useSigninRedirect();
   const userInfo = useAtomValue(userInfoAtom);
   // 審査中は管理画面に入れるが、ストーリーのAPIは承認済みの生産者のみ使える
   const canManage = userInfo?.isProducer === true;
@@ -307,7 +309,7 @@ function DashboardStoryEditPage() {
         }
 
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -419,7 +421,7 @@ function DashboardStoryEditPage() {
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 

@@ -6,6 +6,7 @@ import ApiError from '../../api/apiError';
 import { deleteJob, getDashboardJobs } from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
 import { PlusIcon } from '../../components/DashboardIcons';
+import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { DashboardJobSummary, JobPublishStatus } from '../../types/dashboardJob';
 import { formatDateTime } from '../../utils/experienceFormat';
@@ -105,6 +106,7 @@ function JobRow({
 }
 
 function DashboardJobListPage() {
+  const redirectToSignin = useSigninRedirect();
   const userInfo = useAtomValue(userInfoAtom);
   // 審査中は管理画面に入れるが、求人のAPIは承認済みの生産者のみ使える
   const canManage = userInfo?.isProducer === true;
@@ -160,7 +162,7 @@ function DashboardJobListPage() {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
-          window.location.replace('/signin');
+          redirectToSignin();
           return;
         }
 
@@ -213,7 +215,7 @@ function DashboardJobListPage() {
       setReloadCount((count) => count + 1);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        window.location.replace('/signin');
+        redirectToSignin();
         return;
       }
 
