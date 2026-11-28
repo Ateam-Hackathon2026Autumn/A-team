@@ -1,32 +1,46 @@
-import { useCallback } from "react";
-import { Link, useParams } from "react-router";
-import { getExperience } from "../api/experienceApi";
-import { ContentImage, ContentPage, ContentSection, ContentStatus, dateLabel, timeLabel, yen, linkClass, panelClass, textLinkClass } from "../components/ui/ContentPage";
-import { usePublicContent } from "../hooks/usePublicContent";
-import { isExperienceSlotBookable } from "../utils/experienceValidation";
+import { useCallback } from 'react';
+import { Link, useParams } from 'react-router';
+import { getExperience } from '../api/experienceApi';
+import {
+  ContentImage,
+  ContentPage,
+  ContentSection,
+  ContentStatus,
+} from '../components/ui/ContentPage';
+import {
+  dateLabel,
+  timeLabel,
+  yen,
+  linkClass,
+  panelClass,
+  textLinkClass,
+} from '../components/ui/contentPageValues';
+import { usePublicContent } from '../hooks/usePublicContent';
+import { isExperienceSlotBookable } from '../utils/experienceValidation';
 
 export default function ExperienceDetailPage() {
   const { experienceId } = useParams();
-  const loader = useCallback((signal: AbortSignal) => getExperience(Number(experienceId), signal), [experienceId]);
+  const loader = useCallback(
+    (signal: AbortSignal) => getExperience(Number(experienceId), signal),
+    [experienceId],
+  );
   const state = usePublicContent(loader);
   const item = state.data;
-  const slots = item?.slots.items.filter((slot) => isExperienceSlotBookable(slot)) ?? [];
+  const slots =
+    item?.slots.items.filter((slot) => isExperienceSlotBookable(slot)) ?? [];
   return (
-    <ContentPage
-      eyebrow="EXPERIENCE"
-      title={item?.title ?? "体験詳細"}
-    >
-      <Link
-        to="/experiences"
-        className={textLinkClass}
-      >
+    <ContentPage eyebrow="EXPERIENCE" title={item?.title ?? '体験詳細'}>
+      <Link to="/experiences" className={textLinkClass}>
         ← 体験一覧
       </Link>
       <ContentStatus {...state} notFoundTo="/experiences" />
       {item && (
         <>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {(item.images.length ? [...item.images].sort((a, b) => a.sortOrder - b.sortOrder) : [{ id: 0, url: item.thumbnailUrl, sortOrder: 0 }]).map((image) => (
+            {(item.images.length
+              ? [...item.images].sort((a, b) => a.sortOrder - b.sortOrder)
+              : [{ id: 0, url: item.thumbnailUrl, sortOrder: 0 }]
+            ).map((image) => (
               <ContentImage
                 key={image.id}
                 src={image.url}
@@ -38,8 +52,8 @@ export default function ExperienceDetailPage() {
           <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div>
               <p className="text-marche-green">
-                {item.familyOk && "親子参加OK ・ "}
-                {item.beginnerOk && "初心者歓迎"}
+                {item.familyOk && '親子参加OK ・ '}
+                {item.beginnerOk && '初心者歓迎'}
               </p>
               <Link
                 to={`/producers/${item.producer.id}`}
@@ -47,30 +61,15 @@ export default function ExperienceDetailPage() {
               >
                 案内：{item.producer.businessName} →
               </Link>
-              <ContentSection
-                title="体験内容"
-                text={item.description}
-              />
-              <ContentSection
-                title="開催場所"
-                text={item.place}
-              />
+              <ContentSection title="体験内容" text={item.description} />
+              <ContentSection title="開催場所" text={item.place} />
               <ContentSection
                 title="参加対象"
                 text={item.ageCondition?.trim() || null}
               />
-              <ContentSection
-                title="当日の流れ"
-                items={item.flow ?? []}
-              />
-              <ContentSection
-                title="持ち物"
-                items={item.belongings ?? []}
-              />
-              <ContentSection
-                title="注意事項"
-                items={item.notes ?? []}
-              />
+              <ContentSection title="当日の流れ" items={item.flow ?? []} />
+              <ContentSection title="持ち物" items={item.belongings ?? []} />
+              <ContentSection title="注意事項" items={item.notes ?? []} />
               <ContentSection
                 title="キャンセルポリシー"
                 text={item.cancelPolicy}
@@ -84,7 +83,9 @@ export default function ExperienceDetailPage() {
                 {yen(item.priceAdult)}
                 <span className="text-sm font-normal"> ／大人1名</span>
               </p>
-              {item.priceChild !== null && <p>子ども：{yen(item.priceChild)} ／1名</p>}
+              {item.priceChild !== null && (
+                <p>子ども：{yen(item.priceChild)} ／1名</p>
+              )}
               <h2 className="text-lg">開催日</h2>
               {item.slots.items.map((slot) => (
                 <p
@@ -97,7 +98,8 @@ export default function ExperienceDetailPage() {
                   <br />
                   残り{slot.remainingCapacity}名 ／定員{slot.capacity}名
                   <br />
-                  申込締切：{dateLabel(slot.bookingDeadlineAt)} {timeLabel(slot.bookingDeadlineAt)}
+                  申込締切：{dateLabel(slot.bookingDeadlineAt)}{' '}
+                  {timeLabel(slot.bookingDeadlineAt)}
                 </p>
               ))}
               {slots.length ? (
@@ -110,7 +112,9 @@ export default function ExperienceDetailPage() {
               ) : (
                 <p role="status">現在申し込める開催枠はありません。</p>
               )}
-              <p className="mb-0 text-xs text-marche-muted">次の画面で開催日と人数を選び、内容を確認します。</p>
+              <p className="mb-0 text-xs text-marche-muted">
+                次の画面で開催日と人数を選び、内容を確認します。
+              </p>
             </aside>
           </div>
         </>

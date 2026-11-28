@@ -150,7 +150,9 @@ function StatCardItem({ card }: { card: StatCard }) {
         <CardIcon className="size-4" />
         {label}
       </div>
-      <p className="m-0 mt-2 text-xl font-bold tracking-tight sm:text-2xl">{value}</p>
+      <p className="m-0 mt-2 text-xl font-bold tracking-tight sm:text-2xl">
+        {value}
+      </p>
       <p className="m-0 mt-1 flex items-center gap-1 text-xs text-marche-muted">
         {note}
         {to !== undefined && <ChevronRightIcon className="size-3.5" />}
@@ -166,7 +168,10 @@ function StatCardItem({ card }: { card: StatCard }) {
   }
 
   return (
-    <Link to={to} className={`${className} text-marche-ink no-underline hover:border-marche-green`}>
+    <Link
+      to={to}
+      className={`${className} text-marche-ink no-underline hover:border-marche-green`}
+    >
       {content}
     </Link>
   );
@@ -220,7 +225,7 @@ function DashboardHomePage() {
     return () => {
       isActive = false;
     };
-  }, [canManage, reloadCount]);
+  }, [canManage, reloadCount, redirectToSignin]);
 
   const handleReload = () => {
     setHasError(false);
@@ -242,7 +247,10 @@ function DashboardHomePage() {
 
       <section aria-labelledby="dashboard-summary-heading">
         <div className="flex items-baseline justify-between gap-4">
-          <h2 id="dashboard-summary-heading" className="m-0 font-serif text-lg font-bold">
+          <h2
+            id="dashboard-summary-heading"
+            className="m-0 font-serif text-lg font-bold"
+          >
             いまの状況
           </h2>
           {summary !== null && (
@@ -253,7 +261,9 @@ function DashboardHomePage() {
         </div>
 
         {!canManage ? (
-          <p className="mt-4 rounded-2xl border border-marche-line bg-white p-5 text-sm">生産者登録が承認されると集計を確認できます。</p>
+          <p className="mt-4 rounded-2xl border border-marche-line bg-white p-5 text-sm">
+            生産者登録が承認されると集計を確認できます。
+          </p>
         ) : hasError ? (
           <div
             role="alert"
@@ -279,7 +289,9 @@ function DashboardHomePage() {
             className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
           >
             {summary === null
-              ? Array.from({ length: 6 }, (_, i) => <StatCardSkeleton key={i} />)
+              ? Array.from({ length: 6 }, (_, i) => (
+                  <StatCardSkeleton key={i} />
+                ))
               : toStatCards(summary).map((card) => (
                   <StatCardItem key={card.label} card={card} />
                 ))}
@@ -287,23 +299,28 @@ function DashboardHomePage() {
         )}
       </section>
 
-      {canManage && <section aria-labelledby="dashboard-actions-heading">
-        <h2 id="dashboard-actions-heading" className="m-0 font-serif text-lg font-bold">
-          新しく登録する
-        </h2>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {quickActions.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex items-center justify-center gap-2 box-border rounded-2xl border border-dashed border-marche-green/50 bg-white px-4 py-4 font-bold text-marche-green no-underline hover:bg-marche-sage hover:text-marche-green"
-            >
-              <PlusIcon className="size-4" />
-              {label}
-            </Link>
-          ))}
-        </div>
-      </section>}
+      {canManage && (
+        <section aria-labelledby="dashboard-actions-heading">
+          <h2
+            id="dashboard-actions-heading"
+            className="m-0 font-serif text-lg font-bold"
+          >
+            新しく登録する
+          </h2>
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {quickActions.map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex items-center justify-center gap-2 box-border rounded-2xl border border-dashed border-marche-green/50 bg-white px-4 py-4 font-bold text-marche-green no-underline hover:bg-marche-sage hover:text-marche-green"
+              >
+                <PlusIcon className="size-4" />
+                {label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

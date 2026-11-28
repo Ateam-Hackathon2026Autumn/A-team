@@ -16,8 +16,8 @@ import { apiFetch } from './client';
 
 const BASE_PATH = '/api/v1/dashboard/experiences';
 
-// 体験の ETag はレスポンスヘッダー（ETag）で返る。本文には含まれない
-// ※ ヘッダーがない場合は null になる（その場合 If-Match は送らない）
+// 体験の ETag は本文ではなくレスポンスヘッダーにある
+// ETag がなければ If-Match を送らない
 type WithEtag<T> = { data: T; etag: string | null };
 
 function readEtag(response: Response): string | null {
@@ -33,7 +33,11 @@ function newIdempotencyKey(): string {
 async function sendRequest(
   path: string,
   method: 'POST' | 'PATCH' | 'DELETE',
-  options: { body?: unknown; etag?: string | null; idempotencyKey?: string } = {},
+  options: {
+    body?: unknown;
+    etag?: string | null;
+    idempotencyKey?: string;
+  } = {},
 ): Promise<Response> {
   const headers: Record<string, string> = {};
 
@@ -52,13 +56,13 @@ async function sendRequest(
   return apiFetch(path, {
     method,
     headers,
-    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    ...(options.body === undefined
+      ? {}
+      : { body: JSON.stringify(options.body) }),
   });
 }
 
-// ---------------------------------------------------------------------------
 // 体験
-// ---------------------------------------------------------------------------
 
 // 本人の体験一覧（作成の新しい順）。publishStatus を省略すると全件
 async function getDashboardExperiences(
@@ -150,10 +154,7 @@ async function deleteExperience(
     throw await toApiError(response, '体験を削除できませんでした');
   }
 }
-
-// ---------------------------------------------------------------------------
 // 予約枠
-// ---------------------------------------------------------------------------
 
 // 体験の予約枠一覧（開始日時の早い順。過去・満席・中止の枠も含む）
 async function getExperienceSlots(
@@ -177,10 +178,14 @@ async function createExperienceSlot(
   input: ExperienceSlotInput,
   idempotencyKey: string,
 ): Promise<ExperienceSlot> {
-  const response = await sendRequest(`${BASE_PATH}/${experienceId}/slots`, 'POST', {
-    body: input,
-    idempotencyKey,
-  });
+  const response = await sendRequest(
+    `${BASE_PATH}/${experienceId}/slots`,
+    'POST',
+    {
+      body: input,
+      idempotencyKey,
+    },
+  );
 
   if (response.ok) {
     return (await response.json()) as ExperienceSlot;
@@ -223,10 +228,7 @@ async function deleteExperienceSlot(
     throw await toApiError(response, '予約枠を削除できませんでした');
   }
 }
-
-// ---------------------------------------------------------------------------
 // 申込者
-// ---------------------------------------------------------------------------
 
 // 体験の予約一覧（申込の新しい順）。予約枠・状態で絞り込める
 async function getExperienceApplications(

@@ -1,25 +1,28 @@
-import { useAtomValue } from "jotai";
-import { Link } from "react-router";
-import { loginStatusAtom, userInfoAtom } from "../../stores/userAtom";
-import { USE_MOCK } from "../../config/env";
+import { useAtomValue } from 'jotai';
+import { Link } from 'react-router';
+import { loginStatusAtom, userInfoAtom } from '../../stores/userAtom';
+import { USE_MOCK } from '../../config/env';
 
 const links = [
-  { to: "/products", label: "買う" },
-  { to: "/experiences", label: "体験する" },
-  { to: "/jobs", label: "働く" },
-  { to: "/learn", label: "学ぶ" },
+  { to: '/products', label: '買う' },
+  { to: '/experiences', label: '体験する' },
+  { to: '/jobs', label: '働く' },
+  { to: '/learn', label: '学ぶ' },
 ];
 
 const actionClass =
-  "inline-flex min-h-11 items-center justify-center whitespace-nowrap " +
-  "rounded-full border border-marche-green px-4 py-2 text-sm font-bold " +
-  "no-underline transition-colors sm:px-6 sm:text-base";
+  'inline-flex min-h-11 items-center justify-center whitespace-nowrap ' +
+  'rounded-full border border-marche-green px-4 py-2 text-sm font-bold ' +
+  'no-underline transition-colors sm:px-6 sm:text-base';
 
 export default function Header() {
   const loginStatus = useAtomValue(loginStatusAtom);
-  const isLoggedIn = loginStatus === "loggedIn";
+  const isLoggedIn = loginStatus === 'loggedIn';
   const user = useAtomValue(userInfoAtom);
-  const canUseDashboard = isLoggedIn && (user?.isProducer === true || user?.producerApplicationStatus === "pending");
+  const canUseDashboard =
+    isLoggedIn &&
+    (user?.isProducer === true ||
+      user?.producerApplicationStatus === 'pending');
 
   return (
     <>
@@ -30,9 +33,11 @@ export default function Header() {
         本文へ
       </a>
 
-      {USE_MOCK && <div className="bg-marche-sage px-4 py-1.5 text-center text-[11px] text-marche-muted">
-        2026 秋ハッカソン · 画面サンプル｜掲載情報は架空です
-      </div>}
+      {USE_MOCK && (
+        <div className="bg-marche-sage px-4 py-1.5 text-center text-[11px] text-marche-muted">
+          2026 秋ハッカソン · 画面サンプル｜掲載情報は架空です
+        </div>
+      )}
 
       <header className="sticky top-0 z-30 border-b border-marche-line bg-marche-ivory">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-8 lg:gap-6">
@@ -40,7 +45,12 @@ export default function Header() {
             to="/"
             className="inline-flex items-center gap-2 whitespace-nowrap font-serif text-base font-bold text-marche-ink no-underline hover:no-underline sm:text-xl"
           >
-            <img src="/favicon.svg" alt="" aria-hidden="true" className="size-9 shrink-0 rounded-full" />
+            <img
+              src="/favicon.svg"
+              alt=""
+              aria-hidden="true"
+              className="size-9 shrink-0 rounded-full"
+            />
             つながるマルシェ
           </Link>
 
@@ -60,16 +70,25 @@ export default function Header() {
           </nav>
 
           <div className="ml-auto flex flex-wrap items-center gap-2 lg:ml-0">
-            <Link to="/cart" className={`${actionClass} bg-white text-marche-green hover:bg-marche-sage`}>
+            <Link
+              to="/cart"
+              className={`${actionClass} bg-white text-marche-green hover:bg-marche-sage`}
+            >
               カート
             </Link>
-            <Link to="/mypage/favorites" className={`${actionClass} bg-white text-marche-green hover:bg-marche-sage`}>
+            <Link
+              to="/mypage/favorites"
+              className={`${actionClass} bg-white text-marche-green hover:bg-marche-sage`}
+            >
               お気に入り
             </Link>
             {isLoggedIn ? (
               <Link
                 to="/mypage"
-                className={["no-underline", `${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`].join(" ")}
+                className={[
+                  'no-underline',
+                  `${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`,
+                ].join(' ')}
               >
                 マイページ
               </Link>
@@ -77,23 +96,43 @@ export default function Header() {
               <>
                 <Link
                   to="/signin"
-                  className={["no-underline", `${actionClass} bg-transparent text-marche-green hover:bg-marche-sage`].join(" ")}
+                  className={[
+                    'no-underline',
+                    `${actionClass} bg-transparent text-marche-green hover:bg-marche-sage`,
+                  ].join(' ')}
                 >
                   ログイン
                 </Link>
 
                 <Link
                   to="/signup"
-                  className={["no-underline", `${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`].join(" ")}
+                  className={[
+                    'no-underline',
+                    `${actionClass} bg-marche-green text-white hover:bg-marche-green-dark`,
+                  ].join(' ')}
                 >
                   新規登録
                 </Link>
               </>
             )}
             {canUseDashboard && (
-              <div role="group" aria-label="利用画面の切り替え" className="flex flex-wrap items-center gap-1 rounded-2xl bg-marche-sage p-1">
-                <Link to="/dashboard" className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white">生産者</Link>
-                <Link to="/" className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white">消費者</Link>
+              <div
+                role="group"
+                aria-label="利用画面の切り替え"
+                className="flex flex-wrap items-center gap-1 rounded-2xl bg-marche-sage p-1"
+              >
+                <Link
+                  to="/dashboard"
+                  className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white"
+                >
+                  生産者
+                </Link>
+                <Link
+                  to="/"
+                  className="inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-bold text-marche-green no-underline hover:bg-white"
+                >
+                  消費者
+                </Link>
               </div>
             )}
           </div>

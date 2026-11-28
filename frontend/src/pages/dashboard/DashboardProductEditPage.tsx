@@ -102,7 +102,7 @@ function DashboardProductEditPage() {
     return () => {
       isActive = false;
     };
-  }, [canManageProducts, isValidId, productId, reloadCount]);
+  }, [canManageProducts, isValidId, productId, reloadCount, redirectToSignin]);
 
   const reload = () => {
     setLoadError(null);
@@ -119,9 +119,10 @@ function DashboardProductEditPage() {
     const { stock, ...fields } = input;
     const stockChanged = stock !== product.stock;
     // 掲載停止中は内容だけ保存し、公開状態は送らない
-    const updateFields = product.publishStatus === 'suspended'
-      ? (({ publishStatus: _status, ...content }) => content)(fields)
-      : fields;
+    const updateFields =
+      product.publishStatus === 'suspended'
+        ? (({ publishStatus: _status, ...content }) => content)(fields)
+        : fields;
     const updateStockFirst = stockChanged && product.publishStatus !== 'public';
     // 1つ目の更新が成功したか（2つ目で失敗したときに一部だけ保存されたことを伝える）
     let firstSaved = false;
@@ -130,11 +131,19 @@ function DashboardProductEditPage() {
 
     try {
       if (updateStockFirst) {
-        const { etag } = await updateProductStock(product.id, stock, product.etag);
+        const { etag } = await updateProductStock(
+          product.id,
+          stock,
+          product.etag,
+        );
         firstSaved = true;
         await updateProduct(product.id, updateFields, etag);
       } else {
-        const updated = await updateProduct(product.id, updateFields, product.etag);
+        const updated = await updateProduct(
+          product.id,
+          updateFields,
+          product.etag,
+        );
         firstSaved = true;
         if (stockChanged) {
           await updateProductStock(product.id, stock, updated.etag);
@@ -194,7 +203,11 @@ function DashboardProductEditPage() {
           <p className="m-0 mt-1 text-marche-muted">
             削除されたか、URL が間違っている可能性があります。
           </p>
-          <DashboardButton to={PRODUCT_LIST_PATH} variant="secondary" className="mt-4">
+          <DashboardButton
+            to={PRODUCT_LIST_PATH}
+            variant="secondary"
+            className="mt-4"
+          >
             商品管理に戻る
           </DashboardButton>
         </Notice>
@@ -213,7 +226,11 @@ function DashboardProductEditPage() {
           <p className="m-0 mt-1 text-marche-muted">
             時間をおいて、もう一度お試しください。
           </p>
-          <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+          <DashboardButton
+            variant="secondary"
+            onClick={reload}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>

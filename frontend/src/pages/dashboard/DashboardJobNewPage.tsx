@@ -17,9 +17,14 @@ function DashboardJobNewPage() {
   const handleSubmit = async (input: JobInput) => {
     // 失敗時は ApiError のまま投げ、フォーム側でエラーを表示する（送信中はボタンを押せないので二重登録にならない）
     await createJob(input);
-    const action = input.publishStatus === 'public' ? '公開しました' : '下書きとして保存しました';
+    const action =
+      input.publishStatus === 'public'
+        ? '公開しました'
+        : '下書きとして保存しました';
 
-    navigate(JOB_LIST_PATH, { state: { flash: `「${input.title}」を${action}。` } });
+    navigate(JOB_LIST_PATH, {
+      state: { flash: `「${input.title}」を${action}。` },
+    });
   };
 
   return (

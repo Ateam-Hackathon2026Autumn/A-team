@@ -109,7 +109,7 @@ function DashboardProductListPage() {
     return () => {
       isActive = false;
     };
-  }, [canManageProducts, page, reloadCount]);
+  }, [canManageProducts, page, reloadCount, redirectToSignin]);
 
   useEffect(() => {
     if (!canManageProducts) {
@@ -144,7 +144,6 @@ function DashboardProductListPage() {
     setPage(nextPage);
   };
 
-  // 商品ごとの更新処理の共通部分（通信中の管理とエラーの表示）
   const runProductAction = async (
     productId: number,
     action: () => Promise<void>,
@@ -235,9 +234,7 @@ function DashboardProductListPage() {
 
       // 取り直すまでの間も削除した商品が残らないよう、先に一覧から外す
       setProducts((current) =>
-        current === null
-          ? null
-          : current.filter(({ id }) => id !== product.id),
+        current === null ? null : current.filter(({ id }) => id !== product.id),
       );
       // 総件数・総ページ数・今のページの商品を合わせるため一覧を取り直す
       // （今のページが空になった場合は、取得結果を見て最後のページへ戻る）

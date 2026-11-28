@@ -1,32 +1,79 @@
-import { useRef, useState, type FormEvent } from "react";
-import { useAtomValue } from "jotai";
-import { Link, useNavigate } from "react-router";
-import { getCart } from "../api/cartApi";
-import ApiError from "../api/apiError";
-import { createConsumerOrder } from "../api/consumerOrderApi";
-import { usePublicContent } from "../hooks/usePublicContent";
-import { loginStatusAtom, userInfoAtom } from "../stores/userAtom";
-import { USE_MOCK } from "../config/env";
-import { PREFECTURES } from "../utils/prefectures";
-import type { ShippingAddress } from "../types/consumerOrder";
-import { ContentPage, ContentStatus, EmptyContent, fieldClass, panelClass, textLinkClass, yen, linkClass } from "../components/ui/ContentPage";
-import { OrderTotals, temperatureLabels } from "../components/mypage/ConsumerOrderParts";
-import Button from "../components/ui/Button";
-import { safeCheckoutUrl } from "../utils/checkoutUrl";
+import { useRef, useState, type FormEvent } from 'react';
+import { useAtomValue } from 'jotai';
+import { Link, useNavigate } from 'react-router';
+import { getCart } from '../api/cartApi';
+import ApiError from '../api/apiError';
+import { createConsumerOrder } from '../api/consumerOrderApi';
+import { usePublicContent } from '../hooks/usePublicContent';
+import { loginStatusAtom, userInfoAtom } from '../stores/userAtom';
+import { USE_MOCK } from '../config/env';
+import { PREFECTURES } from '../utils/prefectures';
+import type { ShippingAddress } from '../types/consumerOrder';
+import {
+  ContentPage,
+  ContentStatus,
+  EmptyContent,
+} from '../components/ui/ContentPage';
+import {
+  fieldClass,
+  panelClass,
+  textLinkClass,
+  yen,
+  linkClass,
+} from '../components/ui/contentPageValues';
+import { OrderTotals } from '../components/mypage/ConsumerOrderParts';
+import { temperatureLabels } from '../components/mypage/consumerOrderLabels';
+import Button from '../components/ui/Button';
+import { safeCheckoutUrl } from '../utils/checkoutUrl';
 
 async function loadCheckout(signal: AbortSignal) {
   const cart = await getCart(signal);
   return cart;
 }
 
-const addressFields: { key: keyof ShippingAddress; label: string; autoComplete: string; maxLength: number; pattern?: string; type?: string }[] = [
-  { key: "lastName", label: "姓", autoComplete: "family-name", maxLength: 50 },
-  { key: "firstName", label: "名", autoComplete: "given-name", maxLength: 50 },
-  { key: "postalCode", label: "郵便番号（例：123-4567）", autoComplete: "postal-code", maxLength: 8, pattern: "[0-9]{3}-?[0-9]{4}" },
-  { key: "city", label: "市区町村", autoComplete: "address-level2", maxLength: 50 },
-  { key: "addressLine1", label: "町名・番地", autoComplete: "address-line1", maxLength: 100 },
-  { key: "addressLine2", label: "建物名・部屋番号（任意）", autoComplete: "address-line2", maxLength: 100 },
-  { key: "phone", label: "電話番号", autoComplete: "tel", maxLength: 20, type: "tel", pattern: "[0-9-]{10,20}" },
+const addressFields: {
+  key: keyof ShippingAddress;
+  label: string;
+  autoComplete: string;
+  maxLength: number;
+  pattern?: string;
+  type?: string;
+}[] = [
+  { key: 'lastName', label: '姓', autoComplete: 'family-name', maxLength: 50 },
+  { key: 'firstName', label: '名', autoComplete: 'given-name', maxLength: 50 },
+  {
+    key: 'postalCode',
+    label: '郵便番号（例：123-4567）',
+    autoComplete: 'postal-code',
+    maxLength: 8,
+    pattern: '[0-9]{3}-?[0-9]{4}',
+  },
+  {
+    key: 'city',
+    label: '市区町村',
+    autoComplete: 'address-level2',
+    maxLength: 50,
+  },
+  {
+    key: 'addressLine1',
+    label: '町名・番地',
+    autoComplete: 'address-line1',
+    maxLength: 100,
+  },
+  {
+    key: 'addressLine2',
+    label: '建物名・部屋番号（任意）',
+    autoComplete: 'address-line2',
+    maxLength: 100,
+  },
+  {
+    key: 'phone',
+    label: '電話番号',
+    autoComplete: 'tel',
+    maxLength: 20,
+    type: 'tel',
+    pattern: '[0-9-]{10,20}',
+  },
 ];
 
 export default function CheckoutPage() {
@@ -34,10 +81,19 @@ export default function CheckoutPage() {
   const login = useAtomValue(loginStatusAtom);
   const user = useAtomValue(userInfoAtom);
   const navigate = useNavigate();
-  const [address, setAddress] = useState<ShippingAddress>({ lastName: user?.lastName ?? "", firstName: user?.firstName ?? "", postalCode: "", prefecture: "", city: "", addressLine1: "", addressLine2: "", phone: "" });
+  const [address, setAddress] = useState<ShippingAddress>({
+    lastName: user?.lastName ?? '',
+    firstName: user?.firstName ?? '',
+    postalCode: '',
+    prefecture: '',
+    city: '',
+    addressLine1: '',
+    addressLine2: '',
+    phone: '',
+  });
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const key = useRef<string | null>(null);
   const locked = useRef(false);
@@ -46,19 +102,25 @@ export default function CheckoutPage() {
   const grandTotal = data?.total ?? 0;
   function changeStep(next: number) {
     setStep(next);
-    setError("");
+    setError('');
     requestAnimationFrame(() => heading.current?.focus());
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (locked.current || createdOrderId !== null || !data || !data.canCheckout) return;
+    if (locked.current || createdOrderId !== null || !data || !data.canCheckout)
+      return;
     if (step === 1) {
-      if (!/^0\d{9,10}$/.test(address.phone.replace(/-/g, ""))) {
-        setError("電話番号は0から始まる10〜11桁で入力してください。");
+      if (!/^0\d{9,10}$/.test(address.phone.replace(/-/g, ''))) {
+        setError('電話番号は0から始まる10〜11桁で入力してください。');
         return;
       }
-      if (!address.lastName.trim() || !address.firstName.trim() || !address.city.trim() || !address.addressLine1.trim()) {
-        setError("空白だけの項目があります。お届け先を確認してください。");
+      if (
+        !address.lastName.trim() ||
+        !address.firstName.trim() ||
+        !address.city.trim() ||
+        !address.addressLine1.trim()
+      ) {
+        setError('空白だけの項目があります。お届け先を確認してください。');
         return;
       }
       changeStep(2);
@@ -66,19 +128,31 @@ export default function CheckoutPage() {
     }
     locked.current = true;
     setBusy(true);
-    setError("");
+    setError('');
     let acceptedOrderId: number | null = null;
     try {
       key.current ??= crypto.randomUUID();
-      const receipt = await createConsumerOrder({ shippingAddress: address, paymentMethod: "card", expectedGrandTotal: data.total }, key.current);
+      const receipt = await createConsumerOrder(
+        {
+          shippingAddress: address,
+          paymentMethod: 'card',
+          expectedGrandTotal: data.total,
+        },
+        key.current,
+      );
       acceptedOrderId = receipt.id;
       if (USE_MOCK) {
         navigate(receipt.checkoutUrl, { replace: true });
       } else {
-        const checkoutUrl = safeCheckoutUrl(receipt.checkoutUrl, window.location.origin);
+        const checkoutUrl = safeCheckoutUrl(
+          receipt.checkoutUrl,
+          window.location.origin,
+        );
         if (!checkoutUrl) {
           setCreatedOrderId(receipt.id);
-          setError("注文は作成済みですが、決済画面を開けませんでした。注文履歴から状況をご確認ください。");
+          setError(
+            '注文は作成済みですが、決済画面を開けませんでした。注文履歴から状況をご確認ください。',
+          );
           setBusy(false);
           return;
         }
@@ -87,9 +161,15 @@ export default function CheckoutPage() {
     } catch (cause) {
       if (acceptedOrderId !== null) {
         setCreatedOrderId(acceptedOrderId);
-        setError("注文は作成済みですが、決済画面を開けませんでした。注文履歴から状況をご確認ください。");
+        setError(
+          '注文は作成済みですが、決済画面を開けませんでした。注文履歴から状況をご確認ください。',
+        );
       } else {
-        setError(cause instanceof Error ? cause.message : "注文を受け付けられませんでした。");
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : '注文を受け付けられませんでした。',
+        );
       }
       if (cause instanceof ApiError && cause.status === 409) {
         state.retry();
@@ -111,22 +191,24 @@ export default function CheckoutPage() {
         aria-label="購入のステップ"
         className="mb-8 flex list-none flex-wrap gap-3 p-0 text-sm font-bold"
       >
-        {["お届け先・お支払い", "ご注文内容の確認", "注文受付"].map((label, i) => (
-          <li
-            key={label}
-            aria-current={step === i + 1 ? "step" : undefined}
-            className={`rounded-full px-4 py-2 ${step === i + 1 ? "bg-marche-green text-white" : "bg-marche-sage text-marche-muted"}`}
-          >
-            {i + 1}. {label}
-          </li>
-        ))}
+        {['お届け先・お支払い', 'ご注文内容の確認', '注文受付'].map(
+          (label, i) => (
+            <li
+              key={label}
+              aria-current={step === i + 1 ? 'step' : undefined}
+              className={`rounded-full px-4 py-2 ${step === i + 1 ? 'bg-marche-green text-white' : 'bg-marche-sage text-marche-muted'}`}
+            >
+              {i + 1}. {label}
+            </li>
+          ),
+        )}
       </ol>
-      {login !== "loggedIn" ? (
+      {login !== 'loggedIn' ? (
         <EmptyContent>
           <p>購入手続きにはログインが必要です。</p>
           <Link
             to="/signin"
-            state={{ from: { pathname: "/checkout" } }}
+            state={{ from: { pathname: '/checkout' } }}
             className={linkClass}
           >
             ログインする
@@ -138,11 +220,12 @@ export default function CheckoutPage() {
           {data &&
             (!data.canCheckout ? (
               <EmptyContent>
-                <p>{data.items.length === 0 ? "カートは空です。" : "購入できない商品が含まれています。カートをご確認ください。"}</p>
-                <Link
-                  to="/cart"
-                  className={linkClass}
-                >
+                <p>
+                  {data.items.length === 0
+                    ? 'カートは空です。'
+                    : '購入できない商品が含まれています。カートをご確認ください。'}
+                </p>
+                <Link to="/cart" className={linkClass}>
                   カートへ戻る
                 </Link>
               </EmptyContent>
@@ -159,7 +242,7 @@ export default function CheckoutPage() {
                       tabIndex={-1}
                       className="mt-0 font-serif text-xl"
                     >
-                      {step === 1 ? "お届け先" : "お届け先の確認"}
+                      {step === 1 ? 'お届け先' : 'お届け先の確認'}
                     </h2>
                     {step === 1 ? (
                       <fieldset
@@ -168,22 +251,22 @@ export default function CheckoutPage() {
                       >
                         <legend className="sr-only">お届け先の入力</legend>
                         {addressFields.map((field) => (
-                          <label
-                            key={field.key}
-                            className="text-sm font-bold"
-                          >
+                          <label key={field.key} className="text-sm font-bold">
                             {field.label}
-                            {field.key !== "addressLine2" && "（必須）"}
+                            {field.key !== 'addressLine2' && '（必須）'}
                             <input
-                              required={field.key !== "addressLine2"}
-                              type={field.type ?? "text"}
+                              required={field.key !== 'addressLine2'}
+                              type={field.type ?? 'text'}
                               autoComplete={field.autoComplete}
                               maxLength={field.maxLength}
                               pattern={field.pattern}
                               className={`${fieldClass} mt-2`}
                               value={address[field.key]}
                               onChange={(e) => {
-                                setAddress({ ...address, [field.key]: e.target.value });
+                                setAddress({
+                                  ...address,
+                                  [field.key]: e.target.value,
+                                });
                                 key.current = null;
                               }}
                             />
@@ -197,13 +280,18 @@ export default function CheckoutPage() {
                             className={`${fieldClass} mt-2`}
                             value={address.prefecture}
                             onChange={(e) => {
-                              setAddress({ ...address, prefecture: e.target.value });
+                              setAddress({
+                                ...address,
+                                prefecture: e.target.value,
+                              });
                               key.current = null;
                             }}
                           >
                             <option value="">選択してください</option>
                             {PREFECTURES.map((p) => (
-                              <option key={p.id} value={p.name}>{p.name}</option>
+                              <option key={p.id} value={p.name}>
+                                {p.name}
+                              </option>
                             ))}
                           </select>
                         </label>
@@ -232,32 +320,40 @@ export default function CheckoutPage() {
                   </section>
                   <section className={panelClass}>
                     <h2 className="mt-0 font-serif text-xl">配送・お支払い</h2>
-                    <p className="text-sm">生産者・配送温度帯ごとに産地から直送します。配送日時は指定できません。</p>
+                    <p className="text-sm">
+                      生産者・配送温度帯ごとに産地から直送します。配送日時は指定できません。
+                    </p>
                     <p className="text-sm">お支払い：クレジットカード</p>
-                    <p className="mb-0 text-sm text-marche-muted">{USE_MOCK ? "デモ注文です。カード情報の入力や実際のお支払いは行いません。" : "注文受付後、決済画面へ進みます。カード情報は決済画面で入力してください。"}</p>
+                    <p className="mb-0 text-sm text-marche-muted">
+                      {USE_MOCK
+                        ? 'デモ注文です。カード情報の入力や実際のお支払いは行いません。'
+                        : '注文受付後、決済画面へ進みます。カード情報は決済画面で入力してください。'}
+                    </p>
                   </section>
                 </div>
                 <aside className={panelClass}>
                   <h2 className="mt-0 font-serif text-xl">ご注文内容</h2>
                   <ul className="list-none space-y-3 p-0 text-sm">
                     {data.items.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex justify-between gap-3"
-                      >
+                      <li key={item.id} className="flex justify-between gap-3">
                         <span>
                           {item.productName}
                           <br />
                           数量 {item.quantity}点
                         </span>
-                        <strong className="shrink-0">{yen(item.subtotal ?? 0)}</strong>
+                        <strong className="shrink-0">
+                          {yen(item.subtotal ?? 0)}
+                        </strong>
                       </li>
                     ))}
                   </ul>
                   <ul className="my-5 list-none space-y-2 border-t border-solid border-marche-line p-0 pt-4 text-xs text-marche-muted">
                     {data.shipments.map((group) => (
                       <li key={`${group.producerId}:${group.temperatureZone}`}>
-                        {group.producerName} · {temperatureLabels[group.temperatureZone] ?? group.temperatureZone}便：{yen(group.shippingFee)}
+                        {group.producerName} ·{' '}
+                        {temperatureLabels[group.temperatureZone] ??
+                          group.temperatureZone}
+                        便：{yen(group.shippingFee)}
                       </li>
                     ))}
                   </ul>
@@ -274,13 +370,26 @@ export default function CheckoutPage() {
                       {error}
                     </p>
                   )}
-                  {createdOrderId !== null && <Link to={`/mypage/orders/${createdOrderId}`} className={textLinkClass}>作成済みの注文を確認する →</Link>}
+                  {createdOrderId !== null && (
+                    <Link
+                      to={`/mypage/orders/${createdOrderId}`}
+                      className={textLinkClass}
+                    >
+                      作成済みの注文を確認する →
+                    </Link>
+                  )}
                   <Button
                     type="submit"
                     block
                     disabled={busy || createdOrderId !== null}
                   >
-                    {busy ? "注文を送信中…" : step === 1 ? "注文内容を確認する" : USE_MOCK ? "デモ注文を受け付ける" : "注文してお支払いへ進む"}
+                    {busy
+                      ? '注文を送信中…'
+                      : step === 1
+                        ? '注文内容を確認する'
+                        : USE_MOCK
+                          ? 'デモ注文を受け付ける'
+                          : '注文してお支払いへ進む'}
                   </Button>
                   {step === 2 && createdOrderId === null && (
                     <Button
@@ -292,10 +401,7 @@ export default function CheckoutPage() {
                       入力に戻る
                     </Button>
                   )}
-                  <Link
-                    to="/cart"
-                    className={`${textLinkClass} mt-4`}
-                  >
+                  <Link to="/cart" className={`${textLinkClass} mt-4`}>
                     カートへ戻る
                   </Link>
                 </aside>

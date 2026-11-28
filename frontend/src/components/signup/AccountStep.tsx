@@ -1,19 +1,19 @@
-import type { FormEvent } from "react";
-import { TERMS_URL, PRIVACY_POLICY_URL } from "../../config/env";
-import Button from "../ui/Button";
-import FormField from "../ui/FormField";
-import { INTERESTS } from "../../types/authForm";
+import type { FormEvent } from 'react';
+import { TERMS_URL, PRIVACY_POLICY_URL } from '../../config/env';
+import Button from '../ui/Button';
+import FormField from '../ui/FormField';
+import { INTERESTS } from '../../types/authForm';
 import type {
   Interest,
   Purpose,
   SignupErrors,
   SignupFormValues,
-} from "../../types/authForm";
-import { MIN_BIRTH_DATE, todayJst } from "../../utils/authValidation";
+} from '../../types/authForm';
+import { MIN_BIRTH_DATE, todayJst } from '../../utils/authValidation';
 
 const PREFECTURES =
-  "北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県".split(
-    " ",
+  '北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県'.split(
+    ' ',
   );
 
 type Props = {
@@ -51,14 +51,14 @@ export default function AccountStep({
       ? values.interests.filter((value) => value !== interest)
       : [...values.interests, interest];
 
-    onChange("interests", next);
+    onChange('interests', next);
   }
 
   const agreements = [
-    { key: "agreedToTerms", label: "利用規約に同意する" },
+    { key: 'agreedToTerms', label: '利用規約に同意する' },
     {
-      key: "agreedToPrivacyPolicy",
-      label: "プライバシーポリシーに同意する",
+      key: 'agreedToPrivacyPolicy',
+      label: 'プライバシーポリシーに同意する',
     },
   ] as const;
 
@@ -69,9 +69,9 @@ export default function AccountStep({
       </p>
       <h1 className="m-0 font-serif mt-2 text-3xl font-bold">アカウント情報</h1>
       <p className="m-0 mt-3 text-sm text-marche-muted">
-        {purpose === "producer"
-          ? "生産者申請の前に、共通アカウントを作成します。"
-          : "あなたと産地の、新しいつながりを。"}
+        {purpose === 'producer'
+          ? '生産者申請の前に、共通アカウントを作成します。'
+          : 'あなたと産地の、新しいつながりを。'}
       </p>
 
       <button
@@ -84,9 +84,31 @@ export default function AccountStep({
       </button>
 
       <form noValidate onSubmit={onSubmit} aria-busy={isSubmitting}>
-        {message && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{message}</p>}
-        {policiesError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">利用規約の情報を取得できませんでした。</p>}
-        {policiesError && <button type="button" onClick={onReloadPolicies} className="mt-2 text-sm text-marche-green underline">再読み込み</button>}
+        {message && (
+          <p
+            role="alert"
+            className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
+          >
+            {message}
+          </p>
+        )}
+        {policiesError && (
+          <p
+            role="alert"
+            className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
+          >
+            利用規約の情報を取得できませんでした。
+          </p>
+        )}
+        {policiesError && (
+          <button
+            type="button"
+            onClick={onReloadPolicies}
+            className="mt-2 text-sm text-marche-green underline"
+          >
+            再読み込み
+          </button>
+        )}
         <fieldset disabled={isSubmitting} className="m-0 min-w-0 border-0 p-0">
           {Object.values(errors).some(Boolean) && (
             <p
@@ -102,7 +124,7 @@ export default function AccountStep({
               name="lastName"
               label="姓"
               value={values.lastName}
-              onChange={(value) => onChange("lastName", value)}
+              onChange={(value) => onChange('lastName', value)}
               error={errors.lastName}
               maxLength={10}
               autoComplete="family-name"
@@ -112,7 +134,7 @@ export default function AccountStep({
               name="firstName"
               label="名"
               value={values.firstName}
-              onChange={(value) => onChange("firstName", value)}
+              onChange={(value) => onChange('firstName', value)}
               error={errors.firstName}
               maxLength={10}
               autoComplete="given-name"
@@ -125,7 +147,7 @@ export default function AccountStep({
             label="メールアドレス"
             type="email"
             value={values.email}
-            onChange={(value) => onChange("email", value)}
+            onChange={(value) => onChange('email', value)}
             error={errors.email}
             maxLength={254}
             autoComplete="email"
@@ -137,7 +159,7 @@ export default function AccountStep({
             label="パスワード"
             type="password"
             value={values.password}
-            onChange={(value) => onChange("password", value)}
+            onChange={(value) => onChange('password', value)}
             error={errors.password}
             maxLength={30}
             autoComplete="new-password"
@@ -149,7 +171,7 @@ export default function AccountStep({
             label="電話番号"
             type="tel"
             value={values.phone}
-            onChange={(value) => onChange("phone", value)}
+            onChange={(value) => onChange('phone', value)}
             error={errors.phone}
             maxLength={50}
             autoComplete="tel"
@@ -164,7 +186,7 @@ export default function AccountStep({
             label="生年月日"
             type="date"
             value={values.birthDate}
-            onChange={(value) => onChange("birthDate", value)}
+            onChange={(value) => onChange('birthDate', value)}
             error={errors.birthDate}
             max={todayJst()}
             min={MIN_BIRTH_DATE}
@@ -184,8 +206,10 @@ export default function AccountStep({
               name="prefectureId"
               value={values.prefectureId}
               aria-invalid={Boolean(errors.prefectureId)}
-              aria-describedby={errors.prefectureId ? 'prefectureId-error' : undefined}
-              onChange={(event) => onChange("prefectureId", event.target.value)}
+              aria-describedby={
+                errors.prefectureId ? 'prefectureId-error' : undefined
+              }
+              onChange={(event) => onChange('prefectureId', event.target.value)}
               className="font-sans mt-2 block h-12 w-full rounded-lg border border-[#b8c3b5] bg-white px-3 text-base"
             >
               <option value="">選択してください</option>
@@ -195,7 +219,15 @@ export default function AccountStep({
                 </option>
               ))}
             </select>
-            {errors.prefectureId && <p id="prefectureId-error" role="alert" className="mt-1 text-xs text-red-800">{errors.prefectureId}</p>}
+            {errors.prefectureId && (
+              <p
+                id="prefectureId-error"
+                role="alert"
+                className="mt-1 text-xs text-red-800"
+              >
+                {errors.prefectureId}
+              </p>
+            )}
           </div>
 
           <fieldset className="m-0 mt-5 min-w-0 border-0 p-0">
@@ -215,8 +247,8 @@ export default function AccountStep({
                     key={value}
                     className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
                       checked
-                        ? "border-marche-green bg-marche-green text-white"
-                        : "border-marche-line bg-white"
+                        ? 'border-marche-green bg-marche-green text-white'
+                        : 'border-marche-line bg-white'
                     }`}
                   >
                     <input
@@ -230,7 +262,11 @@ export default function AccountStep({
                 );
               })}
             </div>
-            {errors.interests && <p role="alert" className="mt-1 text-xs text-red-800">{errors.interests}</p>}
+            {errors.interests && (
+              <p role="alert" className="mt-1 text-xs text-red-800">
+                {errors.interests}
+              </p>
+            )}
           </fieldset>
 
           {agreements.map(({ key, label }) => (
@@ -265,14 +301,26 @@ export default function AccountStep({
 
           {(TERMS_URL || PRIVACY_POLICY_URL) && (
             <p className="m-0 mt-3 text-xs leading-6 text-marche-muted">
-              {TERMS_URL && <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">利用規約</a>}
-              {TERMS_URL && PRIVACY_POLICY_URL && "・"}
-              {PRIVACY_POLICY_URL && <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>}
+              {TERMS_URL && (
+                <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">
+                  利用規約
+                </a>
+              )}
+              {TERMS_URL && PRIVACY_POLICY_URL && '・'}
+              {PRIVACY_POLICY_URL && (
+                <a
+                  href={PRIVACY_POLICY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  プライバシーポリシー
+                </a>
+              )}
               を確認して同意してください。
             </p>
           )}
           <Button block type="submit" disabled={isSubmitting || !policiesReady}>
-            {isSubmitting ? "登録中…" : "登録する →"}
+            {isSubmitting ? '登録中…' : '登録する →'}
           </Button>
         </fieldset>
       </form>

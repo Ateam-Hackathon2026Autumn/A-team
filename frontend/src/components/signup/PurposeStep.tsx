@@ -1,32 +1,28 @@
-import Button from "../ui/Button";
-import type { Purpose } from "../../types/authForm";
+import Button from '../ui/Button';
+import type { Purpose } from '../../types/authForm';
 
 type Props = {
-  purpose: Purpose | "";
+  purpose: Purpose | '';
   onChange: (purpose: Purpose) => void;
   onNext: () => void;
 };
 
 const choices = [
   {
-    value: "consumer",
-    image: "/images/categories/buy.webp",
-    title: "買う・体験する・働く",
-    description: "商品の購入、体験への参加、仕事への応募",
+    value: 'consumer',
+    image: '/images/categories/buy.webp',
+    title: '買う・体験する・働く',
+    description: '商品の購入、体験への参加、仕事への応募',
   },
   {
-    value: "producer",
-    image: "/images/categories/producer.webp",
-    title: "生産者として利用する",
-    description: "商品販売・体験・求人を掲載したい",
+    value: 'producer',
+    image: '/images/categories/producer.webp',
+    title: '生産者として利用する',
+    description: '商品販売・体験・求人を掲載したい',
   },
 ] as const;
 
-export default function PurposeStep({
-  purpose,
-  onChange,
-  onNext,
-}: Props) {
+export default function PurposeStep({ purpose, onChange, onNext }: Props) {
   return (
     <>
       <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
@@ -52,8 +48,8 @@ export default function PurposeStep({
             key={value}
             className={`mt-4 flex cursor-pointer items-center gap-3 rounded-xl border p-4 ${
               purpose === value
-                ? "border-marche-green bg-marche-sage ring-1 ring-marche-green"
-                : "border-marche-line"
+                ? 'border-marche-green bg-marche-sage ring-1 ring-marche-green'
+                : 'border-marche-line'
             }`}
           >
             <input

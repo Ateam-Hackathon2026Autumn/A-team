@@ -10,7 +10,10 @@ async function getDashboardSummary(): Promise<DashboardSummary> {
     return (await response.json()) as DashboardSummary;
   }
 
-  throw new ApiError(response.status, 'ダッシュボードの集計を取得できませんでした');
+  throw new ApiError(
+    response.status,
+    'ダッシュボードの集計を取得できませんでした',
+  );
 }
 
 export { getDashboardSummary };

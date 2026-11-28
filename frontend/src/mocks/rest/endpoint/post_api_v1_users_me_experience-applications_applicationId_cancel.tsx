@@ -3,7 +3,7 @@ import type { RestMock } from '../../types';
 import { cancelMockExperienceApplication } from './get_api_v1_users_me_experience-applications';
 
 // 体験予約キャンセルAPI POST /api/v1/users/me/experience-applications/:applicationId/cancel
-//
+
 // リクエスト本文なし。確定済み・締め切り前の予約をキャンセルし、申込状況の1件と同じ形で返す。
 // 締め切り後・確定済み以外（409 CANCEL_NOT_ALLOWED）:
 //   { errorCode: 'CANCEL_NOT_ALLOWED', errorMsg: 'キャンセルの受付期間が過ぎたか、キャンセルできない予約です。主催者にメッセージでご連絡ください。' }

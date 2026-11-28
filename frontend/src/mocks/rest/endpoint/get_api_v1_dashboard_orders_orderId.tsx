@@ -2,10 +2,10 @@ import type { RestMock } from '../../types';
 import { hoursFromNow } from '../../helpers';
 
 // 注文詳細取得API GET /api/v1/dashboard/orders/:orderId
-//
+
 // 発送作業用。注文時のお届け先（shippingAddress）はこのAPIでだけ返る
 // 配送状況更新の If-Match には、更新したい箱の shipments[].etag を送る
-//
+
 // 存在しない・他の生産者の注文（404）:
 //   { errorCode: 'NOT_FOUND', errorMsg: '注文が見つかりません。' }
 const dashboardOrderDetail: RestMock = {

@@ -139,10 +139,7 @@ type ExperienceSlotUpdateInput = Partial<{
 }>;
 
 type ExperienceApplicationStatus =
-  | 'applied'
-  | 'confirmed'
-  | 'canceled'
-  | 'attended';
+  'applied' | 'confirmed' | 'canceled' | 'attended';
 
 // 体験の予約（申込者一覧の1件）。退会済み会員は氏名・連絡先が null
 type ExperienceApplication = {

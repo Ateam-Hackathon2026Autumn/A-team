@@ -76,13 +76,20 @@ function formatDate(date: string): string {
 
   const [, year, month, day] = match;
   const weekday =
-    weekdays[new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).getUTCDay()];
+    weekdays[
+      new Date(
+        Date.UTC(Number(year), Number(month) - 1, Number(day)),
+      ).getUTCDay()
+    ];
 
   return `${year}/${month}/${day}(${weekday})`;
 }
 
 // 募集期間（例: 2026/11/01(日)〜2026/12/15(火)。指定なしは「期限なし」）
-function formatPeriod(periodStart: string | null, periodEnd: string | null): string {
+function formatPeriod(
+  periodStart: string | null,
+  periodEnd: string | null,
+): string {
   if (periodStart === null && periodEnd === null) {
     return '期限なし';
   }

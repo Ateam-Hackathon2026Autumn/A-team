@@ -11,13 +11,15 @@ import {
   ContentPage,
   ContentStatus,
   EmptyContent,
+} from '../components/ui/ContentPage';
+import {
   dateLabel,
   linkClass,
   panelClass,
   textLinkClass,
   timeLabel,
   yen,
-} from '../components/ui/ContentPage';
+} from '../components/ui/contentPageValues';
 import { usePublicContent } from '../hooks/usePublicContent';
 import type { MyExperienceApplication } from '../types/experience';
 
@@ -45,15 +47,28 @@ function participantText(app: MyExperienceApplication): string {
 
 export default function ExperienceApplicationsPage() {
   const state = usePublicContent(getExperienceApplications);
-  const [canceledMap, setCanceledMap] = useState<Record<number, MyExperienceApplication>>({});
+  const [canceledMap, setCanceledMap] = useState<
+    Record<number, MyExperienceApplication>
+  >({});
   const [cancelingId, setCancelingId] = useState<number | null>(null);
-  const [cancelError, setCancelError] = useState<{ id: number; message: string } | null>(null);
-  const [cancelNotice, setCancelNotice] = useState<{ id: number; message: string } | null>(null);
+  const [cancelError, setCancelError] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
+  const [cancelNotice, setCancelNotice] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
 
   const cancelLock = useRef(false);
   const handleCancel = async (applicationId: number) => {
     if (cancelLock.current) return;
-    if (!window.confirm('この予約をキャンセルしますか？キャンセルは取り消せず、生産者に通知されます。')) return;
+    if (
+      !window.confirm(
+        'この予約をキャンセルしますか？キャンセルは取り消せず、生産者に通知されます。',
+      )
+    )
+      return;
     cancelLock.current = true;
     setCancelingId(applicationId);
     setCancelError(null);
@@ -61,11 +76,17 @@ export default function ExperienceApplicationsPage() {
     try {
       const updated = await cancelExperienceApplication(applicationId);
       setCanceledMap((prev) => ({ ...prev, [applicationId]: updated }));
-      setCancelNotice({ id: applicationId, message: '予約をキャンセルしました。' });
+      setCancelNotice({
+        id: applicationId,
+        message: '予約をキャンセルしました。',
+      });
     } catch (cause) {
       setCancelError({
         id: applicationId,
-        message: cause instanceof Error ? cause.message : '予約をキャンセルできませんでした。',
+        message:
+          cause instanceof Error
+            ? cause.message
+            : '予約をキャンセルできませんでした。',
       });
     } finally {
       cancelLock.current = false;
@@ -96,7 +117,8 @@ export default function ExperienceApplicationsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span
                       className={`rounded-full px-4 py-1.5 text-sm font-bold ${
-                        STATUS_CLASSES[application.status] ?? 'bg-marche-sage text-marche-green'
+                        STATUS_CLASSES[application.status] ??
+                        'bg-marche-sage text-marche-green'
                       }`}
                     >
                       {STATUS_LABELS[application.status] ?? '状況確認中'}
@@ -114,38 +136,53 @@ export default function ExperienceApplicationsPage() {
                     <div>
                       <dt className="font-bold text-marche-muted">開催日時</dt>
                       <dd className="m-0 mt-1">
-                        {dateLabel(application.slot.startAt)} {timeLabel(application.slot.startAt)}〜（約
+                        {dateLabel(application.slot.startAt)}{' '}
+                        {timeLabel(application.slot.startAt)}〜（約
                         {application.slot.durationMin}分）
                       </dd>
                     </div>
                     <div>
                       <dt className="font-bold text-marche-muted">参加人数</dt>
-                      <dd className="m-0 mt-1">{participantText(application)}</dd>
+                      <dd className="m-0 mt-1">
+                        {participantText(application)}
+                      </dd>
                     </div>
                     <div>
                       <dt className="font-bold text-marche-muted">合計金額</dt>
-                      <dd className="m-0 mt-1 text-base font-bold">{yen(application.totalAmount)}（税込）</dd>
+                      <dd className="m-0 mt-1 text-base font-bold">
+                        {yen(application.totalAmount)}（税込）
+                      </dd>
                     </div>
                     <div>
                       <dt className="font-bold text-marche-muted">申込日</dt>
-                      <dd className="m-0 mt-1">{dateLabel(application.createdAt)}</dd>
+                      <dd className="m-0 mt-1">
+                        {dateLabel(application.createdAt)}
+                      </dd>
                     </div>
                   </dl>
 
-                  {application.cancelDeadlineAt && application.status === 'confirmed' && (
-                    <p className="m-0 mb-3 text-xs text-marche-muted">
-                      キャンセル受付期限：{dateLabel(application.cancelDeadlineAt)}{' '}
-                      {timeLabel(application.cancelDeadlineAt)}まで
-                    </p>
-                  )}
+                  {application.cancelDeadlineAt &&
+                    application.status === 'confirmed' && (
+                      <p className="m-0 mb-3 text-xs text-marche-muted">
+                        キャンセル受付期限：
+                        {dateLabel(application.cancelDeadlineAt)}{' '}
+                        {timeLabel(application.cancelDeadlineAt)}まで
+                      </p>
+                    )}
 
                   {cancelError?.id === application.id && (
-                    <p role="alert" className="my-2 text-sm font-bold text-marche-red">
+                    <p
+                      role="alert"
+                      className="my-2 text-sm font-bold text-marche-red"
+                    >
                       {cancelError.message}
                     </p>
                   )}
                   {cancelNotice?.id === application.id && (
-                    <p role="status" className="my-2 text-sm font-bold text-marche-green">
+                    <p
+                      role="status"
+                      className="my-2 text-sm font-bold text-marche-green"
+                    >
                       {cancelNotice.message}
                     </p>
                   )}

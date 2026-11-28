@@ -3,17 +3,21 @@ import { Link, Navigate, useNavigate } from 'react-router';
 
 import { createProducerApplication } from '../api/producerApplicationApi';
 import ProducerApplicationForm from '../components/producer/ProducerApplicationForm';
-import { ContentPage, textLinkClass } from '../components/ui/ContentPage';
+import { ContentPage } from '../components/ui/ContentPage';
+import { textLinkClass } from '../components/ui/contentPageValues';
 import { userInfoAtom } from '../stores/userAtom';
 import type { ProducerApplicationInput } from '../types/producerApplication';
 
 export default function ProducerApplicationNewPage() {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useAtom(userInfoAtom);
-  const alreadyApplied = userInfo?.producerApplicationStatus === 'pending' ||
-    userInfo?.producerApplicationStatus === 'approved' || userInfo?.isProducer === true;
+  const alreadyApplied =
+    userInfo?.producerApplicationStatus === 'pending' ||
+    userInfo?.producerApplicationStatus === 'approved' ||
+    userInfo?.isProducer === true;
   // 差し戻し・却下の申請は新規作成できない（バックエンドは 409 APPLICATION_RESUBMIT_REQUIRED）。修正して再申請する編集画面へ案内する。
-  const needsResubmit = userInfo?.producerApplicationStatus === 'returned' ||
+  const needsResubmit =
+    userInfo?.producerApplicationStatus === 'returned' ||
     userInfo?.producerApplicationStatus === 'rejected';
 
   const handleSubmit = async (input: ProducerApplicationInput) => {
@@ -28,7 +32,8 @@ export default function ProducerApplicationNewPage() {
     navigate('/producer-application', { replace: true });
   };
 
-  if (needsResubmit) return <Navigate to="/producer-application/edit" replace />;
+  if (needsResubmit)
+    return <Navigate to="/producer-application/edit" replace />;
 
   return (
     <ContentPage
@@ -44,15 +49,22 @@ export default function ProducerApplicationNewPage() {
           申請状況を確認する →
         </Link>
       </div>
-      {alreadyApplied ? <p role="status" className="mt-6">
-        生産者登録申請は既に受け付けています。<Link to="/producer-application" className={textLinkClass}>申請状況を確認する →</Link>
-      </p> : <ProducerApplicationForm
-        mode="create"
-        submitLabel="生産者登録を申請する"
-        submittingLabel="申請を送信中…"
-        cancelTo="/mypage"
-        onSubmit={handleSubmit}
-      />}
+      {alreadyApplied ? (
+        <p role="status" className="mt-6">
+          生産者登録申請は既に受け付けています。
+          <Link to="/producer-application" className={textLinkClass}>
+            申請状況を確認する →
+          </Link>
+        </p>
+      ) : (
+        <ProducerApplicationForm
+          mode="create"
+          submitLabel="生産者登録を申請する"
+          submittingLabel="申請を送信中…"
+          cancelTo="/mypage"
+          onSubmit={handleSubmit}
+        />
+      )}
     </ContentPage>
   );
 }

@@ -21,7 +21,7 @@ type NavItem = {
   end?: boolean;
 };
 
-// 画面一覧・URL（Notion「設計」）の生産者向けページ
+// 生産者向け画面一覧・URL の仕様: Notion「設計」
 const navItems: NavItem[] = [
   { to: '/dashboard', label: 'ホーム', icon: HomeIcon, end: true },
   { to: '/dashboard/products', label: '商品', icon: ProductIcon },
@@ -47,7 +47,10 @@ function DashboardLayout() {
   // スクロールするのはこの画面全体の div なので、ルート遷移時の先頭移動もこの div に対して行う
   const scrollRef = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
-  const scrollToTop = useCallback(() => scrollRef.current?.scrollTo({ top: 0 }), []);
+  const scrollToTop = useCallback(
+    () => scrollRef.current?.scrollTo({ top: 0 }),
+    [],
+  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
@@ -62,7 +65,10 @@ function DashboardLayout() {
   return (
     <DashboardScrollContext.Provider value={scrollToTop}>
       {/* 画面全体に固定してこの中でスクロールする */}
-      <div ref={scrollRef} className="fixed inset-0 overflow-y-auto bg-marche-canvas font-sans text-[15px] leading-[1.8] text-marche-ink md:flex">
+      <div
+        ref={scrollRef}
+        className="fixed inset-0 overflow-y-auto bg-marche-canvas font-sans text-[15px] leading-[1.8] text-marche-ink md:flex"
+      >
         <aside className="box-border border-0 border-b border-solid border-marche-line bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0">
           {/* スマホ: ロゴの右に一般サイトへ戻るリンク（PC ではサイドバー下部に表示） */}
           <div className="flex items-center justify-between gap-3 pr-4 md:block md:pr-0">
@@ -70,9 +76,16 @@ function DashboardLayout() {
               to="/dashboard"
               className="flex min-w-0 items-center gap-3 px-5 pt-4 pb-3 text-marche-ink no-underline md:pt-6 md:pb-5"
             >
-              <img src="/favicon.svg" alt="" aria-hidden="true" className="size-9 shrink-0 rounded-full" />
+              <img
+                src="/favicon.svg"
+                alt=""
+                aria-hidden="true"
+                className="size-9 shrink-0 rounded-full"
+              />
               <span className="leading-tight">
-                <span className="block text-sm font-bold">つながるマルシェ</span>
+                <span className="block text-sm font-bold">
+                  つながるマルシェ
+                </span>
                 <span className="block text-xs text-marche-muted">
                   生産者管理画面
                 </span>

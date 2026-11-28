@@ -9,7 +9,7 @@ import {
   getExperienceSlots,
 } from '../../api/dashboardExperienceApi';
 import DashboardButton from '../../components/DashboardButton';
-import { controlClassName } from '../../components/DashboardFormParts';
+import { controlClassName } from '../../components/dashboardFormValues';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
@@ -25,14 +25,22 @@ import {
 
 const EXPERIENCE_LIST_PATH = '/dashboard/experiences';
 
-const applicationStatusBadgeClassNames: Record<ExperienceApplicationStatus, string> = {
+const applicationStatusBadgeClassNames: Record<
+  ExperienceApplicationStatus,
+  string
+> = {
   applied: 'bg-marche-orange/20 text-marche-ink',
   confirmed: 'bg-marche-sage text-marche-green',
   canceled: 'bg-marche-line text-marche-muted',
   attended: 'bg-marche-green text-white',
 };
 
-const statusOptions: ExperienceApplicationStatus[] = ['applied', 'confirmed', 'attended', 'canceled'];
+const statusOptions: ExperienceApplicationStatus[] = [
+  'applied',
+  'confirmed',
+  'attended',
+  'canceled',
+];
 
 function Notice({ children }: { children: ReactNode }) {
   return (
@@ -54,12 +62,17 @@ function formatPeople(application: ExperienceApplication): string {
     parts.push(`未就学児${application.infantCount}`);
   }
 
-  const total = application.adultCount + application.childCount + application.infantCount;
+  const total =
+    application.adultCount + application.childCount + application.infantCount;
 
   return `${total}人（${parts.join('・')}）`;
 }
 
-function ApplicationRow({ application }: { application: ExperienceApplication }) {
+function ApplicationRow({
+  application,
+}: {
+  application: ExperienceApplication;
+}) {
   const { user } = application;
   const isWithdrawn = !user.isActive;
   const memberName =
@@ -78,7 +91,9 @@ function ApplicationRow({ application }: { application: ExperienceApplication })
         >
           {applicationStatusLabels[application.status]}
         </span>
-        <span className="text-xs text-marche-muted">予約番号 {application.reservationNo}</span>
+        <span className="text-xs text-marche-muted">
+          予約番号 {application.reservationNo}
+        </span>
         <span className="text-xs text-marche-muted">
           申込 {formatDateTime(application.createdAt)}
         </span>
@@ -87,7 +102,9 @@ function ApplicationRow({ application }: { application: ExperienceApplication })
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
           <p className="m-0 font-bold">
-            {isWithdrawn ? '退会済みの会員' : (application.representativeName ?? memberName ?? '—')}
+            {isWithdrawn
+              ? '退会済みの会員'
+              : (application.representativeName ?? memberName ?? '—')}
             {!isWithdrawn &&
               memberName !== null &&
               application.representativeName !== null &&
@@ -98,7 +115,8 @@ function ApplicationRow({ application }: { application: ExperienceApplication })
               )}
           </p>
           <p className="m-0 mt-1 text-sm">
-            {formatDateTime(application.slot.startAt)} の回 ・ {formatPeople(application)}
+            {formatDateTime(application.slot.startAt)} の回 ・{' '}
+            {formatPeople(application)}
           </p>
           {application.phone !== null && (
             <p className="m-0 mt-1 text-sm">
@@ -114,7 +132,9 @@ function ApplicationRow({ application }: { application: ExperienceApplication })
         </div>
         <p className="m-0 text-left text-lg font-bold sm:text-right">
           {formatYen(application.totalAmount)}
-          <span className="block text-xs font-normal text-marche-muted">合計（税込）</span>
+          <span className="block text-xs font-normal text-marche-muted">
+            合計（税込）
+          </span>
         </p>
       </div>
 
@@ -139,13 +159,19 @@ function DashboardExperienceParticipantsPage() {
 
   const [title, setTitle] = useState<string | null>(null);
   const [slots, setSlots] = useState<ExperienceSlot[]>([]);
-  const [applications, setApplications] = useState<ExperienceApplication[] | null>(null);
+  const [applications, setApplications] = useState<
+    ExperienceApplication[] | null
+  >(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(1);
   const [slotFilter, setSlotFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ExperienceApplicationStatus | ''>('');
-  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(null);
+  const [statusFilter, setStatusFilter] = useState<
+    ExperienceApplicationStatus | ''
+  >('');
+  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(
+    null,
+  );
   const [reloadCount, setReloadCount] = useState(0);
 
   // 体験名と予約枠（絞り込みの選択肢）。取れなくても申込者一覧は表示する
@@ -204,7 +230,9 @@ function DashboardExperienceParticipantsPage() {
 
         if (isActive) {
           setLoadError(
-            error instanceof ApiError && error.status === 404 ? 'notFound' : 'failed',
+            error instanceof ApiError && error.status === 404
+              ? 'notFound'
+              : 'failed',
           );
         }
       });
@@ -212,7 +240,16 @@ function DashboardExperienceParticipantsPage() {
     return () => {
       isActive = false;
     };
-  }, [canManage, isValidId, experienceId, page, slotFilter, statusFilter, reloadCount]);
+  }, [
+    canManage,
+    isValidId,
+    experienceId,
+    page,
+    slotFilter,
+    statusFilter,
+    reloadCount,
+    redirectToSignin,
+  ]);
 
   const reload = () => {
     setLoadError(null);
@@ -234,7 +271,9 @@ function DashboardExperienceParticipantsPage() {
   const renderBody = () => {
     if (!canManage) {
       return (
-        <Notice>体験の登録・管理は、生産者登録が承認されると使えるようになります。</Notice>
+        <Notice>
+          体験の登録・管理は、生産者登録が承認されると使えるようになります。
+        </Notice>
       );
     }
 
@@ -245,7 +284,11 @@ function DashboardExperienceParticipantsPage() {
           <p className="m-0 mt-1 text-marche-muted">
             削除されたか、URL が間違っている可能性があります。
           </p>
-          <DashboardButton to={EXPERIENCE_LIST_PATH} variant="secondary" className="mt-4">
+          <DashboardButton
+            to={EXPERIENCE_LIST_PATH}
+            variant="secondary"
+            className="mt-4"
+          >
             体験管理に戻る
           </DashboardButton>
         </Notice>
@@ -268,7 +311,8 @@ function DashboardExperienceParticipantsPage() {
               <option value="">すべての回</option>
               {slots.map((slot) => (
                 <option key={slot.id} value={slot.id}>
-                  {formatDateTime(slot.startAt)}（予約 {slot.reservedCount}/{slot.capacity}人）
+                  {formatDateTime(slot.startAt)}（予約 {slot.reservedCount}/
+                  {slot.capacity}人）
                 </option>
               ))}
             </select>
@@ -278,7 +322,8 @@ function DashboardExperienceParticipantsPage() {
             <select
               value={statusFilter}
               onChange={(event) => {
-                const value = event.target.value as ExperienceApplicationStatus | '';
+                const value = event.target.value as
+                  ExperienceApplicationStatus | '';
                 changeFilter(() => setStatusFilter(value));
               }}
               className={`${controlClassName} border-marche-line text-sm font-normal`}
@@ -298,14 +343,25 @@ function DashboardExperienceParticipantsPage() {
             role="alert"
             className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
           >
-            <p className="m-0 font-bold text-marche-red">申込者を読み込めませんでした。</p>
-            <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-            <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+            <p className="m-0 font-bold text-marche-red">
+              申込者を読み込めませんでした。
+            </p>
+            <p className="m-0 mt-1 text-marche-muted">
+              時間をおいて、もう一度お試しください。
+            </p>
+            <DashboardButton
+              variant="secondary"
+              onClick={reload}
+              className="mt-4"
+            >
               再読み込み
             </DashboardButton>
           </div>
         ) : applications === null ? (
-          <ul aria-busy="true" className="m-0 flex list-none flex-col gap-3 p-0">
+          <ul
+            aria-busy="true"
+            className="m-0 flex list-none flex-col gap-3 p-0"
+          >
             {Array.from({ length: 3 }, (_, i) => (
               <li
                 key={i}
@@ -330,7 +386,10 @@ function DashboardExperienceParticipantsPage() {
         )}
 
         {loadError === null && applications !== null && totalPages > 1 && (
-          <nav aria-label="ページ移動" className="flex items-center justify-center gap-4">
+          <nav
+            aria-label="ページ移動"
+            className="flex items-center justify-center gap-4"
+          >
             <DashboardButton
               variant="secondary"
               size="sm"
@@ -368,10 +427,14 @@ function DashboardExperienceParticipantsPage() {
         <h1 className="m-0 font-serif mt-2 text-2xl font-bold">
           体験申込者一覧
           {applications !== null && loadError === null && (
-            <span className="ml-2 text-sm font-normal text-marche-muted">{total}件</span>
+            <span className="ml-2 text-sm font-normal text-marche-muted">
+              {total}件
+            </span>
           )}
         </h1>
-        {title !== null && <p className="m-0 mt-1 text-sm text-marche-muted">{title}</p>}
+        {title !== null && (
+          <p className="m-0 mt-1 text-sm text-marche-muted">{title}</p>
+        )}
         <p className="m-0 mt-2 text-xs text-marche-muted">
           連絡先は体験の案内・連絡のためだけに使ってください。
         </p>

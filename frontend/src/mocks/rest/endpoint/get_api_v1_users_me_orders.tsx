@@ -3,13 +3,13 @@ import type { RestMock } from '../../types';
 import { hoursFromNow } from '../../helpers';
 
 // 注文履歴取得API GET /api/v1/users/me/orders
-//
+
 // ログイン中のユーザー（山本 健太）が購入者として注文した履歴。注文日時の新しい順。
 // 1注文に複数の生産者の商品があれば shipments（箱）が複数になり、配送状況は箱ごとに見る
-//
+
 // 注文なし:
 //   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
-//
+
 // 未ログイン（401）:
 //   { errorCode: 'UNAUTHENTICATED', errorMsg: 'ログインしてください。' }
 const myOrdersList: RestMock = {
@@ -28,8 +28,20 @@ const myOrdersList: RestMock = {
         grandTotal: 13200,
         orderedAt: hoursFromNow(-0.2),
         shipments: [
-          { id: 1021, producerId: 1, temperatureZone: 'normal', status: 'unshipped', shippingFee: 900 },
-          { id: 1022, producerId: 2, temperatureZone: 'chilled', status: 'unshipped', shippingFee: 1100 },
+          {
+            id: 1021,
+            producerId: 1,
+            temperatureZone: 'normal',
+            status: 'unshipped',
+            shippingFee: 900,
+          },
+          {
+            id: 1022,
+            producerId: 2,
+            temperatureZone: 'chilled',
+            status: 'unshipped',
+            shippingFee: 1100,
+          },
         ],
       },
       {
@@ -40,7 +52,15 @@ const myOrdersList: RestMock = {
         shippingTotal: 1000,
         grandTotal: 3980,
         orderedAt: hoursFromNow(-24 * 5),
-        shipments: [{ id: 1003, producerId: 5, temperatureZone: 'chilled', status: 'shipped', shippingFee: 1000 }],
+        shipments: [
+          {
+            id: 1003,
+            producerId: 5,
+            temperatureZone: 'chilled',
+            status: 'shipped',
+            shippingFee: 1000,
+          },
+        ],
       },
       {
         id: 975,
@@ -50,7 +70,15 @@ const myOrdersList: RestMock = {
         shippingTotal: 1200,
         grandTotal: 7340,
         orderedAt: hoursFromNow(-24 * 20),
-        shipments: [{ id: 978, producerId: 3, temperatureZone: 'chilled', status: 'delivered', shippingFee: 1200 }],
+        shipments: [
+          {
+            id: 978,
+            producerId: 3,
+            temperatureZone: 'chilled',
+            status: 'delivered',
+            shippingFee: 1200,
+          },
+        ],
       },
     ],
     total: 3,
@@ -62,12 +90,35 @@ const myOrdersList: RestMock = {
 
 export { myOrdersList };
 
-myOrdersList.handler = url => {
- const initial = myOrdersList.body as { items: import('../../../types/consumerOrder').OrderSummary[] };
- const created = consumerDemoOrders.map(order => ({ ...order, shipments: order.shipments.map(box => ({ ...box, producerId: box.producer.id, producerName: box.producer.businessName })) }));
- const paymentStatus = url.searchParams.get('paymentStatus');
- const items = [...created, ...initial.items].filter(order => !paymentStatus || order.paymentStatus === paymentStatus);
- const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
- const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
- return { status: 200, body: { items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length, page, pageSize, totalPages: Math.ceil(items.length / pageSize) } };
+myOrdersList.handler = (url) => {
+  const initial = myOrdersList.body as {
+    items: import('../../../types/consumerOrder').OrderSummary[];
+  };
+  const created = consumerDemoOrders.map((order) => ({
+    ...order,
+    shipments: order.shipments.map((box) => ({
+      ...box,
+      producerId: box.producer.id,
+      producerName: box.producer.businessName,
+    })),
+  }));
+  const paymentStatus = url.searchParams.get('paymentStatus');
+  const items = [...created, ...initial.items].filter(
+    (order) => !paymentStatus || order.paymentStatus === paymentStatus,
+  );
+  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+  const pageSize = Math.min(
+    100,
+    Math.max(1, Number(url.searchParams.get('pageSize')) || 20),
+  );
+  return {
+    status: 200,
+    body: {
+      items: items.slice((page - 1) * pageSize, page * pageSize),
+      total: items.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(items.length / pageSize),
+    },
+  };
 };

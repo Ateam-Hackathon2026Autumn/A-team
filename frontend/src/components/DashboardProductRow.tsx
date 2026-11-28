@@ -30,8 +30,7 @@ function publishLabel(product: DashboardProduct) {
 }
 
 function StockBadge({ stock }: { stock: number | null }) {
-  const className =
-    'inline-block rounded-full px-2.5 py-0.5 text-xs font-bold';
+  const className = 'inline-block rounded-full px-2.5 py-0.5 text-xs font-bold';
 
   if (stock === null) {
     return (

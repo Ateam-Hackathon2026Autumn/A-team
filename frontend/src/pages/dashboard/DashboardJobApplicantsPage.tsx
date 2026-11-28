@@ -9,7 +9,7 @@ import {
   updateJobApplication,
 } from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
-import { controlClassName } from '../../components/DashboardFormParts';
+import { controlClassName } from '../../components/dashboardFormValues';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
@@ -46,7 +46,10 @@ const actionLabels: Record<JobDecisionStatus, string> = {
 };
 
 // 状態ごとに選べる操作（applied → 選考中・採用・不採用、screening → 採用・不採用、長期の hired → 勤務完了）
-function actionsFor(status: JobApplicationStatus, termType: JobTermType | null): JobDecisionStatus[] {
+function actionsFor(
+  status: JobApplicationStatus,
+  termType: JobTermType | null,
+): JobDecisionStatus[] {
   if (status === 'applied') {
     return ['screening', 'hired', 'rejected'];
   }
@@ -89,7 +92,9 @@ function confirmMessage(
 
     return (
       `${name}さんを採用します。` +
-      (isFull ? `\n募集人数（${capacity.slots}人）を超えての採用になります。` : '') +
+      (isFull
+        ? `\n募集人数（${capacity.slots}人）を超えての採用になります。`
+        : '') +
       '\n採用・不採用は応募者に通知され、後から取り消せません。よろしいですか？'
     );
   }
@@ -117,7 +122,10 @@ function ApplicationRow({
   termType: JobTermType | null;
   isPending: boolean;
   disabledActions: boolean;
-  onDecide: (application: DashboardJobApplication, status: JobDecisionStatus) => void;
+  onDecide: (
+    application: DashboardJobApplication,
+    status: JobDecisionStatus,
+  ) => void;
 }) {
   const actions = actionsFor(application.status, termType);
   const isClosed = ['rejected', 'withdrawn'].includes(application.status);
@@ -132,9 +140,13 @@ function ApplicationRow({
         >
           {applicationStatusLabels[application.status]}
         </span>
-        <span className="text-xs text-marche-muted">応募 {formatDateTime(application.createdAt)}</span>
+        <span className="text-xs text-marche-muted">
+          応募 {formatDateTime(application.createdAt)}
+        </span>
         {application.decidedAt !== null && (
-          <span className="text-xs text-marche-muted">決定 {formatDateTime(application.decidedAt)}</span>
+          <span className="text-xs text-marche-muted">
+            決定 {formatDateTime(application.decidedAt)}
+          </span>
         )}
       </div>
 
@@ -142,7 +154,9 @@ function ApplicationRow({
         <p className="m-0 font-bold">
           {applicantName(application)}
           {application.age !== null && (
-            <span className="ml-2 text-sm font-normal text-marche-muted">{application.age}歳</span>
+            <span className="ml-2 text-sm font-normal text-marche-muted">
+              {application.age}歳
+            </span>
           )}
         </p>
         {application.phone !== null && application.phone !== '' && (
@@ -164,7 +178,10 @@ function ApplicationRow({
         ) : (
           <ul className="m-0 mt-1 flex list-none flex-wrap gap-2 p-0">
             {application.workDates.map((day) => (
-              <li key={day.id} className="rounded-full bg-marche-sage px-3 py-1 text-xs font-bold">
+              <li
+                key={day.id}
+                className="rounded-full bg-marche-sage px-3 py-1 text-xs font-bold"
+              >
                 {formatDate(day.workDate)}
               </li>
             ))}
@@ -184,7 +201,13 @@ function ApplicationRow({
             <DashboardButton
               key={status}
               size="sm"
-              variant={status === 'rejected' ? 'danger' : status === 'screening' ? 'secondary' : 'primary'}
+              variant={
+                status === 'rejected'
+                  ? 'danger'
+                  : status === 'screening'
+                    ? 'secondary'
+                    : 'primary'
+              }
               disabled={isPending || disabledActions}
               onClick={() => onDecide(application, status)}
             >
@@ -209,12 +232,18 @@ function DashboardJobApplicantsPage() {
 
   const [job, setJob] = useState<DashboardJob | null>(null);
   const [capacity, setCapacity] = useState<Capacity | null>(null);
-  const [applications, setApplications] = useState<DashboardJobApplication[] | null>(null);
+  const [applications, setApplications] = useState<
+    DashboardJobApplication[] | null
+  >(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<JobApplicationStatus | ''>('');
-  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(null);
+  const [statusFilter, setStatusFilter] = useState<JobApplicationStatus | ''>(
+    '',
+  );
+  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(
+    null,
+  );
   const [reloadCount, setReloadCount] = useState(0);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -267,14 +296,26 @@ function DashboardJobApplicantsPage() {
         }
 
         if (isActive) {
-          setLoadError(error instanceof ApiError && error.status === 404 ? 'notFound' : 'failed');
+          setLoadError(
+            error instanceof ApiError && error.status === 404
+              ? 'notFound'
+              : 'failed',
+          );
         }
       });
 
     return () => {
       isActive = false;
     };
-  }, [canManage, isValidId, jobId, page, statusFilter, reloadCount]);
+  }, [
+    canManage,
+    isValidId,
+    jobId,
+    page,
+    statusFilter,
+    reloadCount,
+    redirectToSignin,
+  ]);
 
   const reload = () => {
     setLoadError(null);
@@ -296,7 +337,10 @@ function DashboardJobApplicantsPage() {
     setPage(nextPage);
   };
 
-  const handleDecide = async (application: DashboardJobApplication, status: JobDecisionStatus) => {
+  const handleDecide = async (
+    application: DashboardJobApplication,
+    status: JobDecisionStatus,
+  ) => {
     if (!window.confirm(confirmMessage(application, status, capacity))) {
       return;
     }
@@ -311,19 +355,39 @@ function DashboardJobApplicantsPage() {
 
       setApplications(
         (current) =>
-          current?.filter((item) => statusFilter === '' || item.id !== result.id || result.status === statusFilter).map((item) =>
-            item.id === result.id ? { ...item, status: result.status, decidedAt: result.decidedAt } : item,
-          ) ?? null,
+          current
+            ?.filter(
+              (item) =>
+                statusFilter === '' ||
+                item.id !== result.id ||
+                result.status === statusFilter,
+            )
+            .map((item) =>
+              item.id === result.id
+                ? {
+                    ...item,
+                    status: result.status,
+                    decidedAt: result.decidedAt,
+                  }
+                : item,
+            ) ?? null,
       );
-      if (statusFilter !== '' && result.status !== statusFilter) setTotal((count) => Math.max(0, count - 1));
+      if (statusFilter !== '' && result.status !== statusFilter)
+        setTotal((count) => Math.max(0, count - 1));
       const success = `${applicantName(application)}さんを「${applicationStatusLabels[result.status]}」にしました。`;
       setNotice(success);
       getDashboardJob(jobId)
         .then((currentJob) => {
-          setCapacity({ hiredCount: currentJob.hiredCount, slots: currentJob.slots });
-          setNotice(success + (currentJob.hiredCount > currentJob.slots
-            ? `採用人数（${currentJob.hiredCount}人）が募集人数（${currentJob.slots}人）を超えています。`
-            : ''));
+          setCapacity({
+            hiredCount: currentJob.hiredCount,
+            slots: currentJob.slots,
+          });
+          setNotice(
+            success +
+              (currentJob.hiredCount > currentJob.slots
+                ? `採用人数（${currentJob.hiredCount}人）が募集人数（${currentJob.slots}人）を超えています。`
+                : ''),
+          );
         })
         .catch(() => {});
     } catch (error) {
@@ -333,7 +397,10 @@ function DashboardJobApplicantsPage() {
       }
 
       // 404（応募が見つからない）・409（今の状態からは変えられない）は、他の画面で先に変わっている
-      if (error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+      if (
+        error instanceof ApiError &&
+        (error.status === 404 || error.status === 409)
+      ) {
         setActionError(
           'この応募は他の画面で状態が変わっていたため、最新の内容を読み込み直しました。もう一度確認してください。',
         );
@@ -341,7 +408,9 @@ function DashboardJobApplicantsPage() {
       } else if (error instanceof ApiError) {
         setActionError(error.message);
       } else {
-        setActionError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setActionError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
     } finally {
       setPendingId(null);
@@ -350,15 +419,25 @@ function DashboardJobApplicantsPage() {
 
   const renderBody = () => {
     if (!canManage) {
-      return <Notice>求人の登録・管理は、生産者登録が承認されると使えるようになります。</Notice>;
+      return (
+        <Notice>
+          求人の登録・管理は、生産者登録が承認されると使えるようになります。
+        </Notice>
+      );
     }
 
     if (!isValidId || loadError === 'notFound') {
       return (
         <Notice>
           <p className="m-0 font-bold">求人が見つかりません。</p>
-          <p className="m-0 mt-1 text-marche-muted">削除されたか、URL が間違っている可能性があります。</p>
-          <DashboardButton to={JOB_LIST_PATH} variant="secondary" className="mt-4">
+          <p className="m-0 mt-1 text-marche-muted">
+            削除されたか、URL が間違っている可能性があります。
+          </p>
+          <DashboardButton
+            to={JOB_LIST_PATH}
+            variant="secondary"
+            className="mt-4"
+          >
             求人管理に戻る
           </DashboardButton>
         </Notice>
@@ -371,20 +450,26 @@ function DashboardJobApplicantsPage() {
           <dl className="m-0 box-border grid grid-cols-2 gap-3 rounded-2xl border border-solid border-marche-line bg-white p-5 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-xs text-marche-muted">報酬</dt>
-              <dd className="m-0 font-bold">{formatPay(job.payUnit, job.payAmount)}</dd>
+              <dd className="m-0 font-bold">
+                {formatPay(job.payUnit, job.payAmount)}
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-marche-muted">採用 / 募集</dt>
               <dd
                 className={`m-0 font-bold ${capacity !== null && capacity.hiredCount > capacity.slots ? 'text-marche-red' : ''}`}
               >
-                {capacity === null ? '—' : `${capacity.hiredCount} / ${capacity.slots}人`}
+                {capacity === null
+                  ? '—'
+                  : `${capacity.hiredCount} / ${capacity.slots}人`}
               </dd>
             </div>
             <div>
               <dt className="text-xs text-marche-muted">勤務日</dt>
               <dd className="m-0 font-bold">
-                {job.workDates.length === 0 ? '指定なし' : `${job.workDates.length}日`}
+                {job.workDates.length === 0
+                  ? '指定なし'
+                  : `${job.workDates.length}日`}
               </dd>
             </div>
           </dl>
@@ -394,7 +479,9 @@ function DashboardJobApplicantsPage() {
           状態
           <select
             value={statusFilter}
-            onChange={(event) => changeFilter(event.target.value as JobApplicationStatus | '')}
+            onChange={(event) =>
+              changeFilter(event.target.value as JobApplicationStatus | '')
+            }
             className={`${controlClassName} border-marche-line text-sm font-normal`}
           >
             <option value="">すべて</option>
@@ -429,14 +516,25 @@ function DashboardJobApplicantsPage() {
             role="alert"
             className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
           >
-            <p className="m-0 font-bold text-marche-red">応募者を読み込めませんでした。</p>
-            <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-            <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+            <p className="m-0 font-bold text-marche-red">
+              応募者を読み込めませんでした。
+            </p>
+            <p className="m-0 mt-1 text-marche-muted">
+              時間をおいて、もう一度お試しください。
+            </p>
+            <DashboardButton
+              variant="secondary"
+              onClick={reload}
+              className="mt-4"
+            >
               再読み込み
             </DashboardButton>
           </div>
         ) : applications === null ? (
-          <ul aria-busy="true" className="m-0 flex list-none flex-col gap-3 p-0">
+          <ul
+            aria-busy="true"
+            className="m-0 flex list-none flex-col gap-3 p-0"
+          >
             {Array.from({ length: 3 }, (_, i) => (
               <li
                 key={i}
@@ -447,7 +545,9 @@ function DashboardJobApplicantsPage() {
         ) : applications.length === 0 ? (
           <Notice>
             <p className="m-0 text-center text-marche-muted">
-              {statusFilter === '' ? 'まだ応募はありません。' : '条件に合う応募はありません。'}
+              {statusFilter === ''
+                ? 'まだ応募はありません。'
+                : '条件に合う応募はありません。'}
             </p>
           </Notice>
         ) : (
@@ -466,7 +566,10 @@ function DashboardJobApplicantsPage() {
         )}
 
         {loadError === null && applications !== null && totalPages > 1 && (
-          <nav aria-label="ページ移動" className="flex items-center justify-center gap-4">
+          <nav
+            aria-label="ページ移動"
+            className="flex items-center justify-center gap-4"
+          >
             <DashboardButton
               variant="secondary"
               size="sm"
@@ -505,16 +608,24 @@ function DashboardJobApplicantsPage() {
           <h1 className="m-0 font-serif text-2xl font-bold">
             求人応募者一覧
             {applications !== null && loadError === null && (
-              <span className="ml-2 text-sm font-normal text-marche-muted">{total}件</span>
+              <span className="ml-2 text-sm font-normal text-marche-muted">
+                {total}件
+              </span>
             )}
           </h1>
           {canManage && isValidId && loadError === null && job !== null && (
-            <DashboardButton to={`/dashboard/jobs/${jobId}/edit`} variant="secondary" size="sm">
+            <DashboardButton
+              to={`/dashboard/jobs/${jobId}/edit`}
+              variant="secondary"
+              size="sm"
+            >
               求人を編集
             </DashboardButton>
           )}
         </div>
-        {job !== null && <p className="m-0 mt-1 text-sm text-marche-muted">{job.title}</p>}
+        {job !== null && (
+          <p className="m-0 mt-1 text-sm text-marche-muted">{job.title}</p>
+        )}
         <p className="m-0 mt-2 text-xs text-marche-muted">
           連絡先は採用の連絡のためだけに使ってください。採用・不採用は応募者に通知され、後から取り消せません。
         </p>

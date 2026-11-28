@@ -1,4 +1,4 @@
-import ApiError from "../api/apiError";
+import ApiError from '../api/apiError';
 
 export function apiErrorMessage(
   cause: unknown,
@@ -9,4 +9,3 @@ export function apiErrorMessage(
   const detail = field ? cause.details[field]?.[0] : undefined;
   return detail ? `${cause.message} ${detail}` : cause.message;
 }
-

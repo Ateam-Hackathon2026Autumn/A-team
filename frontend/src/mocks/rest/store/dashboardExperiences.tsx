@@ -33,12 +33,12 @@ import {
 } from './common';
 
 // ダッシュボード体験のモックストア
-//
+
 // 体験（一覧・詳細・登録・更新・削除）、予約枠（一覧・追加・変更・削除）、申込者一覧の各モックが、このデータを読み書きする
 // - 体験の ETag はレスポンスヘッダー（ETag）で返す。予約枠を変えると体験の ETag も変わる
 // - 予約枠の etag は本文に含める（"slot-{id}-v{版数}"）
 // - 一覧の slotCount・applicationCount・nextStartAt、予約枠の reservedCount・remainingCapacity は申込データから毎回計算する
-//
+
 // 初期データ（ログイン中の生産者 = 山本農園）
 //   体験1: 蜜入りりんごの収穫体験（公開中。枠1・枠2、申込7件）
 //   体験2: 冬の剪定見学（公開中。枠3、申込2件）
@@ -52,7 +52,10 @@ const SLOT_NOT_FOUND = '対象の予約枠が見つかりません。';
 // 予約人数・削除可否に数える申込の状態
 const ACTIVE_STATUSES = ['applied', 'confirmed', 'attended'];
 
-type StoredSlot = Omit<ExperienceSlot, 'reservedCount' | 'remainingCapacity'> & {
+type StoredSlot = Omit<
+  ExperienceSlot,
+  'reservedCount' | 'remainingCapacity'
+> & {
   // 申込履歴がある枠は、申込者一覧に表示するため削除後も残す
   deleted: boolean;
 };
@@ -81,7 +84,10 @@ function seedState(): State {
     isActive: true,
   });
   const application = (
-    fields: Omit<StoredApplication, 'reservationNo' | 'policyAgreedAt' | 'infantCount'>,
+    fields: Omit<
+      StoredApplication,
+      'reservationNo' | 'policyAgreedAt' | 'infantCount'
+    >,
   ): StoredApplication => ({
     ...fields,
     infantCount: 0,
@@ -270,7 +276,8 @@ function seedState(): State {
         childCount: 1,
         representativeName: '高橋 ゆい',
         phone: '080-5555-2345',
-        message: '子どもが小学2年生です。アップルパイづくりを楽しみにしています。',
+        message:
+          '子どもが小学2年生です。アップルパイづくりを楽しみにしています。',
         totalAmount: 9000,
         status: 'applied',
         createdAt: hoursFromNow(-20),
@@ -356,7 +363,10 @@ function isState(value: unknown): value is State {
     isObject(value) &&
     Array.isArray(value.experiences) &&
     value.experiences.every(
-      (item) => isObject(item) && typeof item.id === 'number' && Array.isArray(item.images),
+      (item) =>
+        isObject(item) &&
+        typeof item.id === 'number' &&
+        Array.isArray(item.images),
     ) &&
     isObject(value.etags) &&
     Array.isArray(value.slots) &&
@@ -371,7 +381,9 @@ function isState(value: unknown): value is State {
     Array.isArray(value.applications) &&
     value.applications.every(
       (item) =>
-        isObject(item) && typeof item.slotId === 'number' && typeof item.experienceId === 'number',
+        isObject(item) &&
+        typeof item.slotId === 'number' &&
+        typeof item.experienceId === 'number',
     ) &&
     isObject(value.idempotency)
   );
@@ -385,11 +397,14 @@ function getState(): State {
     state = loadState(STORAGE_KEY, isState) ?? seedState();
     // 以前のモックが保存した文字列形式の flow を現行 API の形式に直す。
     for (const experience of state.experiences) {
-      experience.flow = experience.flow?.map((item) => {
-        if (typeof item !== 'string') return item;
-        const match = /^((?:[01]\d|2[0-3]):[0-5]\d)\s+(.+)$/.exec(item);
-        return match === null ? { time: '00:00', text: item } : { time: match[1], text: match[2] };
-      }) ?? null;
+      experience.flow =
+        experience.flow?.map((item) => {
+          if (typeof item !== 'string') return item;
+          const match = /^((?:[01]\d|2[0-3]):[0-5]\d)\s+(.+)$/.exec(item);
+          return match === null
+            ? { time: '00:00', text: item }
+            : { time: match[1], text: match[2] };
+        }) ?? null;
     }
   }
 
@@ -399,10 +414,7 @@ function getState(): State {
 function save(): void {
   saveState(STORAGE_KEY, getState());
 }
-
-// ---------------------------------------------------------------------------
 // 参照・計算
-// ---------------------------------------------------------------------------
 
 function findExperience(id: number): DashboardExperience | undefined {
   return getState().experiences.find((experience) => experience.id === id);
@@ -418,17 +430,25 @@ function etagOf(experience: DashboardExperience): string {
 // 体験・予約枠を変更したときに、体験の更新日時と ETag を新しくする
 function touchExperience(experience: DashboardExperience, now: string): void {
   experience.updatedAt = now;
-  getState().etags[experience.id] = nextEtag('experience', experience.id, etagOf(experience));
+  getState().etags[experience.id] = nextEtag(
+    'experience',
+    experience.id,
+    etagOf(experience),
+  );
 }
 
 function etagHeader(experience: DashboardExperience): Record<string, string> {
   return { ETag: etagOf(experience) };
 }
 
-function applicationsOf(filter: { experienceId?: number; slotId?: number }): StoredApplication[] {
+function applicationsOf(filter: {
+  experienceId?: number;
+  slotId?: number;
+}): StoredApplication[] {
   return getState().applications.filter(
     (application) =>
-      (filter.experienceId === undefined || application.experienceId === filter.experienceId) &&
+      (filter.experienceId === undefined ||
+        application.experienceId === filter.experienceId) &&
       (filter.slotId === undefined || application.slotId === filter.slotId),
   );
 }
@@ -438,13 +458,18 @@ function isActive(application: StoredApplication): boolean {
 }
 
 function liveSlotsOf(experienceId: number): StoredSlot[] {
-  return getState().slots.filter((slot) => slot.experienceId === experienceId && !slot.deleted);
+  return getState().slots.filter(
+    (slot) => slot.experienceId === experienceId && !slot.deleted,
+  );
 }
 
 function toSlot(slot: StoredSlot): ExperienceSlot {
   const reservedCount = applicationsOf({ slotId: slot.id })
     .filter(isActive)
-    .reduce((sum, item) => sum + item.adultCount + item.childCount + item.infantCount, 0);
+    .reduce(
+      (sum, item) => sum + item.adultCount + item.childCount + item.infantCount,
+      0,
+    );
   const { deleted: _deleted, ...fields } = slot;
 
   return {
@@ -454,11 +479,15 @@ function toSlot(slot: StoredSlot): ExperienceSlot {
   };
 }
 
-function toSummary(experience: DashboardExperience): DashboardExperienceSummary {
+function toSummary(
+  experience: DashboardExperience,
+): DashboardExperienceSummary {
   const slots = liveSlotsOf(experience.id);
   const now = Date.now();
   const upcoming = slots
-    .filter((slot) => slot.status !== 'canceled' && Date.parse(slot.startAt) > now)
+    .filter(
+      (slot) => slot.status !== 'canceled' && Date.parse(slot.startAt) > now,
+    )
     .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
 
   return {
@@ -487,10 +516,15 @@ function writeResult(experience: DashboardExperience) {
 }
 
 // images[].imageKey を画像の配列にする（すでにある画像は ID・URL をそのまま使う）
-function toImages(keys: string[], current: ExperienceImage[]): ExperienceImage[] {
+function toImages(
+  keys: string[],
+  current: ExperienceImage[],
+): ExperienceImage[] {
   let lastId = Math.max(
     0,
-    ...getState().experiences.flatMap((experience) => experience.images.map((image) => image.id)),
+    ...getState().experiences.flatMap((experience) =>
+      experience.images.map((image) => image.id),
+    ),
   );
 
   return keys.map((imageKey, sortOrder) => {
@@ -505,13 +539,13 @@ function toImages(keys: string[], current: ExperienceImage[]): ExperienceImage[]
     return { id: lastId, imageKey, url: imageUrlFor(imageKey), sortOrder };
   });
 }
-
-// ---------------------------------------------------------------------------
 // 入力チェック（画面側と同じ条件の最低限。本物の API の代わりに 400 を返す）
-// ---------------------------------------------------------------------------
 
 type ExperienceFields = Partial<
-  Omit<DashboardExperience, 'id' | 'producerId' | 'images' | 'createdAt' | 'updatedAt'>
+  Omit<
+    DashboardExperience,
+    'id' | 'producerId' | 'images' | 'createdAt' | 'updatedAt'
+  >
 > & { imageKeys?: string[] };
 
 const isText = (value: unknown, max: number) =>
@@ -524,39 +558,57 @@ const isLines = (value: unknown) =>
     value.length <= EXPERIENCE_MAX_LIST_ITEMS &&
     value.every(
       (line) =>
-        typeof line === 'string' && line !== '' && line.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH,
+        typeof line === 'string' &&
+        line !== '' &&
+        line.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH,
     ));
 const isFlow = (value: unknown) =>
   value === null ||
-  (Array.isArray(value) && value.length <= EXPERIENCE_MAX_LIST_ITEMS &&
-    value.every((item) => isObject(item) &&
-      typeof item.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) &&
-      typeof item.text === 'string' && item.text.trim() !== '' &&
-      item.text.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH));
+  (Array.isArray(value) &&
+    value.length <= EXPERIENCE_MAX_LIST_ITEMS &&
+    value.every(
+      (item) =>
+        isObject(item) &&
+        typeof item.time === 'string' &&
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) &&
+        typeof item.text === 'string' &&
+        item.text.trim() !== '' &&
+        item.text.length <= EXPERIENCE_MAX_LIST_ITEM_LENGTH,
+    ));
 
-const experienceChecks: Record<keyof ExperienceFields, (value: unknown) => boolean> = {
+const experienceChecks: Record<
+  keyof ExperienceFields,
+  (value: unknown) => boolean
+> = {
   title: (value) => isText(value, 100),
-  prefectureId: (value) => Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 47,
+  prefectureId: (value) =>
+    Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 47,
   description: (value) => isText(value, 10000),
   place: (value) => isText(value, 200),
   priceAdult: isPrice,
   priceChild: (value) => value === null || isPrice(value),
-  ageCondition: (value) => value === null || (typeof value === 'string' && value.length <= 50),
+  ageCondition: (value) =>
+    value === null || (typeof value === 'string' && value.length <= 50),
   familyOk: (value) => typeof value === 'boolean',
   beginnerOk: (value) => typeof value === 'boolean',
   flow: isFlow,
   belongings: isLines,
   notes: isLines,
   cancelPolicy: (value) => isText(value, 10000),
-  publishStatus: (value) => value === 'draft' || value === 'public' || value === 'private',
+  publishStatus: (value) =>
+    value === 'draft' || value === 'public' || value === 'private',
   imageKeys: (value) =>
     Array.isArray(value) &&
     value.length <= EXPERIENCE_MAX_IMAGES &&
-    value.every((key) => typeof key === 'string' && key.trim() !== '' && key.length <= 500) &&
+    value.every(
+      (key) =>
+        typeof key === 'string' && key.trim() !== '' && key.length <= 500,
+    ) &&
     new Set(value).size === value.length,
 };
 
-type ParseResult<T> = { ok: true; fields: T } | { ok: false; errors: Record<string, string[]> };
+type ParseResult<T> =
+  { ok: true; fields: T } | { ok: false; errors: Record<string, string[]> };
 
 // 送られた項目だけチェックする（required の項目は、送られていなければエラー）
 function parseFields<T>(
@@ -565,7 +617,10 @@ function parseFields<T>(
   required: string[],
 ): ParseResult<T> {
   if (!isObject(input)) {
-    return { ok: false, errors: { body: ['リクエストの形式が正しくありません。'] } };
+    return {
+      ok: false,
+      errors: { body: ['リクエストの形式が正しくありません。'] },
+    };
   }
 
   const errors: Record<string, string[]> = {};
@@ -583,7 +638,9 @@ function parseFields<T>(
     }
   }
 
-  return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, fields: fields as T };
+  return Object.keys(errors).length > 0
+    ? { ok: false, errors }
+    : { ok: true, fields: fields as T };
 }
 
 // 同じ Idempotency-Key の再送なら前回作成したIDを返す。同じキーで内容が違えば 409。初回は null
@@ -607,10 +664,7 @@ function remember(init: RequestInit | undefined, id: number): void {
     getState().idempotency[key] = { body: init.body, id };
   }
 }
-
-// ---------------------------------------------------------------------------
 // 体験
-// ---------------------------------------------------------------------------
 
 const PUBLISH_STATUSES = ['draft', 'public', 'private', 'suspended'];
 
@@ -624,9 +678,13 @@ function listExperiences(url: URL): MockResult {
 
   const items = getState()
     .experiences.filter(
-      (experience) => publishStatus === null || experience.publishStatus === publishStatus,
+      (experience) =>
+        publishStatus === null || experience.publishStatus === publishStatus,
     )
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
+    .sort(
+      (a, b) =>
+        Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id,
+    )
     .map(toSummary);
   const page = paginate(items, url);
 
@@ -652,21 +710,29 @@ function createExperience(init?: RequestInit): MockResult {
     const created = findExperience(replay);
 
     if (created !== undefined) {
-      return { status: 201, body: writeResult(created), headers: etagHeader(created) };
+      return {
+        status: 201,
+        body: writeResult(created),
+        headers: etagHeader(created),
+      };
     }
   } else if (replay !== null) {
     return replay;
   }
 
-  const parsed = parseFields<ExperienceFields>(readJsonBody(init), experienceChecks, [
-    'title',
-    'prefectureId',
-    'description',
-    'place',
-    'priceAdult',
-    'cancelPolicy',
-    'publishStatus',
-  ]);
+  const parsed = parseFields<ExperienceFields>(
+    readJsonBody(init),
+    experienceChecks,
+    [
+      'title',
+      'prefectureId',
+      'description',
+      'place',
+      'priceAdult',
+      'cancelPolicy',
+      'publishStatus',
+    ],
+  );
 
   if (!parsed.ok) {
     return validationError(parsed.errors);
@@ -674,7 +740,10 @@ function createExperience(init?: RequestInit): MockResult {
 
   const { imageKeys = [], ...fields } = parsed.fields;
   if (fields.publishStatus === 'public' && imageKeys.length === 0) {
-    return conflict('IMAGE_REQUIRED', '公開するには画像を1枚以上登録してください。');
+    return conflict(
+      'IMAGE_REQUIRED',
+      '公開するには画像を1枚以上登録してください。',
+    );
   }
   const experiences = getState().experiences;
   const id = nextId(experiences);
@@ -707,7 +776,11 @@ function createExperience(init?: RequestInit): MockResult {
   remember(init, id);
   save();
 
-  return { status: 201, body: writeResult(experience), headers: etagHeader(experience) };
+  return {
+    status: 201,
+    body: writeResult(experience),
+    headers: etagHeader(experience),
+  };
 }
 
 // PATCH /api/v1/dashboard/experiences/:experienceId（送った項目だけ更新。imageKeys は送った内容で置き換え）
@@ -722,19 +795,35 @@ function updateExperience(url: URL, init?: RequestInit): MockResult {
     return preconditionFailed();
   }
 
-  const parsed = parseFields<ExperienceFields>(readJsonBody(init), experienceChecks, []);
+  const parsed = parseFields<ExperienceFields>(
+    readJsonBody(init),
+    experienceChecks,
+    [],
+  );
 
   if (!parsed.ok) {
     return validationError(parsed.errors);
   }
 
   const { imageKeys, ...fields } = parsed.fields;
-  if (experience.publishStatus === 'suspended' && fields.publishStatus !== undefined && fields.publishStatus !== 'suspended') {
-    return conflict('CONTENT_SUSPENDED', '運営により掲載停止中のため、公開状態は変更できません。');
+  if (
+    experience.publishStatus === 'suspended' &&
+    fields.publishStatus !== undefined &&
+    fields.publishStatus !== 'suspended'
+  ) {
+    return conflict(
+      'CONTENT_SUSPENDED',
+      '運営により掲載停止中のため、公開状態は変更できません。',
+    );
   }
-  if ((fields.publishStatus ?? experience.publishStatus) === 'public' &&
-      (imageKeys?.length ?? experience.images.length) === 0) {
-    return conflict('IMAGE_REQUIRED', '公開するには画像を1枚以上登録してください。');
+  if (
+    (fields.publishStatus ?? experience.publishStatus) === 'public' &&
+    (imageKeys?.length ?? experience.images.length) === 0
+  ) {
+    return conflict(
+      'IMAGE_REQUIRED',
+      '公開するには画像を1枚以上登録してください。',
+    );
   }
   Object.assign(experience, fields);
 
@@ -745,7 +834,11 @@ function updateExperience(url: URL, init?: RequestInit): MockResult {
   touchExperience(experience, nowIso());
   save();
 
-  return { status: 200, body: writeResult(experience), headers: etagHeader(experience) };
+  return {
+    status: 200,
+    body: writeResult(experience),
+    headers: etagHeader(experience),
+  };
 }
 
 // DELETE /api/v1/dashboard/experiences/:experienceId（申込中・確定の予約が残っていると削除できない）
@@ -761,12 +854,19 @@ function deleteExperience(url: URL, init?: RequestInit): MockResult {
   }
 
   if (applicationsOf({ experienceId: experience.id }).length > 0) {
-    return conflict('HAS_RESERVATIONS', '予約されたことがある体験は削除できません。非公開にしてください。');
+    return conflict(
+      'HAS_RESERVATIONS',
+      '予約されたことがある体験は削除できません。非公開にしてください。',
+    );
   }
 
   const current = getState();
-  current.experiences = current.experiences.filter((item) => item.id !== experience.id);
-  current.slots = current.slots.filter((slot) => slot.experienceId !== experience.id);
+  current.experiences = current.experiences.filter(
+    (item) => item.id !== experience.id,
+  );
+  current.slots = current.slots.filter(
+    (slot) => slot.experienceId !== experience.id,
+  );
   current.applications = current.applications.filter(
     (application) => application.experienceId !== experience.id,
   );
@@ -775,18 +875,17 @@ function deleteExperience(url: URL, init?: RequestInit): MockResult {
 
   return { status: 204 };
 }
-
-// ---------------------------------------------------------------------------
 // 予約枠
-// ---------------------------------------------------------------------------
 
 const SLOT_STATUSES: string[] = ['open', 'closed', 'canceled'];
 
 const slotChecks: Record<string, (value: unknown) => boolean> = {
-  startAt: (value) => typeof value === 'string' && !Number.isNaN(Date.parse(value)),
+  startAt: (value) =>
+    typeof value === 'string' && !Number.isNaN(Date.parse(value)),
   durationMin: (value) =>
     Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 24 * 60,
-  capacity: (value) => Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 10000,
+  capacity: (value) =>
+    Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 10000,
   status: (value) => typeof value === 'string' && SLOT_STATUSES.includes(value),
 };
 
@@ -798,7 +897,11 @@ type SlotFields = {
 };
 
 // 同じ体験に、同じ開始日時の枠（削除済みを除く）があるか
-function hasSameStart(experienceId: number, startAt: string, exceptSlotId?: number): boolean {
+function hasSameStart(
+  experienceId: number,
+  startAt: string,
+  exceptSlotId?: number,
+): boolean {
   const time = Date.parse(startAt);
 
   return liveSlotsOf(experienceId).some(
@@ -807,7 +910,10 @@ function hasSameStart(experienceId: number, startAt: string, exceptSlotId?: numb
 }
 
 // /experiences/:experienceId/slots/:slotId の体験と枠
-function findSlot(url: URL): { experience?: DashboardExperience; slot?: StoredSlot } {
+function findSlot(url: URL): {
+  experience?: DashboardExperience;
+  slot?: StoredSlot;
+} {
   const experience = findExperience(idFromPath(url, 2));
   const slotId = idFromPath(url);
   const slot =
@@ -827,7 +933,9 @@ function listSlots(url: URL): MockResult {
   }
 
   const items = liveSlotsOf(experience.id)
-    .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt) || a.id - b.id)
+    .sort(
+      (a, b) => Date.parse(a.startAt) - Date.parse(b.startAt) || a.id - b.id,
+    )
     .map(toSlot);
   const page = paginate(items, url);
 
@@ -856,12 +964,11 @@ function createSlot(url: URL, init?: RequestInit): MockResult {
     return replay;
   }
 
-  const parsed = parseFields<Required<SlotFields>>(readJsonBody(init), slotChecks, [
-    'startAt',
-    'durationMin',
-    'capacity',
-    'status',
-  ]);
+  const parsed = parseFields<Required<SlotFields>>(
+    readJsonBody(init),
+    slotChecks,
+    ['startAt', 'durationMin', 'capacity', 'status'],
+  );
 
   if (!parsed.ok) {
     return validationError(parsed.errors);
@@ -874,7 +981,9 @@ function createSlot(url: URL, init?: RequestInit): MockResult {
   }
 
   if (Date.parse(fields.startAt) <= Date.now()) {
-    return validationError({ startAt: ['現在より後の日時を指定してください。'] });
+    return validationError({
+      startAt: ['現在より後の日時を指定してください。'],
+    });
   }
 
   if (hasSameStart(experience.id, fields.startAt)) {
@@ -921,42 +1030,68 @@ function updateSlot(url: URL, init?: RequestInit): MockResult {
 
   const fields = parsed.fields;
   const changesStart =
-    fields.startAt !== undefined && Date.parse(fields.startAt) !== Date.parse(slot.startAt);
+    fields.startAt !== undefined &&
+    Date.parse(fields.startAt) !== Date.parse(slot.startAt);
   const changesTime =
-    changesStart || (fields.durationMin !== undefined && fields.durationMin !== slot.durationMin);
+    changesStart ||
+    (fields.durationMin !== undefined &&
+      fields.durationMin !== slot.durationMin);
 
   // 申込履歴（キャンセル済みを含む）がある枠は、日時・所要時間を変えられない
   if (slot.status === 'canceled' || Date.parse(slot.startAt) <= Date.now()) {
-    return conflict('SLOT_NOT_EDITABLE', '開始済み・中止済みの予約枠は変更できません。');
+    return conflict(
+      'SLOT_NOT_EDITABLE',
+      '開始済み・中止済みの予約枠は変更できません。',
+    );
   }
 
   if (changesTime && applicationsOf({ slotId: slot.id }).length > 0) {
-    return conflict('SLOT_TIME_LOCKED', '予約がある予約枠は、開催日時・所要時間を変更できません。');
+    return conflict(
+      'SLOT_TIME_LOCKED',
+      '予約がある予約枠は、開催日時・所要時間を変更できません。',
+    );
   }
 
   if (changesStart && fields.startAt !== undefined) {
     if (Date.parse(fields.startAt) <= Date.now()) {
-      return validationError({ startAt: ['現在より後の日時を指定してください。'] });
+      return validationError({
+        startAt: ['現在より後の日時を指定してください。'],
+      });
     }
 
     if (hasSameStart(experience.id, fields.startAt, slot.id)) {
-      return conflict('DUPLICATE_SLOT', '同じ開始日時の予約枠がすでにあります。');
+      return conflict(
+        'DUPLICATE_SLOT',
+        '同じ開始日時の予約枠がすでにあります。',
+      );
     }
   }
 
-  if (fields.capacity !== undefined && fields.capacity < toSlot(slot).reservedCount) {
-    return conflict('CAPACITY_BELOW_RESERVED', '定員は現在の予約人数より少なくできません。');
+  if (
+    fields.capacity !== undefined &&
+    fields.capacity < toSlot(slot).reservedCount
+  ) {
+    return conflict(
+      'CAPACITY_BELOW_RESERVED',
+      '定員は現在の予約人数より少なくできません。',
+    );
   }
 
   const now = nowIso();
   if (fields.status === 'canceled') {
     for (const application of applicationsOf({ slotId: slot.id })) {
-      if (application.status === 'applied' || application.status === 'confirmed') {
+      if (
+        application.status === 'applied' ||
+        application.status === 'confirmed'
+      ) {
         application.status = 'canceled';
       }
     }
   }
-  Object.assign(slot, fields, { updatedAt: now, etag: nextEtag('slot', slot.id, slot.etag) });
+  Object.assign(slot, fields, {
+    updatedAt: now,
+    etag: nextEtag('slot', slot.id, slot.etag),
+  });
   touchExperience(experience, now);
   save();
 
@@ -981,7 +1116,10 @@ function deleteSlot(url: URL, init?: RequestInit): MockResult {
     return conflict('SLOT_NOT_EDITABLE', '開始済みの予約枠は削除できません。');
   }
   if (applications.length > 0) {
-    return conflict('HAS_RESERVATIONS', '予約されたことがある予約枠は削除できません。中止にしてください。');
+    return conflict(
+      'HAS_RESERVATIONS',
+      '予約されたことがある予約枠は削除できません。中止にしてください。',
+    );
   }
 
   const current = getState();
@@ -993,10 +1131,7 @@ function deleteSlot(url: URL, init?: RequestInit): MockResult {
 
   return { status: 204 };
 }
-
-// ---------------------------------------------------------------------------
 // 申込者
-// ---------------------------------------------------------------------------
 
 const APPLICATION_STATUSES = ['applied', 'confirmed', 'canceled', 'attended'];
 
@@ -1025,7 +1160,10 @@ function listApplications(url: URL): MockResult {
     slotId: slotParam === null ? undefined : Number(slotParam),
   })
     .filter((application) => status === null || application.status === status)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id)
+    .sort(
+      (a, b) =>
+        Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id,
+    )
     .flatMap((application): ExperienceApplication[] => {
       const slot = slots.find((item) => item.id === application.slotId);
 
@@ -1033,7 +1171,11 @@ function listApplications(url: URL): MockResult {
         return [];
       }
 
-      const { experienceId: _experienceId, slotId: _slotId, ...fields } = application;
+      const {
+        experienceId: _experienceId,
+        slotId: _slotId,
+        ...fields
+      } = application;
 
       return [
         {
@@ -1056,7 +1198,10 @@ function listApplications(url: URL): MockResult {
 
 // ダッシュボード集計（GET /api/v1/dashboard/summary）用。公開中の体験数と、全状態の申込件数
 // （体験を削除すると申込も消えるため、残っている申込をすべて数える）
-function summarizeExperiences(): { publishedCount: number; applicationCount: number } {
+function summarizeExperiences(): {
+  publishedCount: number;
+  applicationCount: number;
+} {
   const current = getState();
 
   return {

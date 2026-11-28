@@ -2,13 +2,6 @@ import type { ReactNode } from 'react';
 
 // 生産者管理画面の入力フォームで共通に使う部品（商品・体験など）
 
-const controlClassName =
-  'box-border block w-full rounded-lg border border-solid bg-white px-3 py-2.5 text-base text-marche-ink [font-family:inherit]';
-
-function controlBorder(error: string | undefined) {
-  return error === undefined ? 'border-marche-line' : 'border-marche-red';
-}
-
 type FieldProps = {
   id: string;
   label: string;
@@ -18,7 +11,14 @@ type FieldProps = {
   children: ReactNode;
 };
 
-function Field({ id, label, required = false, hint, error, children }: FieldProps) {
+function Field({
+  id,
+  label,
+  required = false,
+  hint,
+  error,
+  children,
+}: FieldProps) {
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-bold">
@@ -47,16 +47,13 @@ function Field({ id, label, required = false, hint, error, children }: FieldProp
   );
 }
 
-// aria-describedby（補足とエラーを読み上げる）
-function describedBy(id: string, hint: boolean, error: string | undefined) {
-  const ids = [hint ? `${id}-hint` : '', error !== undefined ? `${id}-error` : '']
-    .filter(Boolean)
-    .join(' ');
-
-  return ids === '' ? undefined : ids;
-}
-
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
+function FormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="box-border flex flex-col gap-5 rounded-2xl border border-solid border-marche-line bg-white p-5 md:p-6">
       <h2 className="m-0 font-serif text-lg font-bold">{title}</h2>
@@ -144,13 +141,5 @@ function PublishStatusField<T extends string>({
   );
 }
 
-export {
-  CheckboxField,
-  Field,
-  FormSection,
-  PublishStatusField,
-  controlBorder,
-  controlClassName,
-  describedBy,
-};
+export { CheckboxField, Field, FormSection, PublishStatusField };
 export type { PublishStatusOption };

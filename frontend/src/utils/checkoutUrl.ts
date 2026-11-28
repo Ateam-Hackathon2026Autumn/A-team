@@ -3,8 +3,19 @@ export function safeCheckoutUrl(value: string, origin: string): string | null {
     const base = new URL(origin);
     const url = new URL(value, base);
     if (url.username || url.password) return null;
-    if (url.origin === base.origin && (url.protocol === 'http:' || url.protocol === 'https:')) return url.href;
-    if (url.protocol === 'https:' && url.hostname === 'checkout.stripe.com' && !url.port) return url.href;
-  } catch { /* Invalid destination. */ }
+    if (
+      url.origin === base.origin &&
+      (url.protocol === 'http:' || url.protocol === 'https:')
+    )
+      return url.href;
+    if (
+      url.protocol === 'https:' &&
+      url.hostname === 'checkout.stripe.com' &&
+      !url.port
+    )
+      return url.href;
+  } catch {
+    /* 不正な遷移先 */
+  }
   return null;
 }

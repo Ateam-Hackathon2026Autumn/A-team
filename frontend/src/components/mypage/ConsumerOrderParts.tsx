@@ -1,11 +1,23 @@
-import { yen } from "../ui/ContentPage";
-export const paymentLabels: Record<string, string> = { pending: "お支払い待ち", paid: "支払い済み", failed: "決済失敗・期限切れ" };
-export const shipmentLabels: Record<string, string> = { unshipped: "発送準備中", shipped: "発送済み", delivered: "お届け済み", canceled: "キャンセル", cancel_requested: "キャンセル申請中" };
-export const temperatureLabels: Record<string, string> = { normal: "常温", chilled: "冷蔵", frozen: "冷凍" };
+import { yen } from '../ui/contentPageValues';
+import { paymentLabels } from './consumerOrderLabels';
 export function PaymentBadge({ status }: { status: string }) {
-  return <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${status === "paid" ? "bg-marche-sage text-marche-green" : "bg-marche-orange/20 text-marche-ink"}`}>{paymentLabels[status] ?? status}</span>;
+  return (
+    <span
+      className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${status === 'paid' ? 'bg-marche-sage text-marche-green' : 'bg-marche-orange/20 text-marche-ink'}`}
+    >
+      {paymentLabels[status] ?? status}
+    </span>
+  );
 }
-export function OrderTotals({ itemsTotal, shippingTotal, grandTotal }: { itemsTotal: number; shippingTotal: number; grandTotal: number }) {
+export function OrderTotals({
+  itemsTotal,
+  shippingTotal,
+  grandTotal,
+}: {
+  itemsTotal: number;
+  shippingTotal: number;
+  grandTotal: number;
+}) {
   return (
     <dl className="m-0 space-y-3">
       <div className="flex justify-between gap-4">

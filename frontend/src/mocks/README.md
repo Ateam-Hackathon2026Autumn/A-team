@@ -43,11 +43,11 @@ API を呼ぶたびに `[mock] GET /api/v1/auth/session -> 200` のようにコ�
 - frontend コンテナで起動している場合は、`compose.yaml` の frontend に
   `environment: VITE_USE_MOCK: "false"` を追加して `docker compose up -d frontend`
 
-| 状況                                 | 接続先                                            |
-| ------------------------------------ | ------------------------------------------------- |
-| `npm run dev`（既定）                | モック                                            |
+| 状況                                 | 接続先                                               |
+| ------------------------------------ | ---------------------------------------------------- |
+| `npm run dev`（既定）                | モック                                               |
 | `VITE_USE_MOCK=false` を指定して起動 | 本物のバックエンド（Vite の proxy で `/api` を転送） |
-| `npm run build`（本番）              | 本物（モックは使われない）                        |
+| `npm run build`（本番）              | 本物（モックは使われない）                           |
 
 ---
 
@@ -79,9 +79,9 @@ src/mocks/
 
 HTTPメソッド + URL を `_` で繋ぐ（先頭の `/` は省略、`{productId}` のような可変部分は波括弧を外す）
 
-| API                                            | ファイル                                                   |
-| ---------------------------------------------- | ---------------------------------------------------------- |
-| `GET /api/v1/auth/session`                     | `rest/endpoint/get_api_v1_auth_session.tsx`                |
+| API                                            | ファイル                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------- |
+| `GET /api/v1/auth/session`                     | `rest/endpoint/get_api_v1_auth_session.tsx`                   |
 | `PATCH /api/v1/dashboard/products/{productId}` | `rest/endpoint/patch_api_v1_dashboard_products_productId.tsx` |
 
 ### パスの書き方
@@ -102,11 +102,11 @@ ID・クエリ・リクエスト本文に応じて返す内容を変えるモッ
 一覧・詳細・登録・更新・削除で同じデータを使うものは、データと処理を `rest/store/` にまとめている。
 データは同じタブのセッション（sessionStorage）に保存されるため、再読み込みしても変更が残る（タブを閉じると初期状態に戻る）。
 
-| データ | ストア | 主な内容 |
-| ------ | ------ | -------- |
-| ダッシュボードの商品 | `rest/store/dashboardProducts.tsx` | 一覧・詳細・登録・更新・在庫・削除。etag が更新ごとに変わり、古い etag は 412 |
+| データ               | ストア                                | 主な内容                                                                                                     |
+| -------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| ダッシュボードの商品 | `rest/store/dashboardProducts.tsx`    | 一覧・詳細・登録・更新・在庫・削除。etag が更新ごとに変わり、古い etag は 412                                |
 | ダッシュボードの体験 | `rest/store/dashboardExperiences.tsx` | 体験・予約枠・申込者。一覧は publishStatus、申込者は slotId・status で絞り込み。体験の ETag はヘッダーで返す |
-| カート | `rest/endpoint/get_api_v1_cart.tsx` | 追加・数量変更・削除 |
+| カート               | `rest/endpoint/get_api_v1_cart.tsx`   | 追加・数量変更・削除                                                                                         |
 
 初期データに戻したい場合は、開発者ツールの Application → Session Storage から `tsunagaru-marche.mock-` で始まる項目を削除して再読み込みする。
 

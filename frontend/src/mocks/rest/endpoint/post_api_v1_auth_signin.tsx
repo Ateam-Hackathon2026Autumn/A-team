@@ -1,12 +1,12 @@
 import type { RestMock } from '../../types';
 
 // ログインAPI POST /api/v1/auth/signin
-//
+
 // 成功後はフロントで CSRF トークンを再取得する
-//
+
 // 認証失敗（401。未登録・停止・削除も同じ文言）:
 //   { errorCode: 'INVALID_CREDENTIALS', errorMsg: 'メールアドレスまたはパスワードが正しくありません。' }
-//
+
 // 既にログイン済み（409）:
 //   { errorCode: 'ALREADY_AUTHENTICATED', errorMsg: '既にログインしています。' }
 const authSignin: RestMock = {

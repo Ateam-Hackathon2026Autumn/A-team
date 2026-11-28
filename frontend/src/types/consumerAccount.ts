@@ -7,4 +7,7 @@ export type ConsumerProfile = {
   interests: string[];
 };
 export type ConsumerAccount = { user: UserInfo; profile: ConsumerProfile };
-export type ConsumerProfileInput = ConsumerProfile & { lastName: string; firstName: string };
+export type ConsumerProfileInput = ConsumerProfile & {
+  lastName: string;
+  firstName: string;
+};

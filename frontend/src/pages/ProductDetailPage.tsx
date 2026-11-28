@@ -1,56 +1,47 @@
-import { useEffect, useRef, useState } from "react";
-import { useAtomValue } from "jotai";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
-import ApiError from "../api/apiError";
-import { getProduct, getProducts } from "../api/productApi";
-import { addCartItem } from "../api/cartApi";
-import { addFavoriteProduct, removeFavoriteProduct } from "../api/favoriteApi";
-import { apiErrorMessage } from "../utils/apiErrorMessage";
-import { SUPPLEMENTARY_FETCH } from "../api/client";
-import { loginStatusAtom } from "../stores/userAtom";
-import ProductCard, { ProductImage, yen } from "../components/products/ProductCard";
-import { StarIcon } from "../components/Icons";
-import Button from "../components/ui/Button";
-import { USE_MOCK } from "../config/env";
-import type { Product, ProductDetail } from "../types/publicProduct";
-
-// IDが変わった際に画像・数量・メッセージをリセットする。
-export default function ProductDetailPage() {
-  const { productId = "" } = useParams();
-  return (
-    <ProductDetailContent
-      key={productId}
-      productId={productId}
-    />
-  );
-}
+import { useEffect, useRef, useState } from 'react';
+import { useAtomValue } from 'jotai';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import ApiError from '../api/apiError';
+import { getProduct, getProducts } from '../api/productApi';
+import { addCartItem } from '../api/cartApi';
+import { addFavoriteProduct, removeFavoriteProduct } from '../api/favoriteApi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { SUPPLEMENTARY_FETCH } from '../api/client';
+import { loginStatusAtom } from '../stores/userAtom';
+import ProductCard, { ProductImage } from '../components/products/ProductCard';
+import { yen } from '../components/products/productCardValues';
+import { StarIcon } from '../components/Icons';
+import Button from '../components/ui/Button';
+import { USE_MOCK } from '../config/env';
+import type { Product, ProductDetail } from '../types/publicProduct';
 
 function ProductDetailContent({ productId }: { productId: string }) {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [retry, setRetry] = useState(0);
   const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
-  const [message, setMessage] = useState("");
-  const [cartError, setCartError] = useState("");
+  const [message, setMessage] = useState('');
+  const [cartError, setCartError] = useState('');
   const addLock = useRef(false);
   const loginStatus = useAtomValue(loginStatusAtom);
   const location = useLocation();
   const navigate = useNavigate();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
-  const [favoriteError, setFavoriteError] = useState("");
-  const [favoriteNotice, setFavoriteNotice] = useState("");
+  const [favoriteError, setFavoriteError] = useState('');
+  const [favoriteNotice, setFavoriteNotice] = useState('');
   const favoriteLock = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 遷移・再試行時に読み込み状態を初期化
     setLoading(true);
-    setError("");
+    setError('');
     setNotFound(false);
     setRelated([]);
     const id = Number(productId);
@@ -65,16 +56,36 @@ function ProductDetailContent({ productId }: { productId: string }) {
         setProduct(result);
         setFavorited(result.isFavorited === true);
         // 関連商品の失敗で、商品詳細そのものを非表示にしない。
-        void getProducts({ producerId: result.producer.id, page: 1, pageSize: 5 }, controller.signal, SUPPLEMENTARY_FETCH)
+        void getProducts(
+          { producerId: result.producer.id, page: 1, pageSize: 5 },
+          controller.signal,
+          SUPPLEMENTARY_FETCH,
+        )
           .then((list) => {
-            if (!controller.signal.aborted) setRelated(list.items.filter((p) => p.producer.id === result.producer.id && p.id !== result.id).slice(0, 4));
+            if (!controller.signal.aborted)
+              setRelated(
+                list.items
+                  .filter(
+                    (p) =>
+                      p.producer.id === result.producer.id &&
+                      p.id !== result.id,
+                  )
+                  .slice(0, 4),
+              );
           })
           .catch(() => {});
       })
       .catch((cause: unknown) => {
         if (controller.signal.aborted) return;
-        if (cause instanceof ApiError && cause.status === 404) setNotFound(true);
-        else setError(apiErrorMessage(cause, "商品を取得できませんでした。時間をおいて再度お試しください。"));
+        if (cause instanceof ApiError && cause.status === 404)
+          setNotFound(true);
+        else
+          setError(
+            apiErrorMessage(
+              cause,
+              '商品を取得できませんでした。時間をおいて再度お試しください。',
+            ),
+          );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -85,22 +96,29 @@ function ProductDetailContent({ productId }: { productId: string }) {
   // お気に入りの登録・解除。未ログインの場合はサインイン後に元の商品詳細へ戻れるよう遷移元を渡す。
   async function toggleFavorite() {
     if (!product || favoriteLock.current) return;
-    if (loginStatus !== "loggedIn") {
-      navigate("/signin", { state: { from: location } });
+    if (loginStatus !== 'loggedIn') {
+      navigate('/signin', { state: { from: location } });
       return;
     }
     const next = !favorited;
     favoriteLock.current = true;
     setFavoriteBusy(true);
-    setFavoriteError("");
-    setFavoriteNotice("");
+    setFavoriteError('');
+    setFavoriteNotice('');
     try {
       if (next) await addFavoriteProduct(product.id);
       else await removeFavoriteProduct(product.id);
       setFavorited(next);
-      setFavoriteNotice(next ? "お気に入りに登録しました。" : "お気に入りを解除しました。");
+      setFavoriteNotice(
+        next ? 'お気に入りに登録しました。' : 'お気に入りを解除しました。',
+      );
     } catch (cause) {
-      setFavoriteError(apiErrorMessage(cause, "お気に入りの更新に失敗しました。時間をおいて再度お試しください。"));
+      setFavoriteError(
+        apiErrorMessage(
+          cause,
+          'お気に入りの更新に失敗しました。時間をおいて再度お試しください。',
+        ),
+      );
     } finally {
       favoriteLock.current = false;
       setFavoriteBusy(false);
@@ -108,54 +126,62 @@ function ProductDetailContent({ productId }: { productId: string }) {
   }
 
   async function addToCart() {
-    if (!product || addLock.current || product.stock === 0 || product.isSubscription) return;
+    if (
+      !product ||
+      addLock.current ||
+      product.stock === 0 ||
+      product.isSubscription
+    )
+      return;
     addLock.current = true;
     setAdding(true);
-    setMessage("");
-    setCartError("");
+    setMessage('');
+    setCartError('');
     try {
       await addCartItem(product.id, quantity);
-      setMessage(`${product.name}を${quantity}点、${USE_MOCK ? "デモカート" : "カート"}に追加しました。`);
+      setMessage(
+        `${product.name}を${quantity}点、${USE_MOCK ? 'デモカート' : 'カート'}に追加しました。`,
+      );
     } catch (cause) {
-      setCartError(apiErrorMessage(cause, "カートに追加できませんでした。", "quantity"));
+      setCartError(
+        apiErrorMessage(cause, 'カートに追加できませんでした。', 'quantity'),
+      );
     } finally {
       addLock.current = false;
       setAdding(false);
     }
   }
 
-  const linkClass = "text-marche-green no-underline hover:underline";
+  const linkClass = 'text-marche-green no-underline hover:underline';
   if (loading || error || notFound || !product)
     return (
       <div className="mx-auto max-w-[1200px] px-5 py-12 sm:px-8">
         {loading ? (
-          <p
-            role="status"
-            className="m-0"
-          >
+          <p role="status" className="m-0">
             商品を読み込んでいます…
           </p>
         ) : (
           <>
-            <h1 className="m-0 font-serif text-2xl font-bold">{notFound ? "商品が見つかりません" : "商品を表示できません"}</h1>
+            <h1 className="m-0 font-serif text-2xl font-bold">
+              {notFound ? '商品が見つかりません' : '商品を表示できません'}
+            </h1>
             <p
-              role={error ? "alert" : undefined}
+              role={error ? 'alert' : undefined}
               className="m-0 my-4 text-marche-muted"
             >
-              {notFound ? "販売を終了したか、公開されていない商品です。" : error}
+              {notFound
+                ? '販売を終了したか、公開されていない商品です。'
+                : error}
             </p>
             {error && (
-              <Button
-                onClick={() => setRetry((n) => n + 1)}
-                className="mb-5"
-              >
+              <Button onClick={() => setRetry((n) => n + 1)} className="mb-5">
                 再試行
               </Button>
             )}
             <div>
               <Link
                 to="/products"
-                className={["no-underline text-inherit", linkClass].join(" ")}
+                className={['no-underline text-inherit', linkClass].join(' ')}
               >
                 ← 商品一覧へ戻る
               </Link>
@@ -168,7 +194,13 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const images = [...product.images].sort((a, b) => a.sortOrder - b.sortOrder);
   const mainImage = images[imageIndex]?.url ?? product.thumbnailUrl;
   const maxQuantity = Math.min(10, product.stock ?? 10);
-  const temperature = ({ normal: "常温", chilled: "冷蔵", frozen: "冷凍" } as Record<string, string>)[product.shipping.temperatureZone] ?? product.shipping.temperatureZone;
+  const temperature =
+    (
+      { normal: '常温', chilled: '冷蔵', frozen: '冷凍' } as Record<
+        string,
+        string
+      >
+    )[product.shipping.temperatureZone] ?? product.shipping.temperatureZone;
 
   return (
     <div className="mx-auto max-w-[1200px] px-5 py-7 sm:px-8">
@@ -178,14 +210,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
       >
         <Link
           to="/"
-          className={["no-underline text-inherit", linkClass].join(" ")}
+          className={['no-underline text-inherit', linkClass].join(' ')}
         >
           ホーム
         </Link>
         <span aria-hidden="true">/</span>
         <Link
           to="/products"
-          className={["no-underline text-inherit", linkClass].join(" ")}
+          className={['no-underline text-inherit', linkClass].join(' ')}
         >
           商品一覧
         </Link>
@@ -193,10 +225,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
         <span aria-current="page">{product.name}</span>
       </nav>
       <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <section
-          aria-label="商品画像"
-          className="min-w-0"
-        >
+        <section aria-label="商品画像" className="min-w-0">
           <ProductImage
             src={mainImage}
             alt={product.name}
@@ -211,7 +240,10 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   aria-label={`商品画像${index + 1}を表示`}
                   aria-pressed={imageIndex === index}
                   onClick={() => setImageIndex(index)}
-                  className={["font-sans disabled:cursor-not-allowed", `w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 bg-white p-0 ${imageIndex === index ? "border-marche-green" : "border-transparent"}`].join(" ")}
+                  className={[
+                    'font-sans disabled:cursor-not-allowed',
+                    `w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 bg-white p-0 ${imageIndex === index ? 'border-marche-green' : 'border-transparent'}`,
+                  ].join(' ')}
                 >
                   <ProductImage
                     src={img.url}
@@ -226,55 +258,89 @@ function ProductDetailContent({ productId }: { productId: string }) {
         <section aria-label="商品情報">
           <Link
             to={`/products?category=${product.category.id}`}
-            className={["no-underline text-inherit", `text-sm ${linkClass}`].join(" ")}
+            className={[
+              'no-underline text-inherit',
+              `text-sm ${linkClass}`,
+            ].join(' ')}
           >
             {product.category.name}
           </Link>
-          <h1 className="m-0 mt-3 font-serif text-3xl font-bold leading-relaxed">{product.name}</h1>
+          <h1 className="m-0 mt-3 font-serif text-3xl font-bold leading-relaxed">
+            {product.name}
+          </h1>
           <p className="m-0 mt-3 text-sm text-marche-muted">
-            {product.producer.prefectureName} {product.producer.city} ·{" "}
+            {product.producer.prefectureName} {product.producer.city} ·{' '}
             <Link
               to={`/producers/${product.producer.id}`}
-              className={["no-underline text-inherit", linkClass].join(" ")}
+              className={['no-underline text-inherit', linkClass].join(' ')}
             >
               {product.producer.businessName}
             </Link>
           </p>
-          <p className="m-0 mt-3 text-sm text-marche-muted">{product.ratingAvg === null ? "レビューはまだありません" : <><span className="sr-only">評価 </span><StarIcon className="mr-1 inline-block size-4 align-[-0.125em]" />{product.ratingAvg.toFixed(1)}（{product.reviewCount}件）</>}</p>
+          <p className="m-0 mt-3 text-sm text-marche-muted">
+            {product.ratingAvg === null ? (
+              'レビューはまだありません'
+            ) : (
+              <>
+                <span className="sr-only">評価 </span>
+                <StarIcon className="mr-1 inline-block size-4 align-[-0.125em]" />
+                {product.ratingAvg.toFixed(1)}（{product.reviewCount}件）
+              </>
+            )}
+          </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-marche-green">
-            {[product.isSubscription && "定期購入対応", product.isPreorder && "予約商品", product.acceptsDeliveryDate && "お届け日時指定OK"].filter(Boolean).map((tag) => (
-              <span
-                key={String(tag)}
-                className="rounded-full bg-marche-sage px-3 py-1"
-              >
-                {tag}
-              </span>
-            ))}
+            {[
+              product.isSubscription && '定期購入対応',
+              product.isPreorder && '予約商品',
+              product.acceptsDeliveryDate && 'お届け日時指定OK',
+            ]
+              .filter(Boolean)
+              .map((tag) => (
+                <span
+                  key={String(tag)}
+                  className="rounded-full bg-marche-sage px-3 py-1"
+                >
+                  {tag}
+                </span>
+              ))}
           </div>
           <p className="m-0 mt-5 text-3xl font-bold">
-            {yen(product.salePrice)} <span className="text-sm font-normal">税込</span>
+            {yen(product.salePrice)}{' '}
+            <span className="text-sm font-normal">税込</span>
           </p>
           {product.salePrice < product.price && (
             <p className="m-0 text-sm text-marche-muted">
-              <del>{yen(product.price)}</del> <span className="text-orange-900">{product.discountRate}% OFF</span>
+              <del>{yen(product.price)}</del>{' '}
+              <span className="text-orange-900">
+                {product.discountRate}% OFF
+              </span>
             </p>
           )}
-          <p className="m-0 mt-1 text-sm text-marche-muted">内容量：{product.volume}</p>
+          <p className="m-0 mt-1 text-sm text-marche-muted">
+            内容量：{product.volume}
+          </p>
           <div className="mt-5 rounded-xl bg-marche-sage p-4 text-sm">
             <p className="m-0">
               送料 {yen(product.shipping.shippingFee)}（{temperature}便）
             </p>
             <p className="m-0">{product.shipping.leadTimeText}</p>
-            <p className="m-0 mt-1 text-xs text-marche-muted">送料はお届け先・注文内容により変わり、注文時に確定します。</p>
+            <p className="m-0 mt-1 text-xs text-marche-muted">
+              送料はお届け先・注文内容により変わり、注文時に確定します。
+            </p>
           </div>
-          <p className={`m-0 mt-5 font-bold ${product.stock === 0 ? "text-red-800" : "text-marche-green"}`}>{product.stock === 0 ? "ただいま在庫切れです" : product.stock !== null && product.stock <= 5 ? `残りわずか（${product.stock}点）` : "在庫あり"}</p>
+          <p
+            className={`m-0 mt-5 font-bold ${product.stock === 0 ? 'text-red-800' : 'text-marche-green'}`}
+          >
+            {product.stock === 0
+              ? 'ただいま在庫切れです'
+              : product.stock !== null && product.stock <= 5
+                ? `残りわずか（${product.stock}点）`
+                : '在庫あり'}
+          </p>
           {product.stock !== 0 && (
             <>
               <div className="mt-3 flex items-center gap-3">
-                <label
-                  htmlFor="product-quantity"
-                  className="text-sm font-bold"
-                >
+                <label htmlFor="product-quantity" className="text-sm font-bold">
                   数量
                 </label>
                 <select
@@ -283,51 +349,55 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   disabled={adding}
                   onChange={(event) => {
                     setQuantity(Number(event.target.value));
-                    setMessage("");
-                    setCartError("");
+                    setMessage('');
+                    setCartError('');
                   }}
                   className="min-h-11 rounded-lg border border-marche-line bg-white px-4 py-2 font-sans text-base"
                 >
                   {Array.from({ length: maxQuantity }, (_, index) => (
-                    <option
-                      key={index + 1}
-                      value={index + 1}
-                    >
+                    <option key={index + 1} value={index + 1}>
                       {index + 1}
                     </option>
                   ))}
                 </select>
-                <span className="text-sm text-marche-muted">小計 {yen(product.salePrice * quantity)}</span>
+                <span className="text-sm text-marche-muted">
+                  小計 {yen(product.salePrice * quantity)}
+                </span>
               </div>
-                <Button
-                  className="mt-4 w-full"
-                  disabled={adding || product.isSubscription}
-                  onClick={() => void addToCart()}
-                >
-                  {adding ? "追加しています…" : product.isSubscription ? "定期便は現在購入できません" : "カートに追加"}
-                </Button>
+              <Button
+                className="mt-4 w-full"
+                disabled={adding || product.isSubscription}
+                onClick={() => void addToCart()}
+              >
+                {adding
+                  ? '追加しています…'
+                  : product.isSubscription
+                    ? '定期便は現在購入できません'
+                    : 'カートに追加'}
+              </Button>
             </>
           )}
-          {USE_MOCK && <p className="m-0 mt-3 text-xs text-marche-muted">商品情報・画像・カートは画面確認用デモです。実際の購入は行われません。</p>}
+          {USE_MOCK && (
+            <p className="m-0 mt-3 text-xs text-marche-muted">
+              商品情報・画像・カートは画面確認用デモです。実際の購入は行われません。
+            </p>
+          )}
           {message && (
-            <div
-              role="status"
-              className="mt-4 rounded-xl bg-marche-sage p-4"
-            >
+            <div role="status" className="mt-4 rounded-xl bg-marche-sage p-4">
               <p className="m-0 text-sm">{message}</p>
               <Link
                 to="/cart"
-                className={["no-underline text-inherit", `mt-2 inline-block text-sm ${linkClass}`].join(" ")}
+                className={[
+                  'no-underline text-inherit',
+                  `mt-2 inline-block text-sm ${linkClass}`,
+                ].join(' ')}
               >
                 カートを見る →
               </Link>
             </div>
           )}
           {cartError && (
-            <p
-              role="alert"
-              className="m-0 mt-4 text-sm text-red-800"
-            >
+            <p role="alert" className="m-0 mt-4 text-sm text-red-800">
               {cartError}
             </p>
           )}
@@ -338,27 +408,42 @@ function ProductDetailContent({ productId }: { productId: string }) {
         <div className="space-y-8">
           <section>
             <h2 className="m-0 font-serif text-xl font-bold">商品説明</h2>
-            <p className="m-0 mt-3 whitespace-pre-line leading-8 text-marche-muted">{product.description}</p>
+            <p className="m-0 mt-3 whitespace-pre-line leading-8 text-marche-muted">
+              {product.description}
+            </p>
           </section>
           <section>
             <h2 className="m-0 font-serif text-xl font-bold">生産方法</h2>
-            <p className="m-0 mt-3 whitespace-pre-line leading-8 text-marche-muted">{product.method || "生産方法の情報は掲載されていません。"}</p>
+            <p className="m-0 mt-3 whitespace-pre-line leading-8 text-marche-muted">
+              {product.method || '生産方法の情報は掲載されていません。'}
+            </p>
           </section>
           <section>
             <h2 className="m-0 font-serif text-xl font-bold">配送について</h2>
             <ul className="mb-0 mt-3 space-y-2 pl-5 text-sm text-marche-muted">
               <li>
-                {product.producer.businessName}から直接発送します（{temperature}便）。
+                {product.producer.businessName}から直接発送します（{temperature}
+                便）。
               </li>
               <li>{product.shipping.leadTimeText}</li>
-              {product.shipping.freeShippingThreshold !== null && <li>同じ生産者の商品を{yen(product.shipping.freeShippingThreshold)}以上ご購入で送料無料。</li>}
+              {product.shipping.freeShippingThreshold !== null && (
+                <li>
+                  同じ生産者の商品を
+                  {yen(product.shipping.freeShippingThreshold)}
+                  以上ご購入で送料無料。
+                </li>
+              )}
               <li>他の生産者の商品とは別便でのお届けになります。</li>
             </ul>
           </section>
         </div>
         <aside className="self-start rounded-2xl border border-marche-line bg-white p-6">
-          <p className="m-0 text-xs font-bold tracking-widest text-marche-green">この商品をつくった人</p>
-          <h2 className="m-0 mt-3 font-serif text-2xl font-bold">{product.producer.businessName}</h2>
+          <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
+            この商品をつくった人
+          </p>
+          <h2 className="m-0 mt-3 font-serif text-2xl font-bold">
+            {product.producer.businessName}
+          </h2>
           <p className="m-0 mt-2 text-sm text-marche-muted">
             {product.producer.prefectureName} {product.producer.city}
           </p>
@@ -370,15 +455,18 @@ function ProductDetailContent({ productId }: { productId: string }) {
           </Link>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
-              variant={favorited ? "primary" : "outline"}
-              aria-busy={favoriteBusy ? "true" : undefined}
+              variant={favorited ? 'primary' : 'outline'}
+              aria-busy={favoriteBusy ? 'true' : undefined}
               disabled={favoriteBusy}
               onClick={() => void toggleFavorite()}
             >
-              {favorited ? "お気に入りを解除する" : "お気に入りに登録する"}
+              {favorited ? 'お気に入りを解除する' : 'お気に入りに登録する'}
             </Button>
             {favoriteNotice && (
-              <span role="status" className="text-sm font-bold text-marche-green">
+              <span
+                role="status"
+                className="text-sm font-bold text-marche-green"
+              >
                 {favoriteNotice}
               </span>
             )}
@@ -388,18 +476,19 @@ function ProductDetailContent({ productId }: { productId: string }) {
               </span>
             )}
           </div>
-          <p className="m-0 mt-4 text-xs text-marche-muted">レビュー本文の表示は今後対応予定です。</p>
+          <p className="m-0 mt-4 text-xs text-marche-muted">
+            レビュー本文の表示は今後対応予定です。
+          </p>
         </aside>
       </div>
       {related.length > 0 && (
         <section className="mt-12">
-          <h2 className="m-0 mb-5 font-serif text-2xl font-bold">{product.producer.businessName}の他の商品</h2>
+          <h2 className="m-0 mb-5 font-serif text-2xl font-bold">
+            {product.producer.businessName}の他の商品
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-              />
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </section>
@@ -407,11 +496,17 @@ function ProductDetailContent({ productId }: { productId: string }) {
       <div className="mt-10">
         <Link
           to="/products"
-          className={["no-underline text-inherit", linkClass].join(" ")}
+          className={['no-underline text-inherit', linkClass].join(' ')}
         >
           ← 商品一覧へ戻る
         </Link>
       </div>
     </div>
   );
+}
+
+// IDが変わった際に画像・数量・メッセージをリセットする。
+export default function ProductDetailPage() {
+  const { productId = '' } = useParams();
+  return <ProductDetailContent key={productId} productId={productId} />;
 }

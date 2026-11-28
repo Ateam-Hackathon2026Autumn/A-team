@@ -2,12 +2,12 @@ import type { RestMock } from '../../types';
 import { daysFromNow } from '../../helpers';
 
 // 求人一覧取得API（エリア・ジャンル絞り込み・生産者指定） GET /api/v1/jobs
-//
+
 // クエリ（page / pageSize / areaId / prefectureId / producerId / genre）による絞り込みはモックでは行わない
 // areaId は 北海道1 / 東北2 / 関東3 / 中部4 / 近畿5 / 中国・四国6 / 九州・沖縄7
 // periodStart / periodEnd は募集期間（null 側は無制限）
 // isAcceptingApplications が false の求人も一覧には表示する（応募ボタンだけ押せなくする）
-//
+
 // 該当なしの場合:
 //   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
 const jobsList: RestMock = {
@@ -113,11 +113,25 @@ const jobsList: RestMock = {
 export { jobsList };
 
 // 実APIと同じく、生産者で絞り込んでからページングする。
-jobsList.handler = url => {
- const source = jobsList.body as { items: import('../../../types/job').Job[] };
- const producerId = url.searchParams.get('producerId');
- const items = source.items.filter(item => !producerId || item.producer.id === Number(producerId));
- const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
- const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
- return { status: 200, body: { items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length, page, pageSize, totalPages: Math.ceil(items.length / pageSize) } };
+jobsList.handler = (url) => {
+  const source = jobsList.body as { items: import('../../../types/job').Job[] };
+  const producerId = url.searchParams.get('producerId');
+  const items = source.items.filter(
+    (item) => !producerId || item.producer.id === Number(producerId),
+  );
+  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+  const pageSize = Math.min(
+    100,
+    Math.max(1, Number(url.searchParams.get('pageSize')) || 20),
+  );
+  return {
+    status: 200,
+    body: {
+      items: items.slice((page - 1) * pageSize, page * pageSize),
+      total: items.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(items.length / pageSize),
+    },
+  };
 };

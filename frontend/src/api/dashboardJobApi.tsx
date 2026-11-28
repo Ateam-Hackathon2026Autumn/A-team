@@ -35,9 +35,7 @@ async function sendRequest(
   });
 }
 
-// ---------------------------------------------------------------------------
 // 求人
-// ---------------------------------------------------------------------------
 
 // 本人の求人一覧（作成の新しい順）。publishStatus を省略すると全件
 async function getDashboardJobs(
@@ -84,7 +82,10 @@ async function createJob(input: JobInput): Promise<DashboardJob> {
 // 求人を更新（送った項目だけ更新）。更新後の詳細が返る
 // workDates を送ると、id 付きは更新・id なしは追加・送らなかった勤務日は削除になる
 // （応募者が希望している勤務日の削除・日付変更は 409）
-async function updateJob(jobId: number, input: Partial<JobInput>): Promise<DashboardJob> {
+async function updateJob(
+  jobId: number,
+  input: Partial<JobInput>,
+): Promise<DashboardJob> {
   const response = await sendRequest(`${BASE_PATH}/${jobId}`, 'PATCH', input);
 
   if (response.ok) {
@@ -102,10 +103,7 @@ async function deleteJob(jobId: number): Promise<void> {
     throw await toApiError(response, '求人を削除できませんでした');
   }
 }
-
-// ---------------------------------------------------------------------------
 // 応募者
-// ---------------------------------------------------------------------------
 
 // 求人の応募者一覧（応募の新しい順）。状態で絞り込める
 async function getJobApplications(
@@ -122,7 +120,9 @@ async function getJobApplications(
     params.set('status', options.status);
   }
 
-  const response = await apiFetch(`${BASE_PATH}/${jobId}/applications?${params.toString()}`);
+  const response = await apiFetch(
+    `${BASE_PATH}/${jobId}/applications?${params.toString()}`,
+  );
 
   if (response.ok) {
     return (await response.json()) as DashboardJobApplicationList;
@@ -132,11 +132,16 @@ async function getJobApplications(
 }
 
 // 求人のすべての応募を取得する（編集画面で、希望者がいる勤務日と応募件数を知るために使う）
-async function getAllJobApplications(jobId: number): Promise<DashboardJobApplication[]> {
+async function getAllJobApplications(
+  jobId: number,
+): Promise<DashboardJobApplication[]> {
   const items: DashboardJobApplication[] = [];
 
   for (let page = 1; ; page += 1) {
-    const data = await getJobApplications(jobId, { page, pageSize: MAX_PAGE_SIZE });
+    const data = await getJobApplications(jobId, {
+      page,
+      pageSize: MAX_PAGE_SIZE,
+    });
     items.push(...data.items);
 
     if (page >= data.totalPages) {
@@ -152,9 +157,13 @@ async function updateJobApplication(
   applicationId: number,
   status: JobDecisionStatus,
 ): Promise<JobApplicationUpdateResult> {
-  const response = await sendRequest(`${BASE_PATH}/${jobId}/applications/${applicationId}`, 'PATCH', {
-    status,
-  });
+  const response = await sendRequest(
+    `${BASE_PATH}/${jobId}/applications/${applicationId}`,
+    'PATCH',
+    {
+      status,
+    },
+  );
 
   if (response.ok) {
     return (await response.json()) as JobApplicationUpdateResult;

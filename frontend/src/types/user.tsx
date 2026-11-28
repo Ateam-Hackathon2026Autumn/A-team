@@ -1,10 +1,6 @@
 // 生産者申請の状態（最新の申請）
 type ProducerApplicationStatus =
-  | 'not_applied'
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'returned';
+  'not_applied' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 // 生産者アカウントの状態（生産者レコードがない場合は null）
 type ProducerAccountStatus = 'active' | 'suspended' | null;

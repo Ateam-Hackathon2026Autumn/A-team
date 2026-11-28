@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useLocation } from "react-router";
+import { useEffect } from 'react';
+import { useLocation } from 'react-router';
 
 // パス（pathname）が変わったとき、ページ先頭へスクロールする。
 // クエリやハッシュだけの変化では動かさない（絞り込みやアンカー移動を妨げないため）。

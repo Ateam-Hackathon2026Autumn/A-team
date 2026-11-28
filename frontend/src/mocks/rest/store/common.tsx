@@ -1,14 +1,19 @@
 import type { MockResult } from '../../types';
 
 // ダッシュボードのモックストア（store/*.tsx）で共通に使う処理
-//
+
 // 登録・更新・削除の結果を一覧・詳細に反映するため、データをメモリーに持ち、
 // 同じタブのセッション（sessionStorage）にも保存する（再読み込みしても消えない。タブを閉じると初期状態に戻る）
 
 // sessionStorage から復元する。保存がない・壊れている・形が違う場合は null
-function loadState<T>(key: string, isValid: (value: unknown) => value is T): T | null {
+function loadState<T>(
+  key: string,
+  isValid: (value: unknown) => value is T,
+): T | null {
   try {
-    const saved: unknown = JSON.parse(window.sessionStorage.getItem(key) ?? 'null');
+    const saved: unknown = JSON.parse(
+      window.sessionStorage.getItem(key) ?? 'null',
+    );
 
     return isValid(saved) ? saved : null;
   } catch {
@@ -42,7 +47,10 @@ function readJsonBody(init?: RequestInit): unknown {
   }
 }
 
-function readHeader(init: RequestInit | undefined, name: string): string | null {
+function readHeader(
+  init: RequestInit | undefined,
+  name: string,
+): string | null {
   return new Headers(init?.headers).get(name);
 }
 
@@ -86,7 +94,11 @@ type Page<T> = {
 };
 
 // ?page=&pageSize= を読んで切り出す。不正な値は null（400 を返す）
-function paginate<T>(items: T[], url: URL, defaultPageSize = 20): Page<T> | null {
+function paginate<T>(
+  items: T[],
+  url: URL,
+  defaultPageSize = 20,
+): Page<T> | null {
   const page = Number(url.searchParams.get('page') ?? 1);
   const pageSize = Number(url.searchParams.get('pageSize') ?? defaultPageSize);
 
@@ -109,14 +121,16 @@ function paginate<T>(items: T[], url: URL, defaultPageSize = 20): Page<T> | null
   };
 }
 
-// ---------------------------------------------------------------------------
 // エラー応答
-// ---------------------------------------------------------------------------
 
 function validationError(details: Record<string, string[]> = {}): MockResult {
   return {
     status: 400,
-    body: { errorCode: 'VALIDATION_ERROR', errorMsg: '入力内容に誤りがあります。', details },
+    body: {
+      errorCode: 'VALIDATION_ERROR',
+      errorMsg: '入力内容に誤りがあります。',
+      details,
+    },
   };
 }
 
@@ -138,9 +152,7 @@ function preconditionFailed(): MockResult {
   };
 }
 
-// ---------------------------------------------------------------------------
 // アップロード画像
-// ---------------------------------------------------------------------------
 
 // 画像アップロードAPIのモックが返したキーと表示用URLの対応
 // 商品・体験の登録・更新で imageKeys / images[].imageKey から URL を引くのに使う

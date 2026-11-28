@@ -1,6 +1,7 @@
 import type { ProducerGenre } from './dashboardProfile';
 
-export type ProducerApplicationStatusValue = 'pending' | 'approved' | 'rejected' | 'returned';
+export type ProducerApplicationStatusValue =
+  'pending' | 'approved' | 'rejected' | 'returned';
 
 export type ProducerApplicationInput = {
   businessName: string;

@@ -8,7 +8,10 @@ import DashboardButton from '../../components/DashboardButton';
 import { PlusIcon } from '../../components/DashboardIcons';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
-import type { DashboardJobSummary, JobPublishStatus } from '../../types/dashboardJob';
+import type {
+  DashboardJobSummary,
+  JobPublishStatus,
+} from '../../types/dashboardJob';
 import { formatDateTime } from '../../utils/experienceFormat';
 import {
   formatPay,
@@ -60,7 +63,9 @@ function JobRow({
           >
             {publishStatusLabels[job.publishStatus]}
           </span>
-          <span className="text-xs text-marche-muted">更新 {formatDateTime(job.updatedAt)}</span>
+          <span className="text-xs text-marche-muted">
+            更新 {formatDateTime(job.updatedAt)}
+          </span>
         </p>
         <Link
           to={editPath}
@@ -76,7 +81,9 @@ function JobRow({
           </div>
           <div className="flex gap-1">
             <dt className="text-marche-muted">報酬</dt>
-            <dd className="m-0 font-bold">{formatPay(job.payUnit, job.payAmount)}</dd>
+            <dd className="m-0 font-bold">
+              {formatPay(job.payUnit, job.payAmount)}
+            </dd>
           </div>
           <div className="flex gap-1">
             <dt className="text-marche-muted">募集</dt>
@@ -174,7 +181,7 @@ function DashboardJobListPage() {
     return () => {
       isActive = false;
     };
-  }, [canManage, page, statusFilter, reloadCount]);
+  }, [canManage, page, statusFilter, reloadCount, redirectToSignin]);
 
   const reload = () => {
     setHasLoadError(false);
@@ -197,7 +204,11 @@ function DashboardJobListPage() {
   };
 
   const handleDelete = async (job: DashboardJobSummary) => {
-    if (!window.confirm(`「${job.title}」を削除します。勤務日も含めて元に戻せません。よろしいですか？`)) {
+    if (
+      !window.confirm(
+        `「${job.title}」を削除します。勤務日も含めて元に戻せません。よろしいですか？`,
+      )
+    ) {
       return;
     }
 
@@ -219,17 +230,24 @@ function DashboardJobListPage() {
         return;
       }
 
-      if (error instanceof ApiError && error.errorCode === 'JOB_HAS_APPLICATIONS') {
+      if (
+        error instanceof ApiError &&
+        error.errorCode === 'JOB_HAS_APPLICATIONS'
+      ) {
         setActionError(
           `「${job.title}」は応募されたことがあるため削除できません。募集をやめる場合は、編集画面で非公開にしてください。`,
         );
       } else if (error instanceof ApiError && error.status === 404) {
-        setActionError('他の画面で求人が削除されていたため、最新の内容を読み込み直しました。');
+        setActionError(
+          '他の画面で求人が削除されていたため、最新の内容を読み込み直しました。',
+        );
         reload();
       } else if (error instanceof ApiError) {
         setActionError(error.message);
       } else {
-        setActionError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setActionError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
     } finally {
       setPendingId(null);
@@ -253,7 +271,9 @@ function DashboardJobListPage() {
         <h1 className="m-0 font-serif text-2xl font-bold">
           求人管理
           {jobs !== null && (
-            <span className="ml-2 text-sm font-normal text-marche-muted">{total}件</span>
+            <span className="ml-2 text-sm font-normal text-marche-muted">
+              {total}件
+            </span>
           )}
         </h1>
         <DashboardButton to={NEW_JOB_PATH}>
@@ -262,7 +282,11 @@ function DashboardJobListPage() {
         </DashboardButton>
       </header>
 
-      <div role="group" aria-label="公開状態で絞り込み" className="flex flex-wrap gap-2">
+      <div
+        role="group"
+        aria-label="公開状態で絞り込み"
+        className="flex flex-wrap gap-2"
+      >
         {statusFilters.map(({ value, label }) => (
           <button
             key={value}
@@ -308,9 +332,17 @@ function DashboardJobListPage() {
           role="alert"
           className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-red">求人の一覧を読み込めませんでした。</p>
-          <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-          <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+          <p className="m-0 font-bold text-marche-red">
+            求人の一覧を読み込めませんでした。
+          </p>
+          <p className="m-0 mt-1 text-marche-muted">
+            時間をおいて、もう一度お試しください。
+          </p>
+          <DashboardButton
+            variant="secondary"
+            onClick={reload}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>
@@ -334,19 +366,29 @@ function DashboardJobListPage() {
               </DashboardButton>
             </>
           ) : (
-            <p className="m-0 text-sm text-marche-muted">該当する求人はありません。</p>
+            <p className="m-0 text-sm text-marche-muted">
+              該当する求人はありません。
+            </p>
           )}
         </div>
       ) : (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {jobs.map((job) => (
-            <JobRow key={job.id} job={job} isPending={pendingId === job.id} onDelete={handleDelete} />
+            <JobRow
+              key={job.id}
+              job={job}
+              isPending={pendingId === job.id}
+              onDelete={handleDelete}
+            />
           ))}
         </ul>
       )}
 
       {!hasLoadError && jobs !== null && totalPages > 1 && (
-        <nav aria-label="ページ移動" className="flex items-center justify-center gap-4">
+        <nav
+          aria-label="ページ移動"
+          className="flex items-center justify-center gap-4"
+        >
           <DashboardButton
             variant="secondary"
             size="sm"

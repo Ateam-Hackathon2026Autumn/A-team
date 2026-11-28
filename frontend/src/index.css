@@ -1,7 +1,7 @@
 @layer theme, base, components, utilities;
 
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
   --color-marche-green: #2f6b4f;
@@ -15,8 +15,8 @@
   --color-marche-orange: #f4a261;
   --color-marche-red: #9a3220;
 
-  --font-sans: "Yu Gothic", Meiryo, system-ui, sans-serif;
-  --font-serif: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  --font-sans: 'Yu Gothic', Meiryo, system-ui, sans-serif;
+  --font-serif: 'Yu Mincho', 'Hiragino Mincho ProN', serif;
 }
 
 @layer base {

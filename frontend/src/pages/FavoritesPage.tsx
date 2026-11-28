@@ -8,20 +8,27 @@ import {
   removeFavoriteProduct,
 } from '../api/favoriteApi';
 import MyPageNavigation from '../components/mypage/MyPageNavigation';
-import ProducerSummaryCard, { producerGenres } from '../components/producers/ProducerSummaryCard';
-import ProductCard, { ProductImage, yen } from '../components/products/ProductCard';
+import ProducerSummaryCard from '../components/producers/ProducerSummaryCard';
+import { producerGenres } from '../components/producers/producerLabels';
+import ProductCard, { ProductImage } from '../components/products/ProductCard';
+import { yen } from '../components/products/productCardValues';
 import Button from '../components/ui/Button';
 import {
   ContentImage,
   ContentPage,
   ContentStatus,
   EmptyContent,
+} from '../components/ui/ContentPage';
+import {
   dateLabel,
   linkClass,
   panelClass,
-} from '../components/ui/ContentPage';
+} from '../components/ui/contentPageValues';
 import { usePublicContent } from '../hooks/usePublicContent';
-import type { FavoriteProducerItem, FavoriteProductItem } from '../types/favorite';
+import type {
+  FavoriteProducerItem,
+  FavoriteProductItem,
+} from '../types/favorite';
 
 export default function FavoritesPage() {
   const [kind, setKind] = useState<'products' | 'producers'>('products');
@@ -63,7 +70,9 @@ export default function FavoritesPage() {
       setRemovedProductIds((prev) => [...prev, item.product.id]);
     } catch (cause) {
       setActionError(
-        cause instanceof Error ? cause.message : '商品のお気に入りを解除できませんでした。',
+        cause instanceof Error
+          ? cause.message
+          : '商品のお気に入りを解除できませんでした。',
       );
     } finally {
       setRemovingId(null);
@@ -80,7 +89,9 @@ export default function FavoritesPage() {
       setRemovedProducerIds((prev) => [...prev, item.producer.id]);
     } catch (cause) {
       setActionError(
-        cause instanceof Error ? cause.message : '生産者のお気に入りを解除できませんでした。',
+        cause instanceof Error
+          ? cause.message
+          : '生産者のお気に入りを解除できませんでした。',
       );
     } finally {
       setRemovingId(null);
@@ -88,9 +99,13 @@ export default function FavoritesPage() {
   };
 
   const productItems =
-    productState.data?.items.filter((item) => !removedProductIds.includes(item.product.id)) ?? [];
+    productState.data?.items.filter(
+      (item) => !removedProductIds.includes(item.product.id),
+    ) ?? [];
   const producerItems =
-    producerState.data?.items.filter((item) => !removedProducerIds.includes(item.producer.id)) ?? [];
+    producerState.data?.items.filter(
+      (item) => !removedProducerIds.includes(item.producer.id),
+    ) ?? [];
 
   return (
     <ContentPage
@@ -128,8 +143,9 @@ export default function FavoritesPage() {
 
       <ContentStatus {...activeState} />
 
-      {kind === 'products' && productState.data && (
-        productItems.length > 0 ? (
+      {kind === 'products' &&
+        productState.data &&
+        (productItems.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {productItems.map((item) => {
               const isRemoving = removingId === `product-${item.product.id}`;
@@ -147,9 +163,12 @@ export default function FavoritesPage() {
                       <span className="mt-3 inline-block rounded-full bg-marche-canvas px-3 py-1 text-xs font-bold text-marche-muted">
                         現在非公開
                       </span>
-                      <h2 className="mb-1 mt-2 font-serif text-lg">{item.product.name}</h2>
+                      <h2 className="mb-1 mt-2 font-serif text-lg">
+                        {item.product.name}
+                      </h2>
                       <p className="m-0 text-xs text-marche-muted">
-                        {item.product.producer.businessName} · {yen(item.product.salePrice)}
+                        {item.product.producer.businessName} ·{' '}
+                        {yen(item.product.salePrice)}
                       </p>
                     </article>
                   )}
@@ -172,7 +191,9 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <EmptyContent>
-            <h2 className="font-serif text-xl">お気に入りの商品はまだありません</h2>
+            <h2 className="font-serif text-xl">
+              お気に入りの商品はまだありません
+            </h2>
             <p className="text-sm text-marche-muted">
               気になる商品を見つけたら、お気に入りに登録してここからいつでも確認できます。
             </p>
@@ -180,11 +201,11 @@ export default function FavoritesPage() {
               商品を探す
             </Link>
           </EmptyContent>
-        )
-      )}
+        ))}
 
-      {kind === 'producers' && producerState.data && (
-        producerItems.length > 0 ? (
+      {kind === 'producers' &&
+        producerState.data &&
+        (producerItems.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {producerItems.map((item) => {
               const isRemoving = removingId === `producer-${item.producer.id}`;
@@ -195,17 +216,23 @@ export default function FavoritesPage() {
                   ) : (
                     <article className={`${panelClass} flex-1 opacity-75`}>
                       <ContentImage
-                        src={item.producer.coverImageUrl ?? item.producer.profileImageUrl}
+                        src={
+                          item.producer.coverImageUrl ??
+                          item.producer.profileImageUrl
+                        }
                         alt={item.producer.businessName}
                         className="aspect-[16/9] rounded-xl"
                       />
                       <span className="mt-3 inline-block rounded-full bg-marche-canvas px-3 py-1 text-xs font-bold text-marche-muted">
                         現在非公開
                       </span>
-                      <h2 className="mb-1 mt-2 font-serif text-lg">{item.producer.businessName}</h2>
+                      <h2 className="mb-1 mt-2 font-serif text-lg">
+                        {item.producer.businessName}
+                      </h2>
                       <p className="m-0 text-xs text-marche-muted">
                         {item.producer.prefectureName} {item.producer.city} ·{' '}
-                        {producerGenres[item.producer.genre] ?? item.producer.genre}
+                        {producerGenres[item.producer.genre] ??
+                          item.producer.genre}
                       </p>
                     </article>
                   )}
@@ -228,7 +255,9 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <EmptyContent>
-            <h2 className="font-serif text-xl">お気に入りの生産者はまだありません</h2>
+            <h2 className="font-serif text-xl">
+              お気に入りの生産者はまだありません
+            </h2>
             <p className="text-sm text-marche-muted">
               応援したい生産者をお気に入り（フォロー）に登録すると、ここに一覧表示されます。
             </p>
@@ -236,8 +265,7 @@ export default function FavoritesPage() {
               生産者を探す
             </Link>
           </EmptyContent>
-        )
-      )}
+        ))}
 
       {totalPages > 1 && (
         <nav

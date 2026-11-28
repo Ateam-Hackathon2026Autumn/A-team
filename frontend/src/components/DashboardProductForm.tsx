@@ -22,11 +22,13 @@ import {
   Field,
   FormSection,
   PublishStatusField,
+  type PublishStatusOption,
+} from './DashboardFormParts';
+import {
   controlBorder,
   controlClassName,
   describedBy,
-  type PublishStatusOption,
-} from './DashboardFormParts';
+} from './dashboardFormValues';
 import { PlusIcon } from './DashboardIcons';
 
 // API の仕様に合わせた上限
@@ -55,21 +57,26 @@ type ProductFormValues = {
 type FieldName = keyof ProductFormValues | 'images';
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-// 画像1枚分（選んだ直後からアップロード完了まで）
 type ImageItem = {
-  // 画面内だけで使うID
   localId: number;
   previewUrl: string;
   status: 'uploading' | 'done' | 'error';
   key: string | null;
 };
 
-// 保存するときの公開状態
 type SubmitStatus = 'draft' | 'public' | 'private';
 
 const publishStatusOptions: PublishStatusOption<SubmitStatus>[] = [
-  { value: 'public', label: '公開', description: 'お客さまの画面に表示し、購入できるようにします。' },
-  { value: 'private', label: '非公開', description: 'お客さまの画面には表示しません。' },
+  {
+    value: 'public',
+    label: '公開',
+    description: 'お客さまの画面に表示し、購入できるようにします。',
+  },
+  {
+    value: 'private',
+    label: '非公開',
+    description: 'お客さまの画面には表示しません。',
+  },
   { value: 'draft', label: '下書き', description: '作成中として保存します。' },
 ];
 
@@ -98,7 +105,8 @@ function toFormValues(product: DashboardProduct): ProductFormValues {
     shippingSettingId: String(product.shippingSettingId),
     price: String(product.price),
     taxRate: product.taxRate === 10 ? '10' : '8',
-    discountRate: product.discountRate === null ? '' : String(product.discountRate),
+    discountRate:
+      product.discountRate === null ? '' : String(product.discountRate),
     stock: product.stock === null ? '' : String(product.stock),
     description: product.description ?? '',
     method: product.method ?? '',
@@ -256,7 +264,8 @@ function toCreateInput(
     shippingSettingId: Number(values.shippingSettingId),
     price: Number(values.price),
     taxRate: values.taxRate === '10' ? 10 : 8,
-    discountRate: values.discountRate === '' ? null : Number(values.discountRate),
+    discountRate:
+      values.discountRate === '' ? null : Number(values.discountRate),
     description: optionalText(values.description),
     method: optionalText(values.method),
     isSubscription: values.isSubscription,
@@ -268,10 +277,7 @@ function toCreateInput(
     stock: values.stock === '' ? null : Number(values.stock),
   };
 }
-
-// ---------------------------------------------------------------------------
 // フォーム本体
-// ---------------------------------------------------------------------------
 
 type DashboardProductFormProps = {
   // 編集する商品（渡さない場合は新規登録）
@@ -353,7 +359,8 @@ function DashboardProductForm({
     const remaining = MAX_IMAGES - images.length;
     const accepted = files.filter(
       (file) =>
-        ACCEPTED_IMAGE_TYPES.includes(file.type) && file.size <= MAX_IMAGE_BYTES,
+        ACCEPTED_IMAGE_TYPES.includes(file.type) &&
+        file.size <= MAX_IMAGE_BYTES,
     );
 
     let message: string | undefined;
@@ -406,7 +413,8 @@ function DashboardProductForm({
     if (images.some(({ status: s }) => s === 'error')) {
       setErrors((current) => ({
         ...current,
-        images: 'アップロードに失敗した写真があります。削除してから、もう一度追加してください。',
+        images:
+          'アップロードに失敗した写真があります。削除してから、もう一度追加してください。',
       }));
       document.getElementById('product-images')?.focus();
       return;
@@ -448,7 +456,9 @@ function DashboardProductForm({
         setErrors(serverErrors);
         setFormError(error.message);
       } else {
-        setFormError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setFormError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
 
       setSubmitting(null);
@@ -475,14 +485,19 @@ function DashboardProductForm({
       <FormSection title="写真">
         <div>
           <p className="m-0 text-sm">
-            {MAX_IMAGES}枚まで登録できます。1枚目が一覧に表示されるメインの写真になります。
+            {MAX_IMAGES}
+            枚まで登録できます。1枚目が一覧に表示されるメインの写真になります。
           </p>
           <p className="m-0 text-xs text-marche-muted">
             JPEG・PNG、1枚 5MB まで。公開するには1枚以上必要です。
           </p>
         </div>
 
-        <ul id="product-images" tabIndex={-1} className="m-0 grid list-none grid-cols-3 gap-3 p-0 outline-none sm:grid-cols-5">
+        <ul
+          id="product-images"
+          tabIndex={-1}
+          className="m-0 grid list-none grid-cols-3 gap-3 p-0 outline-none sm:grid-cols-5"
+        >
           {images.map((image, index) => (
             <li key={image.localId} className="relative">
               <img
@@ -497,7 +512,9 @@ function DashboardProductForm({
               )}
               {image.status !== 'done' && (
                 <span className="absolute inset-x-1.5 bottom-1.5 rounded-lg bg-white/90 px-1 py-0.5 text-center text-xs font-bold">
-                  {image.status === 'uploading' ? 'アップロード中…' : (
+                  {image.status === 'uploading' ? (
+                    'アップロード中…'
+                  ) : (
                     <span className="text-marche-red">失敗しました</span>
                   )}
                 </span>
@@ -519,7 +536,11 @@ function DashboardProductForm({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                aria-describedby={errors.images === undefined ? undefined : 'product-images-error'}
+                aria-describedby={
+                  errors.images === undefined
+                    ? undefined
+                    : 'product-images-error'
+                }
                 className={`box-border flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-marche-canvas p-0 text-sm font-bold text-marche-green font-[inherit] hover:bg-marche-sage ${errors.images === undefined ? 'border-marche-green/40' : 'border-marche-red'}`}
               >
                 <PlusIcon />
@@ -562,7 +583,12 @@ function DashboardProductForm({
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="product-volume" label="内容量" required error={errors.volume}>
+          <Field
+            id="product-volume"
+            label="内容量"
+            required
+            error={errors.volume}
+          >
             <input
               id="product-volume"
               type="text"
@@ -571,7 +597,11 @@ function DashboardProductForm({
               value={values.volume}
               onChange={(event) => setValue('volume', event.target.value)}
               aria-invalid={errors.volume !== undefined}
-              aria-describedby={describedBy('product-volume', false, errors.volume)}
+              aria-describedby={describedBy(
+                'product-volume',
+                false,
+                errors.volume,
+              )}
               className={`${controlClassName} ${controlBorder(errors.volume)}`}
             />
           </Field>
@@ -587,7 +617,11 @@ function DashboardProductForm({
               value={values.categoryId}
               onChange={(event) => setValue('categoryId', event.target.value)}
               aria-invalid={errors.categoryId !== undefined}
-              aria-describedby={describedBy('product-categoryId', false, errors.categoryId)}
+              aria-describedby={describedBy(
+                'product-categoryId',
+                false,
+                errors.categoryId,
+              )}
               className={`${controlClassName} ${controlBorder(errors.categoryId)}`}
             >
               <option value="">選んでください</option>
@@ -612,7 +646,11 @@ function DashboardProductForm({
             value={values.description}
             onChange={(event) => setValue('description', event.target.value)}
             aria-invalid={errors.description !== undefined}
-            aria-describedby={describedBy('product-description', true, errors.description)}
+            aria-describedby={describedBy(
+              'product-description',
+              true,
+              errors.description,
+            )}
             className={`${controlClassName} ${controlBorder(errors.description)} resize-y`}
           />
         </Field>
@@ -628,7 +666,11 @@ function DashboardProductForm({
             rows={2}
             value={values.method}
             onChange={(event) => setValue('method', event.target.value)}
-            aria-describedby={describedBy('product-method', true, errors.method)}
+            aria-describedby={describedBy(
+              'product-method',
+              true,
+              errors.method,
+            )}
             className={`${controlClassName} ${controlBorder(errors.method)} resize-y`}
           />
         </Field>
@@ -650,7 +692,11 @@ function DashboardProductForm({
               value={values.price}
               onChange={(event) => setValue('price', event.target.value)}
               aria-invalid={errors.price !== undefined}
-              aria-describedby={describedBy('product-price', false, errors.price)}
+              aria-describedby={describedBy(
+                'product-price',
+                false,
+                errors.price,
+              )}
               className={`${controlClassName} ${controlBorder(errors.price)}`}
             />
           </Field>
@@ -696,7 +742,11 @@ function DashboardProductForm({
               value={values.discountRate}
               onChange={(event) => setValue('discountRate', event.target.value)}
               aria-invalid={errors.discountRate !== undefined}
-              aria-describedby={describedBy('product-discountRate', true, errors.discountRate)}
+              aria-describedby={describedBy(
+                'product-discountRate',
+                true,
+                errors.discountRate,
+              )}
               className={`${controlClassName} ${controlBorder(errors.discountRate)}`}
             />
           </Field>
@@ -715,18 +765,24 @@ function DashboardProductForm({
               value={values.stock}
               onChange={(event) => setValue('stock', event.target.value)}
               aria-invalid={errors.stock !== undefined}
-              aria-describedby={describedBy('product-stock', true, errors.stock)}
+              aria-describedby={describedBy(
+                'product-stock',
+                true,
+                errors.stock,
+              )}
               className={`${controlClassName} ${controlBorder(errors.stock)}`}
             />
           </Field>
         </div>
 
-        {salePrice !== null && values.discountRate !== '' && errors.discountRate === undefined && (
-          <p className="m-0 text-sm">
-            販売価格（割引後）：
-            <span className="font-bold">{formatYen(salePrice)}</span>
-          </p>
-        )}
+        {salePrice !== null &&
+          values.discountRate !== '' &&
+          errors.discountRate === undefined && (
+            <p className="m-0 text-sm">
+              販売価格（割引後）：
+              <span className="font-bold">{formatYen(salePrice)}</span>
+            </p>
+          )}
       </FormSection>
 
       <FormSection title="配送">
@@ -739,9 +795,15 @@ function DashboardProductForm({
           <select
             id="product-shippingSettingId"
             value={values.shippingSettingId}
-            onChange={(event) => setValue('shippingSettingId', event.target.value)}
+            onChange={(event) =>
+              setValue('shippingSettingId', event.target.value)
+            }
             aria-invalid={errors.shippingSettingId !== undefined}
-            aria-describedby={describedBy('product-shippingSettingId', false, errors.shippingSettingId)}
+            aria-describedby={describedBy(
+              'product-shippingSettingId',
+              false,
+              errors.shippingSettingId,
+            )}
             className={`${controlClassName} ${controlBorder(errors.shippingSettingId)}`}
           >
             <option value="">選んでください</option>
@@ -781,7 +843,9 @@ function DashboardProductForm({
       {isEdit && (
         <FormSection title="公開設定">
           {isSuspended ? (
-            <p className="m-0 text-sm text-marche-red">運営により掲載停止中です。内容は編集できますが、公開状態は変更できません。</p>
+            <p className="m-0 text-sm text-marche-red">
+              運営により掲載停止中です。内容は編集できますが、公開状態は変更できません。
+            </p>
           ) : (
             <PublishStatusField
               options={publishStatusOptions}

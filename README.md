@@ -35,6 +35,10 @@ docker compose exec backend python manage.py createsuperuser # 初回のみ実�
 - Django API: <http://localhost:8000/api/health/>
 - Django管理画面（データ確認用）: <http://localhost:8000/api/django-admin/>（`createsuperuser` で作ったメールアドレスでログイン。削除はできない）
 
+### フロントエンドのコード確認
+
+`frontend/` で `npm run lint` を実行するとコードを検査できます。`npm run format` で整形し、`npm run format:check` で整形済みか確認できます。
+
 ### 開発用のデータ
 
 カテゴリー・エリア・都道府県のマスタは Compose の起動時に投入されます。画面確認用の会員・商品などが必要な場合は `seed_dev` を実行します。

@@ -1,24 +1,32 @@
-import ApiError, { toApiError } from "./apiError";
-import { apiFetch } from "./client";
-import type { Cart } from "../types/cart";
+import ApiError, { toApiError } from './apiError';
+import { apiFetch } from './client';
+import type { Cart } from '../types/cart';
 
-async function checkResponse(response: Response, expectedStatus = 200): Promise<void> {
+async function checkResponse(
+  response: Response,
+  expectedStatus = 200,
+): Promise<void> {
   if (response.status === expectedStatus) return;
-  if (response.ok) throw new ApiError(response.status, 'カートの処理結果を確認できませんでした。カートを再読み込みしてください。');
-  const fallback = response.status === 409
-    ? "在庫が不足しているか、販売状況が変わりました。"
-    : response.status === 412
-      ? "カートの内容が変更されました。最新の内容をご確認ください。"
-      : response.status === 404
-        ? "カートの商品が見つかりません。"
-        : response.status === 400
-          ? "数量は1〜10点の整数で指定してください。"
-          : "カートの処理に失敗しました。時間をおいて再度お試しください。";
+  if (response.ok)
+    throw new ApiError(
+      response.status,
+      'カートの処理結果を確認できませんでした。カートを再読み込みしてください。',
+    );
+  const fallback =
+    response.status === 409
+      ? '在庫が不足しているか、販売状況が変わりました。'
+      : response.status === 412
+        ? 'カートの内容が変更されました。最新の内容をご確認ください。'
+        : response.status === 404
+          ? 'カートの商品が見つかりません。'
+          : response.status === 400
+            ? '数量は1〜10点の整数で指定してください。'
+            : 'カートの処理に失敗しました。時間をおいて再度お試しください。';
   throw await toApiError(response, fallback);
 }
 
 export async function getCart(signal?: AbortSignal): Promise<Cart> {
-  const response = await apiFetch("/api/v1/cart", { signal });
+  const response = await apiFetch('/api/v1/cart', { signal });
   await checkResponse(response);
   return response.json() as Promise<Cart>;
 }
@@ -27,9 +35,9 @@ export async function addCartItem(
   productId: number,
   quantity: number,
 ): Promise<Cart> {
-  const response = await apiFetch("/api/v1/cart/items", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const response = await apiFetch('/api/v1/cart/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ productId, quantity }),
   });
   await checkResponse(response);
@@ -42,9 +50,9 @@ export async function updateCartItem(
   signal?: AbortSignal,
 ): Promise<Cart> {
   const response = await apiFetch(`/api/v1/cart/items/${itemId}`, {
-    method: "PATCH",
+    method: 'PATCH',
     signal,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ quantity }),
   });
   await checkResponse(response);
@@ -56,7 +64,7 @@ export async function removeCartItem(
   signal?: AbortSignal,
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/cart/items/${itemId}`, {
-    method: "DELETE",
+    method: 'DELETE',
     signal,
   });
   await checkResponse(response, 204);

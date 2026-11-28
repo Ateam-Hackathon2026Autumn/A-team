@@ -21,8 +21,10 @@ const baseClassName =
   'box-border inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-solid font-bold no-underline transition-colors [font-family:inherit] disabled:pointer-events-none disabled:opacity-50';
 
 const variantClassNames = {
-  primary: 'border-marche-green bg-marche-green text-white hover:bg-marche-green-dark',
-  secondary: 'border-marche-line bg-white text-marche-green hover:bg-marche-canvas',
+  primary:
+    'border-marche-green bg-marche-green text-white hover:bg-marche-green-dark',
+  secondary:
+    'border-marche-line bg-white text-marche-green hover:bg-marche-canvas',
   danger: 'border-marche-red bg-white text-marche-red hover:bg-marche-red/10',
 };
 

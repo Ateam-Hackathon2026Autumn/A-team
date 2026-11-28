@@ -5,7 +5,7 @@ import { isValidRouteId } from './utils/routeId';
 import AuthWrapper from './components/AuthWrapper';
 import DashboardLayout from './Layouts/DashboardLayout';
 import MainLayout from './Layouts/MainLayout';
-import AuthLayout from "./Layouts/AuthLayout";
+import AuthLayout from './Layouts/AuthLayout';
 
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import CartPage from './pages/CartPage';
@@ -56,12 +56,22 @@ import DashboardProductNewPage from './pages/dashboard/DashboardProductNewPage';
 import DashboardProfileEditPage from './pages/dashboard/DashboardProfileEditPage';
 import DashboardStoryEditPage from './pages/dashboard/DashboardStoryEditPage';
 
-function NumericRoute({ name, children }: { name: string; children: ReactNode }) {
+function NumericRoute({
+  name,
+  children,
+}: {
+  name: string;
+  children: ReactNode;
+}) {
   const params = useParams();
-  return isValidRouteId(params[name]) ? children : <Navigate to="/404" replace />;
+  return isValidRouteId(params[name]) ? (
+    children
+  ) : (
+    <Navigate to="/404" replace />
+  );
 }
 
-// 画面一覧・URL（Notion「設計」）に沿ったルーティング
+// 画面一覧・URL の仕様: Notion「設計」
 function App() {
   return (
     <Routes>
@@ -71,42 +81,82 @@ function App() {
         <Route element={<MainLayout />}>
           <Route element={<AuthLayout />}>
             <Route path="/signin" element={<SigninPage />} />
-            <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
+            <Route
+              path="/password-reset/confirm"
+              element={<PasswordResetConfirmPage />}
+            />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/signup/complete" element={<CompleteStep />} />
           </Route>
-          
+
           <Route path="/" element={<HomePage />} />
 
           <Route path="/products" element={<ProductListPage />} />
-          <Route path="/products/:productId" element={<NumericRoute name="productId"><ProductDetailPage /></NumericRoute>} />
+          <Route
+            path="/products/:productId"
+            element={
+              <NumericRoute name="productId">
+                <ProductDetailPage />
+              </NumericRoute>
+            }
+          />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-          <Route
-            path="/checkout/complete"
-            element={<CheckoutCompletePage />}
-          />
+          <Route path="/checkout/complete" element={<CheckoutCompletePage />} />
 
           <Route path="/jobs" element={<JobListPage />} />
-          <Route path="/jobs/:jobId" element={<NumericRoute name="jobId"><JobDetailPage /></NumericRoute>} />
-          <Route path="/jobs/:jobId/apply" element={<NumericRoute name="jobId"><JobApplyPage /></NumericRoute>} />
+          <Route
+            path="/jobs/:jobId"
+            element={
+              <NumericRoute name="jobId">
+                <JobDetailPage />
+              </NumericRoute>
+            }
+          />
+          <Route
+            path="/jobs/:jobId/apply"
+            element={
+              <NumericRoute name="jobId">
+                <JobApplyPage />
+              </NumericRoute>
+            }
+          />
 
           <Route path="/experiences" element={<ExperienceListPage />} />
           <Route
             path="/experiences/:experienceId"
-            element={<NumericRoute name="experienceId"><ExperienceDetailPage /></NumericRoute>}
+            element={
+              <NumericRoute name="experienceId">
+                <ExperienceDetailPage />
+              </NumericRoute>
+            }
           />
           <Route
             path="/experiences/:experienceId/apply"
-            element={<NumericRoute name="experienceId"><ExperienceApplyPage /></NumericRoute>}
+            element={
+              <NumericRoute name="experienceId">
+                <ExperienceApplyPage />
+              </NumericRoute>
+            }
           />
 
           <Route path="/learn" element={<LearnPage />} />
-          <Route path="/learn/:storyId" element={<NumericRoute name="storyId"><StoryDetailPage /></NumericRoute>} />
+          <Route
+            path="/learn/:storyId"
+            element={
+              <NumericRoute name="storyId">
+                <StoryDetailPage />
+              </NumericRoute>
+            }
+          />
           <Route path="/producers" element={<ProducerListPage />} />
           <Route
             path="/producers/:producerId"
-            element={<NumericRoute name="producerId"><ProducerProfilePage /></NumericRoute>}
+            element={
+              <NumericRoute name="producerId">
+                <ProducerProfilePage />
+              </NumericRoute>
+            }
           />
 
           <Route path="/mypage" element={<MyPage />} />
@@ -115,7 +165,11 @@ function App() {
           <Route path="/mypage/orders" element={<OrderHistoryPage />} />
           <Route
             path="/mypage/orders/:orderId"
-            element={<NumericRoute name="orderId"><OrderDetailPage /></NumericRoute>}
+            element={
+              <NumericRoute name="orderId">
+                <OrderDetailPage />
+              </NumericRoute>
+            }
           />
           <Route path="/mypage/jobs" element={<JobApplicationsPage />} />
           <Route
@@ -148,38 +202,57 @@ function App() {
           <Route path="products/new" element={<DashboardProductNewPage />} />
           <Route
             path="products/:productId/edit"
-            element={<NumericRoute name="productId"><DashboardProductEditPage /></NumericRoute>}
+            element={
+              <NumericRoute name="productId">
+                <DashboardProductEditPage />
+              </NumericRoute>
+            }
           />
 
           <Route path="jobs" element={<DashboardJobListPage />} />
           <Route path="jobs/new" element={<DashboardJobNewPage />} />
-          <Route path="jobs/:jobId/edit" element={<NumericRoute name="jobId"><DashboardJobEditPage /></NumericRoute>} />
+          <Route
+            path="jobs/:jobId/edit"
+            element={
+              <NumericRoute name="jobId">
+                <DashboardJobEditPage />
+              </NumericRoute>
+            }
+          />
           <Route
             path="jobs/:jobId/applicants"
-            element={<NumericRoute name="jobId"><DashboardJobApplicantsPage /></NumericRoute>}
+            element={
+              <NumericRoute name="jobId">
+                <DashboardJobApplicantsPage />
+              </NumericRoute>
+            }
           />
 
-          <Route
-            path="experiences"
-            element={<DashboardExperienceListPage />}
-          />
+          <Route path="experiences" element={<DashboardExperienceListPage />} />
           <Route
             path="experiences/new"
             element={<DashboardExperienceNewPage />}
           />
           <Route
             path="experiences/:experienceId/edit"
-            element={<NumericRoute name="experienceId"><DashboardExperienceEditPage /></NumericRoute>}
+            element={
+              <NumericRoute name="experienceId">
+                <DashboardExperienceEditPage />
+              </NumericRoute>
+            }
           />
           <Route
             path="experiences/:experienceId/participants"
-            element={<NumericRoute name="experienceId"><DashboardExperienceParticipantsPage /></NumericRoute>}
+            element={
+              <NumericRoute name="experienceId">
+                <DashboardExperienceParticipantsPage />
+              </NumericRoute>
+            }
           />
 
           <Route path="story" element={<DashboardStoryEditPage />} />
         </Route>
       </Route>
-
 
       <Route path="/404" element={<NotFoundPage />} />
       <Route path="/500" element={<InternalServerErrorPage />} />

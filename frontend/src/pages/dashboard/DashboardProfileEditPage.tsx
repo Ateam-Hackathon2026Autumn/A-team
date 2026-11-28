@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { Link } from 'react-router';
 import { useAtomValue } from 'jotai';
 
 import ApiError from '../../api/apiError';
-import { getDashboardProfile, updateDashboardProfile } from '../../api/dashboardProfileApi';
+import {
+  getDashboardProfile,
+  updateDashboardProfile,
+} from '../../api/dashboardProfileApi';
 import { uploadImage } from '../../api/uploadApi';
 import DashboardButton from '../../components/DashboardButton';
 import {
@@ -11,11 +21,13 @@ import {
   Field,
   FormSection,
   PublishStatusField,
+  type PublishStatusOption,
+} from '../../components/DashboardFormParts';
+import {
   controlBorder,
   controlClassName,
   describedBy,
-  type PublishStatusOption,
-} from '../../components/DashboardFormParts';
+} from '../../components/dashboardFormValues';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
@@ -28,9 +40,7 @@ import { PREFECTURES, prefectureName } from '../../utils/prefectures';
 
 // 生産者プロフィールの編集（生産者ページに載る内容）
 // 実API: GET・PATCH /api/v1/dashboard/profile（backend/api/views/dashboard/profile.py）
-// 画面の流れ: Notion「生産者ダッシュボード・プロフィール編集」
-//   取得 → 入力（画像はアップロードしてプレビュー）→ 入力チェック → 保存 → 完了表示／400 は項目ごとに表示
-// レイアウト: 参考HTML（生産者管理のプロフィール編集。編集とプレビューを並べ、狭い画面では切り替え）
+// 画面仕様: Notion「生産者ダッシュボード・プロフィール編集」
 
 const MAX_GALLERY = 10;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -60,17 +70,20 @@ const STORY_STATUS_LABELS: Record<ProfileStoryStatus, string> = {
 type EditableStatus = 'public' | 'private';
 
 const STATUS_OPTIONS: PublishStatusOption<EditableStatus>[] = [
-  { value: 'public', label: '公開', description: 'お客さまが生産者ページを見られます。' },
+  {
+    value: 'public',
+    label: '公開',
+    description: 'お客さまが生産者ページを見られます。',
+  },
   {
     value: 'private',
     label: '非公開',
-    description: '生産者ページを表示しません。商品・体験・求人も表示されなくなります。',
+    description:
+      '生産者ページを表示しません。商品・体験・求人も表示されなくなります。',
   },
 ];
 
-// ---------------------------------------------------------------------------
 // フォームの値
-// ---------------------------------------------------------------------------
 
 type FormValues = {
   prefectureId: string;
@@ -113,8 +126,10 @@ function toFormValues(profile: DashboardProfile): FormValues {
     city: profile.city,
     productionItems: profile.productionItems,
     intro: profile.intro,
-    careerStartYear: profile.careerStartYear === null ? '' : String(profile.careerStartYear),
-    foundedYear: profile.foundedYear === null ? '' : String(profile.foundedYear),
+    careerStartYear:
+      profile.careerStartYear === null ? '' : String(profile.careerStartYear),
+    foundedYear:
+      profile.foundedYear === null ? '' : String(profile.foundedYear),
     acceptsExperience: profile.acceptsExperience,
     recruiting: profile.recruiting,
     publishStatus:
@@ -135,7 +150,12 @@ function singleImage(key: string | null, url: string | null): ImageItem | null {
 function toGallery(profile: DashboardProfile): ImageItem[] {
   return [...profile.images]
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((image) => ({ localId: nextLocalId++, key: image.key, previewUrl: image.url, status: 'done' }));
+    .map((image) => ({
+      localId: nextLocalId++,
+      key: image.key,
+      previewUrl: image.url,
+      status: 'done',
+    }));
 }
 
 function releasePreview(item: ImageItem | null) {
@@ -144,7 +164,8 @@ function releasePreview(item: ImageItem | null) {
   }
 }
 
-const yearValue = (value: string) => (value.trim() === '' ? null : Number(value.trim()));
+const yearValue = (value: string) =>
+  value.trim() === '' ? null : Number(value.trim());
 
 // 元のプロフィールから変わった項目だけを送る（PATCH）
 function buildPatch(
@@ -156,7 +177,8 @@ function buildPatch(
 ): ProfileUpdateInput {
   const patch: ProfileUpdateInput = {};
 
-  if (Number(values.prefectureId) !== profile.prefectureId) patch.prefectureId = Number(values.prefectureId);
+  if (Number(values.prefectureId) !== profile.prefectureId)
+    patch.prefectureId = Number(values.prefectureId);
   if (values.city.trim() !== profile.city) patch.city = values.city.trim();
   if (values.productionItems.trim() !== profile.productionItems) {
     patch.productionItems = values.productionItems.trim();
@@ -165,9 +187,12 @@ function buildPatch(
   if (yearValue(values.careerStartYear) !== profile.careerStartYear) {
     patch.careerStartYear = yearValue(values.careerStartYear);
   }
-  if (yearValue(values.foundedYear) !== profile.foundedYear) patch.foundedYear = yearValue(values.foundedYear);
-  if (values.acceptsExperience !== profile.acceptsExperience) patch.acceptsExperience = values.acceptsExperience;
-  if (values.recruiting !== profile.recruiting) patch.recruiting = values.recruiting;
+  if (yearValue(values.foundedYear) !== profile.foundedYear)
+    patch.foundedYear = yearValue(values.foundedYear);
+  if (values.acceptsExperience !== profile.acceptsExperience)
+    patch.acceptsExperience = values.acceptsExperience;
+  if (values.recruiting !== profile.recruiting)
+    patch.recruiting = values.recruiting;
 
   const profileKey = profileImage?.key ?? null;
   if (profileKey !== profile.profileImage) patch.profileImage = profileKey;
@@ -176,10 +201,16 @@ function buildPatch(
   if (coverKey !== profile.coverImage) patch.coverImage = coverKey;
 
   const galleryKeys = gallery.flatMap(({ key }) => (key === null ? [] : [key]));
-  const savedKeys = [...profile.images].sort((a, b) => a.sortOrder - b.sortOrder).map(({ key }) => key);
-  if (JSON.stringify(galleryKeys) !== JSON.stringify(savedKeys)) patch.imageKeys = galleryKeys;
+  const savedKeys = [...profile.images]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(({ key }) => key);
+  if (JSON.stringify(galleryKeys) !== JSON.stringify(savedKeys))
+    patch.imageKeys = galleryKeys;
 
-  if (values.publishStatus !== null && values.publishStatus !== profile.publishStatus) {
+  if (
+    values.publishStatus !== null &&
+    values.publishStatus !== profile.publishStatus
+  ) {
     patch.publishStatus = values.publishStatus;
   }
 
@@ -190,22 +221,28 @@ function yearError(value: string, label: string): string | undefined {
   const text = value.trim();
 
   if (text === '') return undefined;
-  if (!/^\d{1,4}$/.test(text) || Number(text) < 1) return `${label}は西暦4桁の数字で入力してください。`;
-  if (Number(text) > new Date().getFullYear()) return `${label}は今年以前の年を入力してください。`;
+  if (!/^\d{1,4}$/.test(text) || Number(text) < 1)
+    return `${label}は西暦4桁の数字で入力してください。`;
+  if (Number(text) > new Date().getFullYear())
+    return `${label}は今年以前の年を入力してください。`;
   return undefined;
 }
 
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {};
 
-  if (values.prefectureId === '') errors.prefectureId = '都道府県を選んでください。';
+  if (values.prefectureId === '')
+    errors.prefectureId = '都道府県を選んでください。';
   if (values.city.trim() === '') errors.city = '市区町村を入力してください。';
-  else if (values.city.trim().length > 50) errors.city = '市区町村は50文字以内で入力してください。';
-  if (values.productionItems.trim() === '') errors.productionItems = '生産品目を入力してください。';
+  else if (values.city.trim().length > 50)
+    errors.city = '市区町村は50文字以内で入力してください。';
+  if (values.productionItems.trim() === '')
+    errors.productionItems = '生産品目を入力してください。';
   else if (values.productionItems.trim().length > 100) {
     errors.productionItems = '生産品目は100文字以内で入力してください。';
   }
-  if (values.intro.trim() === '') errors.intro = 'ひとこと紹介を入力してください。';
+  if (values.intro.trim() === '')
+    errors.intro = 'ひとこと紹介を入力してください。';
 
   const career = yearError(values.careerStartYear, 'この仕事を始めた年');
   if (career !== undefined) errors.careerStartYear = career;
@@ -246,16 +283,25 @@ function errorsFromDetails(details: Record<string, string[]>): FormErrors {
 
 // JPEG・PNG・5MB 以下だけ受け付ける。だめならメッセージ
 function fileError(file: File): string | null {
-  if (!IMAGE_TYPES.includes(file.type)) return 'JPEG または PNG の画像を選んでください。';
+  if (!IMAGE_TYPES.includes(file.type))
+    return 'JPEG または PNG の画像を選んでください。';
   if (file.size > MAX_IMAGE_BYTES) return '画像は5MB以下にしてください。';
   return null;
 }
 
-function newFarmerBadge(profile: DashboardProfile, careerStartYear: string): string | null {
+function newFarmerBadge(
+  profile: DashboardProfile,
+  careerStartYear: string,
+): string | null {
   const year = yearValue(careerStartYear);
   const thisYear = new Date().getFullYear();
 
-  if (year === null || Number.isNaN(year) || year > thisYear || year < thisYear - NEW_FARMER_YEARS) {
+  if (
+    year === null ||
+    Number.isNaN(year) ||
+    year > thisYear ||
+    year < thisYear - NEW_FARMER_YEARS
+  ) {
     return null;
   }
 
@@ -271,10 +317,7 @@ function dateTimeLabel(value: string): string {
     minute: '2-digit',
   });
 }
-
-// ---------------------------------------------------------------------------
 // 部品
-// ---------------------------------------------------------------------------
 
 function Notice({ children }: { children: ReactNode }) {
   return (
@@ -300,7 +343,11 @@ function ImageStatusLabel({ item }: { item: ImageItem }) {
 
   return (
     <span className="absolute inset-x-1.5 bottom-1.5 rounded-lg bg-white/90 px-1 py-0.5 text-center text-xs font-bold">
-      {item.status === 'uploading' ? 'アップロード中…' : <span className="text-marche-red">失敗しました</span>}
+      {item.status === 'uploading' ? (
+        'アップロード中…'
+      ) : (
+        <span className="text-marche-red">失敗しました</span>
+      )}
     </span>
   );
 }
@@ -352,7 +399,9 @@ function SingleImageField({
               <ImageStatusLabel item={item} />
             </>
           ) : (
-            <span className="grid size-full place-items-center text-xs text-marche-muted">未設定</span>
+            <span className="grid size-full place-items-center text-xs text-marche-muted">
+              未設定
+            </span>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -508,7 +557,8 @@ function ProfilePreview({
     values.acceptsExperience ? '体験受け入れ中' : null,
     values.recruiting ? '担い手募集中' : null,
   ].filter((badge): badge is string => badge !== null);
-  const place = `${prefectureName(Number(values.prefectureId))} ${values.city.trim()}`.trim();
+  const place =
+    `${prefectureName(Number(values.prefectureId))} ${values.city.trim()}`.trim();
   const showStory = profile.storyPublishStatus === 'public';
   const founded = yearValue(values.foundedYear);
 
@@ -522,13 +572,21 @@ function ProfilePreview({
       </p>
       <div className="aspect-[2/1] bg-marche-sage">
         {coverImage !== null && (
-          <img src={coverImage.previewUrl} alt="" className="block size-full object-cover" />
+          <img
+            src={coverImage.previewUrl}
+            alt=""
+            className="block size-full object-cover"
+          />
         )}
       </div>
       <div className="px-5 pb-5">
         <div className="relative -mt-9 size-18 overflow-hidden rounded-full border-3 border-solid border-marche-ivory bg-marche-sage">
           {profileImage !== null && (
-            <img src={profileImage.previewUrl} alt="" className="block size-full object-cover" />
+            <img
+              src={profileImage.previewUrl}
+              alt=""
+              className="block size-full object-cover"
+            />
           )}
         </div>
         {badges.length > 0 && (
@@ -543,18 +601,26 @@ function ProfilePreview({
             ))}
           </ul>
         )}
-        <p className="m-0 mt-2 font-serif text-xl font-bold">{profile.businessName}</p>
+        <p className="m-0 mt-2 font-serif text-xl font-bold">
+          {profile.businessName}
+        </p>
         <p className="m-0 text-xs text-marche-muted">
           {profile.representativeName}
           {place !== '' && ` ・ ${place}`}
-          {founded !== null && !Number.isNaN(founded) && ` ・ 創業 ${founded}年`}
+          {founded !== null &&
+            !Number.isNaN(founded) &&
+            ` ・ 創業 ${founded}年`}
         </p>
         {values.productionItems.trim() !== '' && (
-          <p className="m-0 mt-1 text-xs font-bold text-marche-green">{values.productionItems.trim()}</p>
+          <p className="m-0 mt-1 text-xs font-bold text-marche-green">
+            {values.productionItems.trim()}
+          </p>
         )}
         <p className="m-0 mt-3 text-sm leading-loose whitespace-pre-wrap [overflow-wrap:anywhere]">
           {values.intro.trim() === '' ? (
-            <span className="text-marche-muted">（ひとこと紹介が入ります）</span>
+            <span className="text-marche-muted">
+              （ひとこと紹介が入ります）
+            </span>
           ) : (
             values.intro.trim()
           )}
@@ -571,8 +637,12 @@ function ProfilePreview({
                 key={label}
                 className="mt-3 rounded-xl border border-solid border-marche-line bg-white px-3.5 py-3"
               >
-                <p className="m-0 text-xs font-bold text-marche-green">{label}</p>
-                <p className="m-0 mt-1 text-sm leading-relaxed [overflow-wrap:anywhere]">{text}</p>
+                <p className="m-0 text-xs font-bold text-marche-green">
+                  {label}
+                </p>
+                <p className="m-0 mt-1 text-sm leading-relaxed [overflow-wrap:anywhere]">
+                  {text}
+                </p>
               </div>
             ),
           )}
@@ -580,7 +650,11 @@ function ProfilePreview({
           <ul className="m-0 mt-4 grid list-none grid-cols-3 gap-1.5 p-0">
             {gallery.slice(0, 6).map((item) => (
               <li key={item.localId}>
-                <img src={item.previewUrl} alt="" className="block aspect-square w-full rounded-lg object-cover" />
+                <img
+                  src={item.previewUrl}
+                  alt=""
+                  className="block aspect-square w-full rounded-lg object-cover"
+                />
               </li>
             ))}
           </ul>
@@ -589,10 +663,7 @@ function ProfilePreview({
     </section>
   );
 }
-
-// ---------------------------------------------------------------------------
 // 画面
-// ---------------------------------------------------------------------------
 
 function DashboardProfileEditPage() {
   const redirectToSignin = useSigninRedirect();
@@ -640,7 +711,9 @@ function DashboardProfileEditPage() {
       .then((result) => {
         setProfile(result);
         setValues(toFormValues(result));
-        setProfileImage(singleImage(result.profileImage, result.profileImageUrl));
+        setProfileImage(
+          singleImage(result.profileImage, result.profileImageUrl),
+        );
         setCoverImage(singleImage(result.coverImage, result.coverImageUrl));
         setGallery(toGallery(result));
       })
@@ -658,7 +731,7 @@ function DashboardProfileEditPage() {
       });
 
     return () => controller.abort();
-  }, [canManage, reloadCount]);
+  }, [canManage, reloadCount, redirectToSignin]);
 
   useEffect(() => {
     if (toast === null) {
@@ -676,7 +749,9 @@ function DashboardProfileEditPage() {
     }
   }, [submitError]);
 
-  const isUploading = [profileImage, coverImage, ...gallery].some((item) => item?.status === 'uploading');
+  const isUploading = [profileImage, coverImage, ...gallery].some(
+    (item) => item?.status === 'uploading',
+  );
   const patch =
     profile !== null && values !== null
       ? buildPatch(profile, values, profileImage, coverImage, gallery)
@@ -711,8 +786,13 @@ function DashboardProfileEditPage() {
     });
   };
 
-  const updateValue = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
-    setValues((current) => (current === null ? current : { ...current, [key]: value }));
+  const updateValue = <K extends keyof FormValues>(
+    key: K,
+    value: FormValues[K],
+  ) => {
+    setValues((current) =>
+      current === null ? current : { ...current, [key]: value },
+    );
 
     if (key !== 'acceptsExperience' && key !== 'recruiting') {
       clearError(key as FieldName);
@@ -748,12 +828,16 @@ function DashboardProfileEditPage() {
     uploadImage(file)
       .then(({ key }) =>
         setItem((current) =>
-          current?.localId === item.localId ? { ...current, key, status: 'done' } : current,
+          current?.localId === item.localId
+            ? { ...current, key, status: 'done' }
+            : current,
         ),
       )
       .catch(() =>
         setItem((current) =>
-          current?.localId === item.localId ? { ...current, status: 'error' } : current,
+          current?.localId === item.localId
+            ? { ...current, status: 'error' }
+            : current,
         ),
       );
   };
@@ -774,8 +858,10 @@ function DashboardProfileEditPage() {
     const accepted = files.filter((file) => fileError(file) === null);
     let message: string | undefined;
 
-    if (accepted.length < files.length) message = 'JPEG・PNG で 5MB 以下の写真だけ追加できます。';
-    if (accepted.length > remaining) message = `農園の写真は${MAX_GALLERY}枚まで登録できます。`;
+    if (accepted.length < files.length)
+      message = 'JPEG・PNG で 5MB 以下の写真だけ追加できます。';
+    if (accepted.length > remaining)
+      message = `農園の写真は${MAX_GALLERY}枚まで登録できます。`;
 
     setErrors((current) => ({ ...current, images: message }));
 
@@ -788,7 +874,9 @@ function DashboardProfileEditPage() {
       };
       const update = (change: Partial<ImageItem>) =>
         setGallery((current) =>
-          current.map((target) => (target.localId === item.localId ? { ...target, ...change } : target)),
+          current.map((target) =>
+            target.localId === item.localId ? { ...target, ...change } : target,
+          ),
         );
 
       setGallery((current) => [...current, item]);
@@ -801,7 +889,9 @@ function DashboardProfileEditPage() {
   const removeGallery = (target: ImageItem) => {
     releasePreview(target);
     clearError('images');
-    setGallery((current) => current.filter(({ localId }) => localId !== target.localId));
+    setGallery((current) =>
+      current.filter(({ localId }) => localId !== target.localId),
+    );
   };
 
   const moveGallery = (index: number, offset: -1 | 1) => {
@@ -834,11 +924,13 @@ function DashboardProfileEditPage() {
     }
 
     const failedErrors: FormErrors = {};
-    const failed = 'アップロードに失敗しました。もう一度選び直すか、外してください。';
+    const failed =
+      'アップロードに失敗しました。もう一度選び直すか、外してください。';
     if (profileImage?.status === 'error') failedErrors.profileImage = failed;
     if (coverImage?.status === 'error') failedErrors.coverImage = failed;
     if (gallery.some(({ status }) => status === 'error')) {
-      failedErrors.images = 'アップロードに失敗した写真があります。削除してから、もう一度追加してください。';
+      failedErrors.images =
+        'アップロードに失敗した写真があります。削除してから、もう一度追加してください。';
     }
 
     const clientErrors = { ...validate(values), ...failedErrors };
@@ -901,15 +993,22 @@ function DashboardProfileEditPage() {
 
         showErrors(
           fieldErrors,
-          Object.keys(fieldErrors).length > 0 ? '入力内容を確認してください。' : (other ?? error.message),
+          Object.keys(fieldErrors).length > 0
+            ? '入力内容を確認してください。'
+            : (other ?? error.message),
         );
-      } else if (error instanceof ApiError && error.errorCode === 'PRODUCER_SUSPENDED') {
+      } else if (
+        error instanceof ApiError &&
+        error.errorCode === 'PRODUCER_SUSPENDED'
+      ) {
         // 運営が掲載を止めた。最新の状態を読み込み直して、公開状態を選べないようにする
         showErrors({}, error.message);
         getDashboardProfile()
           .then((latest) => {
             setProfile(latest);
-            setValues((current) => (current === null ? current : { ...current, publishStatus: null }));
+            setValues((current) =>
+              current === null ? current : { ...current, publishStatus: null },
+            );
           })
           .catch(() => {
             // 読み込めなくても、エラーメッセージで状況は伝わる
@@ -917,7 +1016,10 @@ function DashboardProfileEditPage() {
       } else if (error instanceof ApiError) {
         showErrors({}, error.message);
       } else {
-        showErrors({}, '通信に失敗しました。時間をおいて、もう一度お試しください。');
+        showErrors(
+          {},
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
     } finally {
       setIsSaving(false);
@@ -926,7 +1028,11 @@ function DashboardProfileEditPage() {
 
   const renderBody = () => {
     if (!canManage) {
-      return <Notice>プロフィールの編集は、生産者登録が承認されると使えるようになります。</Notice>;
+      return (
+        <Notice>
+          プロフィールの編集は、生産者登録が承認されると使えるようになります。
+        </Notice>
+      );
     }
 
     if (loadError) {
@@ -935,8 +1041,12 @@ function DashboardProfileEditPage() {
           role="alert"
           className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-red">プロフィールを読み込めませんでした。</p>
-          <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
+          <p className="m-0 font-bold text-marche-red">
+            プロフィールを読み込めませんでした。
+          </p>
+          <p className="m-0 mt-1 text-marche-muted">
+            時間をおいて、もう一度お試しください。
+          </p>
           <DashboardButton
             variant="secondary"
             onClick={() => {
@@ -953,7 +1063,11 @@ function DashboardProfileEditPage() {
 
     if (profile === null || values === null) {
       return (
-        <div aria-busy="true" aria-label="読み込み中" className="flex flex-col gap-6">
+        <div
+          aria-busy="true"
+          aria-label="読み込み中"
+          className="flex flex-col gap-6"
+        >
           {Array.from({ length: 3 }, (_, i) => (
             <div
               key={i}
@@ -965,8 +1079,11 @@ function DashboardProfileEditPage() {
     }
 
     const isSuspended = profile.publishStatus === 'suspended';
-    const errorEntries = Object.entries(errors).filter(([, message]) => message !== undefined);
-    const control = (error: string | undefined) => `${controlClassName} ${controlBorder(error)}`;
+    const errorEntries = Object.entries(errors).filter(
+      ([, message]) => message !== undefined,
+    );
+    const control = (error: string | undefined) =>
+      `${controlClassName} ${controlBorder(error)}`;
 
     return (
       <>
@@ -980,10 +1097,20 @@ function DashboardProfileEditPage() {
                   : 'bg-marche-canvas text-marche-muted'
             }`}
           >
-            {profile.publishStatus === 'public' ? '公開中' : isSuspended ? '掲載停止中' : '非公開'}
+            {profile.publishStatus === 'public'
+              ? '公開中'
+              : isSuspended
+                ? '掲載停止中'
+                : '非公開'}
           </span>
-          <span className="text-marche-muted">最終保存：{dateTimeLabel(profile.updatedAt)}</span>
-          {isDirty && <span className="font-bold text-marche-orange">保存していない変更があります</span>}
+          <span className="text-marche-muted">
+            最終保存：{dateTimeLabel(profile.updatedAt)}
+          </span>
+          {isDirty && (
+            <span className="font-bold text-marche-orange">
+              保存していない変更があります
+            </span>
+          )}
         </div>
 
         {isSuspended && (
@@ -991,7 +1118,9 @@ function DashboardProfileEditPage() {
             role="alert"
             className="mb-5 box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
           >
-            <p className="m-0 font-bold text-marche-red">現在、運営により掲載を停止しています。</p>
+            <p className="m-0 font-bold text-marche-red">
+              現在、運営により掲載を停止しています。
+            </p>
             <p className="m-0 mt-1 text-marche-muted">
               プロフィールの内容は編集できますが、公開状態は変更できません。くわしくは運営にお問い合わせください。
             </p>
@@ -1057,7 +1186,9 @@ function DashboardProfileEditPage() {
                 item={coverImage}
                 error={errors.coverImage}
                 shape="wide"
-                onSelect={(file) => selectSingle('coverImage', setCoverImage, file)}
+                onSelect={(file) =>
+                  selectSingle('coverImage', setCoverImage, file)
+                }
                 onRemove={() => removeSingle('coverImage', setCoverImage)}
               />
               <SingleImageField
@@ -1067,7 +1198,9 @@ function DashboardProfileEditPage() {
                 item={profileImage}
                 error={errors.profileImage}
                 shape="round"
-                onSelect={(file) => selectSingle('profileImage', setProfileImage, file)}
+                onSelect={(file) =>
+                  selectSingle('profileImage', setProfileImage, file)
+                }
                 onRemove={() => removeSingle('profileImage', setProfileImage)}
               />
               <GalleryField
@@ -1082,22 +1215,39 @@ function DashboardProfileEditPage() {
             <FormSection title="基本情報">
               <dl className="m-0 grid grid-cols-1 gap-3 rounded-xl bg-marche-canvas p-4 sm:grid-cols-3">
                 <ReadOnlyItem label="事業者名" value={profile.businessName} />
-                <ReadOnlyItem label="代表者名" value={profile.representativeName} />
-                <ReadOnlyItem label="ジャンル" value={GENRE_LABELS[profile.genre]} />
+                <ReadOnlyItem
+                  label="代表者名"
+                  value={profile.representativeName}
+                />
+                <ReadOnlyItem
+                  label="ジャンル"
+                  value={GENRE_LABELS[profile.genre]}
+                />
                 <p className="m-0 text-xs text-marche-muted sm:col-span-3">
                   事業者名・代表者名・ジャンルを変更したい場合は、運営にお問い合わせください。
                 </p>
               </dl>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field id="profile-prefectureId" label="都道府県" required error={errors.prefectureId}>
+                <Field
+                  id="profile-prefectureId"
+                  label="都道府県"
+                  required
+                  error={errors.prefectureId}
+                >
                   <select
                     id="profile-prefectureId"
                     aria-invalid={errors.prefectureId !== undefined}
-                    aria-describedby={describedBy('profile-prefectureId', false, errors.prefectureId)}
+                    aria-describedby={describedBy(
+                      'profile-prefectureId',
+                      false,
+                      errors.prefectureId,
+                    )}
                     className={control(errors.prefectureId)}
                     value={values.prefectureId}
-                    onChange={(event) => updateValue('prefectureId', event.target.value)}
+                    onChange={(event) =>
+                      updateValue('prefectureId', event.target.value)
+                    }
                   >
                     <option value="">選んでください</option>
                     {PREFECTURES.map((prefecture) => (
@@ -1120,10 +1270,16 @@ function DashboardProfileEditPage() {
                     maxLength={50}
                     autoComplete="address-level2"
                     aria-invalid={errors.city !== undefined}
-                    aria-describedby={describedBy('profile-city', true, errors.city)}
+                    aria-describedby={describedBy(
+                      'profile-city',
+                      true,
+                      errors.city,
+                    )}
                     className={control(errors.city)}
                     value={values.city}
-                    onChange={(event) => updateValue('city', event.target.value)}
+                    onChange={(event) =>
+                      updateValue('city', event.target.value)
+                    }
                   />
                 </Field>
               </div>
@@ -1140,10 +1296,16 @@ function DashboardProfileEditPage() {
                   type="text"
                   maxLength={100}
                   aria-invalid={errors.productionItems !== undefined}
-                  aria-describedby={describedBy('profile-productionItems', true, errors.productionItems)}
+                  aria-describedby={describedBy(
+                    'profile-productionItems',
+                    true,
+                    errors.productionItems,
+                  )}
                   className={control(errors.productionItems)}
                   value={values.productionItems}
-                  onChange={(event) => updateValue('productionItems', event.target.value)}
+                  onChange={(event) =>
+                    updateValue('productionItems', event.target.value)
+                  }
                 />
               </Field>
 
@@ -1158,7 +1320,11 @@ function DashboardProfileEditPage() {
                   id="profile-intro"
                   rows={4}
                   aria-invalid={errors.intro !== undefined}
-                  aria-describedby={describedBy('profile-intro', true, errors.intro)}
+                  aria-describedby={describedBy(
+                    'profile-intro',
+                    true,
+                    errors.intro,
+                  )}
                   className={`${control(errors.intro)} min-h-28 resize-y leading-relaxed`}
                   value={values.intro}
                   onChange={(event) => updateValue('intro', event.target.value)}
@@ -1179,10 +1345,16 @@ function DashboardProfileEditPage() {
                     maxLength={4}
                     placeholder="例）2022"
                     aria-invalid={errors.careerStartYear !== undefined}
-                    aria-describedby={describedBy('profile-careerStartYear', true, errors.careerStartYear)}
+                    aria-describedby={describedBy(
+                      'profile-careerStartYear',
+                      true,
+                      errors.careerStartYear,
+                    )}
                     className={control(errors.careerStartYear)}
                     value={values.careerStartYear}
-                    onChange={(event) => updateValue('careerStartYear', event.target.value)}
+                    onChange={(event) =>
+                      updateValue('careerStartYear', event.target.value)
+                    }
                   />
                 </Field>
                 <Field
@@ -1198,10 +1370,16 @@ function DashboardProfileEditPage() {
                     maxLength={4}
                     placeholder="例）1962"
                     aria-invalid={errors.foundedYear !== undefined}
-                    aria-describedby={describedBy('profile-foundedYear', true, errors.foundedYear)}
+                    aria-describedby={describedBy(
+                      'profile-foundedYear',
+                      true,
+                      errors.foundedYear,
+                    )}
                     className={control(errors.foundedYear)}
                     value={values.foundedYear}
-                    onChange={(event) => updateValue('foundedYear', event.target.value)}
+                    onChange={(event) =>
+                      updateValue('foundedYear', event.target.value)
+                    }
                   />
                 </Field>
               </div>
@@ -1213,7 +1391,9 @@ function DashboardProfileEditPage() {
                 label="体験の受け入れ"
                 description="生産者ページに「体験受け入れ中」と表示されます。"
                 checked={values.acceptsExperience}
-                onChange={(checked) => updateValue('acceptsExperience', checked)}
+                onChange={(checked) =>
+                  updateValue('acceptsExperience', checked)
+                }
               />
               <CheckboxField
                 id="profile-recruiting"
@@ -1237,36 +1417,58 @@ function DashboardProfileEditPage() {
                     ['これからの目標', profile.goal],
                   ] as const
                 ).map(([label, text]) => (
-                  <div key={label} className="rounded-xl bg-marche-canvas px-4 py-3">
-                    <dt className="text-xs font-bold text-marche-muted">{label}</dt>
+                  <div
+                    key={label}
+                    className="rounded-xl bg-marche-canvas px-4 py-3"
+                  >
+                    <dt className="text-xs font-bold text-marche-muted">
+                      {label}
+                    </dt>
                     <dd className="m-0 mt-1 text-sm [overflow-wrap:anywhere]">
-                      {text === null || text === '' ? <span className="text-marche-muted">未入力</span> : text}
+                      {text === null || text === '' ? (
+                        <span className="text-marche-muted">未入力</span>
+                      ) : (
+                        text
+                      )}
                     </dd>
                   </div>
                 ))}
               </dl>
-              <Link to="/dashboard/story" className="self-start text-sm font-bold text-marche-green">
+              <Link
+                to="/dashboard/story"
+                className="self-start text-sm font-bold text-marche-green"
+              >
                 ストーリー編集で変更する →
               </Link>
             </FormSection>
 
             {!isSuspended && (
               <FormSection title="公開設定">
-                <div id="profile-publishStatus" tabIndex={-1} className="outline-none">
+                <div
+                  id="profile-publishStatus"
+                  tabIndex={-1}
+                  className="outline-none"
+                >
                   <PublishStatusField
                     options={STATUS_OPTIONS}
                     value={values.publishStatus as EditableStatus}
                     onChange={(value) => updateValue('publishStatus', value)}
                   />
                   {errors.publishStatus !== undefined && (
-                    <p className="m-0 mt-2 text-xs font-bold text-marche-red">{errors.publishStatus}</p>
+                    <p className="m-0 mt-2 text-xs font-bold text-marche-red">
+                      {errors.publishStatus}
+                    </p>
                   )}
                 </div>
               </FormSection>
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <DashboardButton type="submit" disabled={isSaving} className="min-h-11 px-8">
+              <DashboardButton
+                type="submit"
+                disabled={isSaving}
+                className="min-h-11 px-8"
+              >
                 {isSaving ? '保存中…' : '保存する'}
               </DashboardButton>
               {isDirty && (
@@ -1274,7 +1476,9 @@ function DashboardProfileEditPage() {
                   variant="secondary"
                   disabled={isSaving}
                   onClick={() => {
-                    [profileImage, coverImage, ...gallery].forEach(releasePreview);
+                    [profileImage, coverImage, ...gallery].forEach(
+                      releasePreview,
+                    );
                     resetForm(profile);
                     setSubmitError(null);
                   }}
@@ -1286,7 +1490,9 @@ function DashboardProfileEditPage() {
             </div>
           </form>
 
-          <div className={`min-w-0 ${mobileView === 'preview' ? 'block' : 'hidden xl:block'}`}>
+          <div
+            className={`min-w-0 ${mobileView === 'preview' ? 'block' : 'hidden xl:block'}`}
+          >
             <ProfilePreview
               profile={profile}
               values={values}
@@ -1307,7 +1513,10 @@ function DashboardProfileEditPage() {
         生産者ページでお客さまに表示される内容です。
       </p>
       {renderBody()}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-6 z-50 flex justify-center">
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-4 bottom-6 z-50 flex justify-center"
+      >
         {toast !== null && (
           <p className="m-0 max-w-full rounded-xl bg-marche-ink px-5 py-3 text-sm font-bold text-white shadow-lg">
             {toast}

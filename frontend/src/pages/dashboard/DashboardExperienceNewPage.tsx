@@ -1,7 +1,10 @@
 import { Link, useNavigate } from 'react-router';
 import { useAtomValue } from 'jotai';
 
-import { createExperience, newIdempotencyKey } from '../../api/dashboardExperienceApi';
+import {
+  createExperience,
+  newIdempotencyKey,
+} from '../../api/dashboardExperienceApi';
 import DashboardExperienceForm from '../../components/DashboardExperienceForm';
 import { userInfoAtom } from '../../stores/userAtom';
 import type { ExperienceInput } from '../../types/dashboardExperience';
@@ -17,7 +20,10 @@ function DashboardExperienceNewPage() {
   const handleSubmit = async (input: ExperienceInput) => {
     // 失敗時は ApiError のまま投げ、フォーム側でエラーを表示する
     const { data } = await createExperience(input, newIdempotencyKey());
-    const action = input.publishStatus === 'public' ? '公開しました' : '下書きとして保存しました';
+    const action =
+      input.publishStatus === 'public'
+        ? '公開しました'
+        : '下書きとして保存しました';
 
     // 予約枠は体験の登録後に追加するため、編集画面の予約枠へ進む
     navigate(`/dashboard/experiences/${data.id}/edit`, {
@@ -43,7 +49,10 @@ function DashboardExperienceNewPage() {
       </header>
 
       {canManage ? (
-        <DashboardExperienceForm onSubmit={handleSubmit} cancelTo={EXPERIENCE_LIST_PATH} />
+        <DashboardExperienceForm
+          onSubmit={handleSubmit}
+          cancelTo={EXPERIENCE_LIST_PATH}
+        />
       ) : (
         <p className="m-0 box-border rounded-2xl border border-solid border-marche-line bg-white p-5 text-sm">
           体験の登録・管理は、生産者登録が承認されると使えるようになります。
