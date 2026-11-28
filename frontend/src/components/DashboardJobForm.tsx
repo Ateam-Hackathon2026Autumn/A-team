@@ -32,11 +32,13 @@ import {
   Field,
   FormSection,
   PublishStatusField,
+  type PublishStatusOption,
+} from './DashboardFormParts';
+import {
   controlBorder,
   controlClassName,
   describedBy,
-  type PublishStatusOption,
-} from './DashboardFormParts';
+} from './dashboardFormValues';
 import { PlusIcon } from './DashboardIcons';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -64,7 +66,6 @@ type JobFormValues = {
 
 // 勤務日1行分（id は登録済みの勤務日だけ持つ）
 type WorkDateRow = {
-  // 画面内だけで使うID
   localId: number;
   id?: number;
   workDate: string;
@@ -78,7 +79,12 @@ type WorkDateRow = {
 // カバー写真（1枚まで）
 type CoverImage =
   | { kind: 'saved'; key: string; previewUrl: string | null }
-  | { kind: 'new'; previewUrl: string; status: 'uploading' | 'done' | 'error'; key: string | null };
+  | {
+      kind: 'new';
+      previewUrl: string;
+      status: 'uploading' | 'done' | 'error';
+      key: string | null;
+    };
 
 type FieldName = keyof JobFormValues | 'workDates' | 'coverImage';
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -107,7 +113,11 @@ const publishStatusOptions: PublishStatusOption<JobWritableStatus>[] = [
     label: '公開',
     description: 'お仕事を探している方の画面に表示し、応募を受け付けます。',
   },
-  { value: 'private', label: '非公開', description: 'お仕事を探している方の画面には表示しません。' },
+  {
+    value: 'private',
+    label: '非公開',
+    description: 'お仕事を探している方の画面には表示しません。',
+  },
   { value: 'draft', label: '下書き', description: '作成中として保存します。' },
 ];
 
@@ -155,7 +165,10 @@ function toFormValues(job: DashboardJob): JobFormValues {
   };
 }
 
-function toWorkDateRows(job: DashboardJob, lockedIds: ReadonlySet<number>): WorkDateRow[] {
+function toWorkDateRows(
+  job: DashboardJob,
+  lockedIds: ReadonlySet<number>,
+): WorkDateRow[] {
   return job.workDates.map((day, index) => ({
     localId: index + 1,
     id: day.id,
@@ -196,7 +209,9 @@ function validateRequiredText(value: string, label: string, maxLength: number) {
     return `${label}を入力してください。`;
   }
 
-  return text.length > maxLength ? `${label}は${maxLength}文字以内で入力してください。` : undefined;
+  return text.length > maxLength
+    ? `${label}は${maxLength}文字以内で入力してください。`
+    : undefined;
 }
 
 function validateLines(value: string, label: string) {
@@ -211,7 +226,10 @@ function validateLines(value: string, label: string) {
     : undefined;
 }
 
-function validateWorkDates(rows: WorkDateRow[], values: JobFormValues): string | undefined {
+function validateWorkDates(
+  rows: WorkDateRow[],
+  values: JobFormValues,
+): string | undefined {
   const today = todayInJapan();
   const { slots, periodStart, periodEnd } = values;
 
@@ -232,7 +250,11 @@ function validateWorkDates(rows: WorkDateRow[], values: JobFormValues): string |
     return '同じ日付の勤務日が重複しています。';
   }
 
-  if (rows.some((row) => row.workDate !== row.originalDate && row.workDate < today)) {
+  if (
+    rows.some(
+      (row) => row.workDate !== row.originalDate && row.workDate < today,
+    )
+  ) {
     return '新しく追加・変更する勤務日は今日以降にしてください。';
   }
 
@@ -240,7 +262,10 @@ function validateWorkDates(rows: WorkDateRow[], values: JobFormValues): string |
     return '勤務日ごとの必要人数を1以上の半角数字で入力してください。';
   }
 
-  if (isCount(slots) && rows.some((row) => Number(row.neededCount) > Number(slots))) {
+  if (
+    isCount(slots) &&
+    rows.some((row) => Number(row.neededCount) > Number(slots))
+  ) {
     return '勤務日ごとの必要人数は募集人数以下にしてください。';
   }
 
@@ -284,7 +309,11 @@ function validate(
     errors.slots = '募集人数を1以上の半角数字で入力してください。';
   }
 
-  if (values.periodStart !== '' && values.periodEnd !== '' && values.periodStart > values.periodEnd) {
+  if (
+    values.periodStart !== '' &&
+    values.periodEnd !== '' &&
+    values.periodStart > values.periodEnd
+  ) {
     errors.periodEnd = '募集終了日は募集開始日以降にしてください。';
   }
 
@@ -295,7 +324,8 @@ function validate(
     values.termType !== 'long' &&
     !rows.some((row) => row.workDate >= todayInJapan())
   ) {
-    errors.workDates = '単発・短期のお仕事を公開するには、今日以降の勤務日を1日以上追加してください。';
+    errors.workDates =
+      '単発・短期のお仕事を公開するには、今日以降の勤務日を1日以上追加してください。';
   }
 
   return Object.fromEntries(
@@ -391,10 +421,18 @@ function DashboardJobForm({
     isEdit ? toWorkDateRows(job, lockedWorkDateIds) : [],
   );
   const [cover, setCover] = useState<CoverImage | null>(() =>
-    job?.coverImage ? { kind: 'saved', key: job.coverImage, previewUrl: job.coverImageUrl ?? null } : null,
+    job?.coverImage
+      ? {
+          kind: 'saved',
+          key: job.coverImage,
+          previewUrl: job.coverImageUrl ?? null,
+        }
+      : null,
   );
   const [publishStatus, setPublishStatus] = useState<JobWritableStatus>(
-    job !== undefined && job.publishStatus !== 'suspended' ? job.publishStatus : 'draft',
+    job !== undefined && job.publishStatus !== 'suspended'
+      ? job.publishStatus
+      : 'draft',
   );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -411,13 +449,20 @@ function DashboardJobForm({
 
   useEffect(() => () => releasePreview(coverRef.current), []);
 
-  const setValue = <K extends keyof JobFormValues>(name: K, value: JobFormValues[K]) => {
+  const setValue = <K extends keyof JobFormValues>(
+    name: K,
+    value: JobFormValues[K],
+  ) => {
     setValues((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: undefined }));
   };
 
   const updateRow = (localId: number, change: Partial<WorkDateRow>) => {
-    setRows((current) => current.map((row) => (row.localId === localId ? { ...row, ...change } : row)));
+    setRows((current) =>
+      current.map((row) =>
+        row.localId === localId ? { ...row, ...change } : row,
+      ),
+    );
     setErrors((current) => ({ ...current, workDates: undefined }));
   };
 
@@ -436,7 +481,10 @@ function DashboardJobForm({
     ]);
     setErrors((current) => ({ ...current, workDates: undefined }));
     // 追加した行の日付欄へ移動する
-    window.setTimeout(() => document.getElementById(`job-workDate-${localId}`)?.focus(), 0);
+    window.setTimeout(
+      () => document.getElementById(`job-workDate-${localId}`)?.focus(),
+      0,
+    );
   };
 
   const removeRow = (localId: number) => {
@@ -453,7 +501,10 @@ function DashboardJobForm({
       return;
     }
 
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type) || file.size > MAX_IMAGE_BYTES) {
+    if (
+      !ACCEPTED_IMAGE_TYPES.includes(file.type) ||
+      file.size > MAX_IMAGE_BYTES
+    ) {
       setErrors((current) => ({
         ...current,
         coverImage: 'JPEG・PNG で 5MB 以下の写真を選んでください。',
@@ -498,7 +549,8 @@ function DashboardJobForm({
     if (cover?.kind === 'new' && cover.status === 'error') {
       setErrors((current) => ({
         ...current,
-        coverImage: 'アップロードに失敗しました。写真を削除するか、選び直してください。',
+        coverImage:
+          'アップロードに失敗しました。写真を削除するか、選び直してください。',
       }));
       document.getElementById('job-coverImage')?.focus();
       return;
@@ -508,14 +560,18 @@ function DashboardJobForm({
     const nextErrors = validate(values, rows, isSuspended ? null : status);
     setErrors(nextErrors);
 
-    const firstError = FIELD_ORDER.find((name) => nextErrors[name] !== undefined);
+    const firstError = FIELD_ORDER.find(
+      (name) => nextErrors[name] !== undefined,
+    );
 
     if (firstError !== undefined) {
       setFormError('入力内容を確認してください。');
       // 勤務日のエラーは、追加ボタンではなく最初の（変更できる）日付欄へ移動する
       const target =
         (firstError === 'workDates'
-          ? document.querySelector<HTMLElement>('input[id^="job-workDate-"]:not(:disabled)')
+          ? document.querySelector<HTMLElement>(
+              'input[id^="job-workDate-"]:not(:disabled)',
+            )
           : null) ?? document.getElementById(`job-${firstError}`);
       target?.focus();
       return;
@@ -546,7 +602,9 @@ function DashboardJobForm({
         setErrors(serverErrors);
         setFormError(error.message);
       } else {
-        setFormError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setFormError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
 
       setSubmitting(null);
@@ -626,7 +684,9 @@ function DashboardJobForm({
 
       {lockedWorkDateIds.size > 0 && (
         <p className="m-0 box-border rounded-2xl border border-solid border-marche-orange/40 bg-marche-orange/15 p-4 text-sm leading-relaxed">
-          <span className="font-bold">応募者が希望している勤務日があります。</span>
+          <span className="font-bold">
+            応募者が希望している勤務日があります。
+          </span>
           その勤務日は、削除や日付の変更ができません（必要人数は変えられます）。
           報酬や勤務時間などを変える場合は、応募者にも連絡してください。
         </p>
@@ -634,8 +694,12 @@ function DashboardJobForm({
 
       <FormSection title="写真">
         <div>
-          <p className="m-0 text-sm">求人一覧・詳細に表示する写真を1枚登録できます。</p>
-          <p className="m-0 text-xs text-marche-muted">JPEG・PNG、5MB まで。なくても登録できます。</p>
+          <p className="m-0 text-sm">
+            求人一覧・詳細に表示する写真を1枚登録できます。
+          </p>
+          <p className="m-0 text-xs text-marche-muted">
+            JPEG・PNG、5MB まで。なくても登録できます。
+          </p>
         </div>
 
         {cover === null ? (
@@ -643,7 +707,11 @@ function DashboardJobForm({
             id="job-coverImage"
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            aria-describedby={errors.coverImage === undefined ? undefined : 'job-coverImage-error'}
+            aria-describedby={
+              errors.coverImage === undefined
+                ? undefined
+                : 'job-coverImage-error'
+            }
             className={`box-border flex aspect-[4/3] w-full max-w-xs cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-marche-canvas p-0 text-sm font-bold text-marche-green font-[inherit] hover:bg-marche-sage disabled:cursor-not-allowed disabled:opacity-50 ${errors.coverImage === undefined ? 'border-marche-green/40' : 'border-marche-red'}`}
           >
             <PlusIcon />
@@ -689,7 +757,12 @@ function DashboardJobForm({
               >
                 写真を変更
               </DashboardButton>
-              <DashboardButton variant="danger" size="sm" disabled={isUploading} onClick={removeCover}>
+              <DashboardButton
+                variant="danger"
+                size="sm"
+                disabled={isUploading}
+                onClick={removeCover}
+              >
                 削除
               </DashboardButton>
             </div>
@@ -703,7 +776,10 @@ function DashboardJobForm({
           onChange={handleFileSelected}
         />
         {errors.coverImage !== undefined && (
-          <p id="job-coverImage-error" className="m-0 text-xs font-bold text-marche-red">
+          <p
+            id="job-coverImage-error"
+            className="m-0 text-xs font-bold text-marche-red"
+          >
             {errors.coverImage}
           </p>
         )}
@@ -713,13 +789,22 @@ function DashboardJobForm({
         {renderText('title', 'タイトル', 100, '例）りんごの収穫・選果スタッフ')}
 
         <div className="grid gap-5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
-          <Field id="job-prefectureId" label="勤務地（都道府県）" required error={errors.prefectureId}>
+          <Field
+            id="job-prefectureId"
+            label="勤務地（都道府県）"
+            required
+            error={errors.prefectureId}
+          >
             <select
               id="job-prefectureId"
               value={values.prefectureId}
               onChange={(event) => setValue('prefectureId', event.target.value)}
               aria-invalid={errors.prefectureId !== undefined}
-              aria-describedby={describedBy('job-prefectureId', false, errors.prefectureId)}
+              aria-describedby={describedBy(
+                'job-prefectureId',
+                false,
+                errors.prefectureId,
+              )}
               className={`${controlClassName} ${controlBorder(errors.prefectureId)} disabled:bg-marche-canvas disabled:text-marche-muted`}
             >
               <option value="">選んでください</option>
@@ -731,7 +816,12 @@ function DashboardJobForm({
             </select>
           </Field>
 
-          {renderText('workPlace', '勤務地', 200, '例）長野県安曇野市 山本農園 りんご園')}
+          {renderText(
+            'workPlace',
+            '勤務地',
+            200,
+            '例）長野県安曇野市 山本農園 りんご園',
+          )}
         </div>
 
         <Field
@@ -748,14 +838,21 @@ function DashboardJobForm({
             value={values.description}
             onChange={(event) => setValue('description', event.target.value)}
             aria-invalid={errors.description !== undefined}
-            aria-describedby={describedBy('job-description', true, errors.description)}
+            aria-describedby={describedBy(
+              'job-description',
+              true,
+              errors.description,
+            )}
             className={`${controlClassName} ${controlBorder(errors.description)} resize-y disabled:bg-marche-canvas disabled:text-marche-muted`}
           />
         </Field>
 
         <fieldset className="m-0 min-w-0 border-0 p-0">
           <legend className="text-sm font-bold">
-            期間<span className="ml-2 text-xs font-normal text-marche-red">必須</span>
+            期間
+            <span className="ml-2 text-xs font-normal text-marche-red">
+              必須
+            </span>
           </legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {termTypes.map((termType) => (
@@ -792,7 +889,9 @@ function DashboardJobForm({
             <select
               id="job-payUnit"
               value={values.payUnit}
-              onChange={(event) => setValue('payUnit', event.target.value as JobPayUnit)}
+              onChange={(event) =>
+                setValue('payUnit', event.target.value as JobPayUnit)
+              }
               className={`${controlClassName} border-marche-line disabled:bg-marche-canvas disabled:text-marche-muted`}
             >
               {payUnits.map((payUnit) => (
@@ -803,7 +902,12 @@ function DashboardJobForm({
             </select>
           </Field>
 
-          <Field id="job-payAmount" label="報酬額" required error={errors.payAmount}>
+          <Field
+            id="job-payAmount"
+            label="報酬額"
+            required
+            error={errors.payAmount}
+          >
             <div className="flex items-center gap-2">
               <input
                 id="job-payAmount"
@@ -813,7 +917,11 @@ function DashboardJobForm({
                 value={values.payAmount}
                 onChange={(event) => setValue('payAmount', event.target.value)}
                 aria-invalid={errors.payAmount !== undefined}
-                aria-describedby={describedBy('job-payAmount', false, errors.payAmount)}
+                aria-describedby={describedBy(
+                  'job-payAmount',
+                  false,
+                  errors.payAmount,
+                )}
                 className={`${controlClassName} ${controlBorder(errors.payAmount)} disabled:bg-marche-canvas disabled:text-marche-muted`}
               />
               <span className="shrink-0 text-sm">円</span>
@@ -822,7 +930,12 @@ function DashboardJobForm({
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          {renderText('workHours', '勤務時間', 50, '例）8:00〜15:00（休憩1時間）')}
+          {renderText(
+            'workHours',
+            '勤務時間',
+            50,
+            '例）8:00〜15:00（休憩1時間）',
+          )}
 
           <Field
             id="job-slots"
@@ -861,7 +974,11 @@ function DashboardJobForm({
               value={values.periodStart}
               onChange={(event) => setValue('periodStart', event.target.value)}
               aria-invalid={errors.periodStart !== undefined}
-              aria-describedby={describedBy('job-periodStart', true, errors.periodStart)}
+              aria-describedby={describedBy(
+                'job-periodStart',
+                true,
+                errors.periodStart,
+              )}
               className={`${controlClassName} ${controlBorder(errors.periodStart)} disabled:bg-marche-canvas disabled:text-marche-muted`}
             />
           </Field>
@@ -877,7 +994,11 @@ function DashboardJobForm({
               value={values.periodEnd}
               onChange={(event) => setValue('periodEnd', event.target.value)}
               aria-invalid={errors.periodEnd !== undefined}
-              aria-describedby={describedBy('job-periodEnd', true, errors.periodEnd)}
+              aria-describedby={describedBy(
+                'job-periodEnd',
+                true,
+                errors.periodEnd,
+              )}
               className={`${controlClassName} ${controlBorder(errors.periodEnd)} disabled:bg-marche-canvas disabled:text-marche-muted`}
             />
           </Field>
@@ -886,7 +1007,8 @@ function DashboardJobForm({
 
       <FormSection title="勤務日">
         <p id="job-workDates-hint" className="m-0 text-sm">
-          応募者が希望日を選べるよう、勤務日と1日に必要な人数を登録します（{JOB_MAX_WORK_DATES}日まで）。
+          応募者が希望日を選べるよう、勤務日と1日に必要な人数を登録します（
+          {JOB_MAX_WORK_DATES}日まで）。
           <span className="block text-xs text-marche-muted">
             {values.termType === 'long'
               ? '長期のお仕事は勤務日を登録しません。'
@@ -897,7 +1019,8 @@ function DashboardJobForm({
         {rows.length > 0 && (
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {rows.map((row, index) => {
-              const isPast = row.originalDate !== undefined && row.originalDate < today;
+              const isPast =
+                row.originalDate !== undefined && row.originalDate < today;
               const dateId = `job-workDate-${row.localId}`;
               const countId = `job-neededCount-${row.localId}`;
 
@@ -906,7 +1029,10 @@ function DashboardJobForm({
                   key={row.localId}
                   className="box-border flex flex-wrap items-end gap-3 rounded-xl bg-marche-canvas p-3"
                 >
-                  <label htmlFor={dateId} className="flex min-w-0 flex-col gap-1 text-xs font-bold">
+                  <label
+                    htmlFor={dateId}
+                    className="flex min-w-0 flex-col gap-1 text-xs font-bold"
+                  >
                     勤務日{index + 1}
                     <input
                       id={dateId}
@@ -914,13 +1040,22 @@ function DashboardJobForm({
                       min={row.originalDate === undefined ? today : undefined}
                       disabled={row.hasApplicants || isPast}
                       value={row.workDate}
-                      onChange={(event) => updateRow(row.localId, { workDate: event.target.value })}
+                      onChange={(event) =>
+                        updateRow(row.localId, { workDate: event.target.value })
+                      }
                       aria-invalid={errors.workDates !== undefined}
-                      aria-describedby={errors.workDates === undefined ? undefined : 'job-workDates-error'}
+                      aria-describedby={
+                        errors.workDates === undefined
+                          ? undefined
+                          : 'job-workDates-error'
+                      }
                       className={`${controlClassName} ${controlBorder(errors.workDates)} w-auto text-sm font-normal disabled:bg-white disabled:text-marche-muted`}
                     />
                   </label>
-                  <label htmlFor={countId} className="flex min-w-0 flex-col gap-1 text-xs font-bold">
+                  <label
+                    htmlFor={countId}
+                    className="flex min-w-0 flex-col gap-1 text-xs font-bold"
+                  >
                     必要人数
                     <span className="flex items-center gap-2">
                       <input
@@ -929,10 +1064,16 @@ function DashboardJobForm({
                         inputMode="numeric"
                         value={row.neededCount}
                         onChange={(event) =>
-                          updateRow(row.localId, { neededCount: event.target.value })
+                          updateRow(row.localId, {
+                            neededCount: event.target.value,
+                          })
                         }
                         aria-invalid={errors.workDates !== undefined}
-                        aria-describedby={errors.workDates === undefined ? undefined : 'job-workDates-error'}
+                        aria-describedby={
+                          errors.workDates === undefined
+                            ? undefined
+                            : 'job-workDates-error'
+                        }
                         className={`${controlClassName} ${controlBorder(errors.workDates)} w-20 text-sm font-normal disabled:bg-white disabled:text-marche-muted`}
                       />
                       <span className="text-sm font-normal">人</span>
@@ -965,7 +1106,12 @@ function DashboardJobForm({
             id="job-workDates"
             variant="secondary"
             className="self-start"
-            aria-describedby={['job-workDates-hint', errors.workDates === undefined ? '' : 'job-workDates-error'].filter(Boolean).join(' ')}
+            aria-describedby={[
+              'job-workDates-hint',
+              errors.workDates === undefined ? '' : 'job-workDates-error',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             onClick={addRow}
           >
             <PlusIcon className="size-4" />
@@ -973,7 +1119,10 @@ function DashboardJobForm({
           </DashboardButton>
         )}
         {errors.workDates !== undefined && (
-          <p id="job-workDates-error" className="m-0 text-xs font-bold text-marche-red">
+          <p
+            id="job-workDates-error"
+            className="m-0 text-xs font-bold text-marche-red"
+          >
             {errors.workDates}
           </p>
         )}
@@ -986,7 +1135,12 @@ function DashboardJobForm({
           `1行に1つずつ書いてください（${JOB_MAX_LIST_ITEMS}行まで）。`,
           '18歳以上の方\n3日以上勤務できる方',
         )}
-        {renderLinesField('belongings', '持ち物', '1行に1つずつ書いてください。', '汚れてもよい服装\n長靴\n飲み物')}
+        {renderLinesField(
+          'belongings',
+          '持ち物',
+          '1行に1つずつ書いてください。',
+          '汚れてもよい服装\n長靴\n飲み物',
+        )}
         {renderLinesField(
           'notes',
           '注意事項',
@@ -1021,7 +1175,10 @@ function DashboardJobForm({
           キャンセル
         </DashboardButton>
         {isEdit ? (
-          <DashboardButton type="submit" disabled={submitting !== null || isUploading}>
+          <DashboardButton
+            type="submit"
+            disabled={submitting !== null || isUploading}
+          >
             {submitting !== null ? '保存中…' : '変更を保存'}
           </DashboardButton>
         ) : (

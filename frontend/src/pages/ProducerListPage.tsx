@@ -1,16 +1,27 @@
-import { useState } from "react";
-import { getProducers } from "../api/producerApi";
-import { usePublicContent } from "../hooks/usePublicContent";
-import { ContentPage, ContentStatus, EmptyContent, fieldClass, panelClass } from "../components/ui/ContentPage";
-import ProducerSummaryCard, { producerGenres } from "../components/producers/ProducerSummaryCard";
-import Button from "../components/ui/Button";
+import { useState } from 'react';
+import { getProducers } from '../api/producerApi';
+import { usePublicContent } from '../hooks/usePublicContent';
+import {
+  ContentPage,
+  ContentStatus,
+  EmptyContent,
+} from '../components/ui/ContentPage';
+import { fieldClass, panelClass } from '../components/ui/contentPageValues';
+import ProducerSummaryCard from '../components/producers/ProducerSummaryCard';
+import { producerGenres } from '../components/producers/producerLabels';
+import Button from '../components/ui/Button';
 
 export default function ProducerListPage() {
   const state = usePublicContent(getProducers);
-  const [region, setRegion] = useState("");
-  const [genre, setGenre] = useState("");
-  const [query, setQuery] = useState("");
-  const producers = state.data?.filter((p) => (!region || p.prefectureName === region) && (!genre || p.genre === genre) && `${p.businessName} ${p.productionItems} ${p.city}`.includes(query.trim()));
+  const [region, setRegion] = useState('');
+  const [genre, setGenre] = useState('');
+  const [query, setQuery] = useState('');
+  const producers = state.data?.filter(
+    (p) =>
+      (!region || p.prefectureName === region) &&
+      (!genre || p.genre === genre) &&
+      `${p.businessName} ${p.productionItems} ${p.city}`.includes(query.trim()),
+  );
   return (
     <ContentPage
       eyebrow="PRODUCERS"
@@ -36,9 +47,11 @@ export default function ProducerListPage() {
             className={`${fieldClass} mt-2`}
           >
             <option value="">すべての都道府県</option>
-            {[...new Set(state.data?.map((p) => p.prefectureName) ?? [])].map((name) => (
-              <option key={name}>{name}</option>
-            ))}
+            {[...new Set(state.data?.map((p) => p.prefectureName) ?? [])].map(
+              (name) => (
+                <option key={name}>{name}</option>
+              ),
+            )}
           </select>
         </label>
         <label className="text-sm font-bold">
@@ -50,10 +63,7 @@ export default function ProducerListPage() {
           >
             <option value="">すべてのジャンル</option>
             {Object.entries(producerGenres).map(([value, label]) => (
-              <option
-                key={value}
-                value={value}
-              >
+              <option key={value} value={value}>
                 {label}
               </option>
             ))}
@@ -62,10 +72,7 @@ export default function ProducerListPage() {
       </div>
       <ContentStatus {...state} />
       {producers && (
-        <p
-          role="status"
-          className="text-sm text-marche-muted"
-        >
+        <p role="status" className="text-sm text-marche-muted">
           {producers.length}件の生産者
         </p>
       )}
@@ -75,9 +82,9 @@ export default function ProducerListPage() {
           <Button
             variant="outline"
             onClick={() => {
-              setRegion("");
-              setGenre("");
-              setQuery("");
+              setRegion('');
+              setGenre('');
+              setQuery('');
             }}
           >
             条件をリセット
@@ -86,10 +93,7 @@ export default function ProducerListPage() {
       )}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {producers?.map((producer) => (
-          <ProducerSummaryCard
-            key={producer.id}
-            producer={producer}
-          />
+          <ProducerSummaryCard key={producer.id} producer={producer} />
         ))}
       </div>
     </ContentPage>

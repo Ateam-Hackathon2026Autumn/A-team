@@ -2,13 +2,13 @@ import type { RestMock } from '../../types';
 import { hoursFromNow } from '../../helpers';
 
 // 配送状況更新API PATCH /api/v1/dashboard/orders/:orderId/shipping
-//
+
 // 1回で箱（shipment）1件だけを更新し、更新後の箱を返す
 // ここでは注文 TM-1012 の箱を 未発送 → 発送済み にした結果（送り状番号を入力）
-//
+
 // 状態を変更できない（支払い未完了・逆戻り・キャンセル済みなど）（409）:
 //   { errorCode: 'SHIPMENT_STATE_CONFLICT', errorMsg: 'この注文は現在の状態では更新できません。' }
-//
+
 // 他の画面で先に更新されていた（412）:
 //   { errorCode: 'PRECONDITION_FAILED', errorMsg: '他の操作で更新されています。画面を再読み込みしてください。' }
 const dashboardOrderShippingUpdate: RestMock = {

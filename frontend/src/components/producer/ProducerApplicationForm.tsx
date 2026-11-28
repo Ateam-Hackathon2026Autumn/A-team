@@ -1,19 +1,24 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from 'react';
 import { Link } from 'react-router';
 
 import ApiError from '../../api/apiError';
 import { uploadImage } from '../../api/uploadApi';
+import { CheckboxField, Field, FormSection } from '../DashboardFormParts';
 import {
-  CheckboxField,
-  Field,
-  FormSection,
   controlBorder,
   controlClassName,
   describedBy,
-} from '../DashboardFormParts';
+} from '../dashboardFormValues';
 import Button from '../ui/Button';
-import { textLinkClass } from '../ui/ContentPage';
+import { textLinkClass } from '../ui/contentPageValues';
 import type { ProducerGenre } from '../../types/dashboardProfile';
+import { PRODUCER_GENRE_LABELS } from './producerGenreLabels';
 import type {
   MyProducerApplicationProducer,
   ProducerApplicationChanges,
@@ -23,12 +28,6 @@ import { PREFECTURES } from '../../utils/prefectures';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ['image/jpeg', 'image/png'];
-
-export const PRODUCER_GENRE_LABELS: Record<ProducerGenre, string> = {
-  agriculture: '農業',
-  livestock: '畜産',
-  fishery: '漁業',
-};
 
 type FormValues = {
   businessName: string;
@@ -75,7 +74,12 @@ let nextLocalId = 1;
 function singleImage(key: string | null, url: string | null): ImageItem | null {
   if (key === null) return null;
   const fallbackUrl = `https://picsum.photos/seed/${encodeURIComponent(key)}/800/600`;
-  return { localId: nextLocalId++, key, previewUrl: url ?? fallbackUrl, status: 'done' };
+  return {
+    localId: nextLocalId++,
+    key,
+    previewUrl: url ?? fallbackUrl,
+    status: 'done',
+  };
 }
 
 function releasePreview(item: ImageItem | null) {
@@ -84,7 +88,9 @@ function releasePreview(item: ImageItem | null) {
   }
 }
 
-function toInitialFormValues(initialProducer?: MyProducerApplicationProducer): FormValues {
+function toInitialFormValues(
+  initialProducer?: MyProducerApplicationProducer,
+): FormValues {
   if (!initialProducer) {
     return {
       businessName: '',
@@ -111,28 +117,40 @@ function toInitialFormValues(initialProducer?: MyProducerApplicationProducer): F
     intro: initialProducer.intro,
     acceptsExperience: initialProducer.acceptsExperience,
     recruiting: initialProducer.recruiting,
-    careerStartYear: initialProducer.careerStartYear === null ? '' : String(initialProducer.careerStartYear),
-    foundedYear: initialProducer.foundedYear === null ? '' : String(initialProducer.foundedYear),
+    careerStartYear:
+      initialProducer.careerStartYear === null
+        ? ''
+        : String(initialProducer.careerStartYear),
+    foundedYear:
+      initialProducer.foundedYear === null
+        ? ''
+        : String(initialProducer.foundedYear),
     applicationReason: initialProducer.applicationReason ?? '',
   };
 }
 
-const yearValue = (value: string) => (value.trim() === '' ? null : Number(value.trim()));
+const yearValue = (value: string) =>
+  value.trim() === '' ? null : Number(value.trim());
 
 function yearError(value: string, label: string): string | undefined {
   const text = value.trim();
   if (text === '') return undefined;
-  if (!/^\d{1,4}$/.test(text) || Number(text) < 1) return `${label}は西暦4桁までの数字で入力してください。`;
-  if (Number(text) > new Date().getFullYear()) return `${label}は今年以前の年を入力してください。`;
+  if (!/^\d{1,4}$/.test(text) || Number(text) < 1)
+    return `${label}は西暦4桁までの数字で入力してください。`;
+  if (Number(text) > new Date().getFullYear())
+    return `${label}は今年以前の年を入力してください。`;
   return undefined;
 }
 
 function validate(values: FormValues): ProducerApplicationFormErrors {
   const errors: ProducerApplicationFormErrors = {};
-  if (values.businessName.trim() === '') errors.businessName = '事業者名を入力してください。';
-  else if (values.businessName.trim().length > 100) errors.businessName = '事業者名は100文字以内で入力してください。';
+  if (values.businessName.trim() === '')
+    errors.businessName = '事業者名を入力してください。';
+  else if (values.businessName.trim().length > 100)
+    errors.businessName = '事業者名は100文字以内で入力してください。';
 
-  if (values.representativeName.trim() === '') errors.representativeName = '代表者名を入力してください。';
+  if (values.representativeName.trim() === '')
+    errors.representativeName = '代表者名を入力してください。';
   else if (values.representativeName.trim().length > 100) {
     errors.representativeName = '代表者名は100文字以内で入力してください。';
   }
@@ -141,17 +159,21 @@ function validate(values: FormValues): ProducerApplicationFormErrors {
     errors.genre = '業種を選んでください。';
   }
 
-  if (values.prefectureId === '') errors.prefectureId = '都道府県を選んでください。';
+  if (values.prefectureId === '')
+    errors.prefectureId = '都道府県を選んでください。';
 
   if (values.city.trim() === '') errors.city = '市区町村を入力してください。';
-  else if (values.city.trim().length > 50) errors.city = '市区町村は50文字以内で入力してください。';
+  else if (values.city.trim().length > 50)
+    errors.city = '市区町村は50文字以内で入力してください。';
 
-  if (values.productionItems.trim() === '') errors.productionItems = '生産品目を入力してください。';
+  if (values.productionItems.trim() === '')
+    errors.productionItems = '生産品目を入力してください。';
   else if (values.productionItems.trim().length > 100) {
     errors.productionItems = '生産品目は100文字以内で入力してください。';
   }
 
-  if (values.intro.trim() === '') errors.intro = 'ひとこと紹介を入力してください。';
+  if (values.intro.trim() === '')
+    errors.intro = 'ひとこと紹介を入力してください。';
 
   const career = yearError(values.careerStartYear, 'この仕事を始めた年');
   if (career !== undefined) errors.careerStartYear = career;
@@ -179,7 +201,9 @@ const API_FIELD_TO_FORM: Record<string, FieldName> = {
   applicationReason: 'applicationReason',
 };
 
-function errorsFromDetails(details: Record<string, string[]>): ProducerApplicationFormErrors {
+function errorsFromDetails(
+  details: Record<string, string[]>,
+): ProducerApplicationFormErrors {
   const errors: ProducerApplicationFormErrors = {};
   Object.entries(details).forEach(([key, messages]) => {
     const field = API_FIELD_TO_FORM[key];
@@ -191,7 +215,8 @@ function errorsFromDetails(details: Record<string, string[]>): ProducerApplicati
 }
 
 function fileError(file: File): string | null {
-  if (!IMAGE_TYPES.includes(file.type)) return 'JPEG または PNG の画像を選んでください。';
+  if (!IMAGE_TYPES.includes(file.type))
+    return 'JPEG または PNG の画像を選んでください。';
   if (file.size > MAX_IMAGE_BYTES) return '画像は5MB以下にしてください。';
   return null;
 }
@@ -215,7 +240,10 @@ function toInput(
     foundedYear: yearValue(values.foundedYear),
     profileImage: profileImage?.key ?? null,
     coverImage: coverImage?.key ?? null,
-    applicationReason: values.applicationReason.trim() === '' ? null : values.applicationReason.trim(),
+    applicationReason:
+      values.applicationReason.trim() === ''
+        ? null
+        : values.applicationReason.trim(),
   };
 }
 
@@ -224,19 +252,29 @@ function buildChanges(
   full: ProducerApplicationInput,
 ): ProducerApplicationChanges {
   const changes: ProducerApplicationChanges = {};
-  if (full.businessName !== initial.businessName) changes.businessName = full.businessName;
-  if (full.representativeName !== initial.representativeName) changes.representativeName = full.representativeName;
+  if (full.businessName !== initial.businessName)
+    changes.businessName = full.businessName;
+  if (full.representativeName !== initial.representativeName)
+    changes.representativeName = full.representativeName;
   if (full.genre !== initial.genre) changes.genre = full.genre;
-  if (full.prefectureId !== initial.prefectureId) changes.prefectureId = full.prefectureId;
+  if (full.prefectureId !== initial.prefectureId)
+    changes.prefectureId = full.prefectureId;
   if (full.city !== initial.city) changes.city = full.city;
-  if (full.productionItems !== initial.productionItems) changes.productionItems = full.productionItems;
+  if (full.productionItems !== initial.productionItems)
+    changes.productionItems = full.productionItems;
   if (full.intro !== initial.intro) changes.intro = full.intro;
-  if (full.acceptsExperience !== initial.acceptsExperience) changes.acceptsExperience = full.acceptsExperience;
-  if (full.recruiting !== initial.recruiting) changes.recruiting = full.recruiting;
-  if ((full.careerStartYear ?? null) !== initial.careerStartYear) changes.careerStartYear = full.careerStartYear ?? null;
-  if ((full.foundedYear ?? null) !== initial.foundedYear) changes.foundedYear = full.foundedYear ?? null;
-  if ((full.profileImage ?? null) !== initial.profileImage) changes.profileImage = full.profileImage ?? null;
-  if ((full.coverImage ?? null) !== initial.coverImage) changes.coverImage = full.coverImage ?? null;
+  if (full.acceptsExperience !== initial.acceptsExperience)
+    changes.acceptsExperience = full.acceptsExperience;
+  if (full.recruiting !== initial.recruiting)
+    changes.recruiting = full.recruiting;
+  if ((full.careerStartYear ?? null) !== initial.careerStartYear)
+    changes.careerStartYear = full.careerStartYear ?? null;
+  if ((full.foundedYear ?? null) !== initial.foundedYear)
+    changes.foundedYear = full.foundedYear ?? null;
+  if ((full.profileImage ?? null) !== initial.profileImage)
+    changes.profileImage = full.profileImage ?? null;
+  if ((full.coverImage ?? null) !== initial.coverImage)
+    changes.coverImage = full.coverImage ?? null;
   const reason = full.applicationReason ?? null;
   const initReason = initial.applicationReason ?? null;
   if (reason !== initReason) changes.applicationReason = reason;
@@ -284,7 +322,9 @@ function SingleImageUploadField({
       <div className="flex flex-wrap items-center gap-4">
         <div
           className={`relative shrink-0 overflow-hidden bg-marche-sage ${
-            shape === 'round' ? 'size-24 rounded-full' : 'aspect-[2/1] w-full max-w-72 rounded-xl'
+            shape === 'round'
+              ? 'size-24 rounded-full'
+              : 'aspect-[2/1] w-full max-w-72 rounded-xl'
           }`}
         >
           {item !== null ? (
@@ -305,7 +345,9 @@ function SingleImageUploadField({
               )}
             </>
           ) : (
-            <span className="grid size-full place-items-center text-xs text-marche-muted">未設定</span>
+            <span className="grid size-full place-items-center text-xs text-marche-muted">
+              未設定
+            </span>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -362,12 +404,20 @@ export default function ProducerApplicationForm({
   cancelTo,
   onSubmit,
 }: Props) {
-  const [values, setValues] = useState<FormValues>(() => toInitialFormValues(initialProducer));
+  const [values, setValues] = useState<FormValues>(() =>
+    toInitialFormValues(initialProducer),
+  );
   const [profileImage, setProfileImage] = useState<ImageItem | null>(() =>
-    singleImage(initialProducer?.profileImage ?? null, initialProducer?.profileImageUrl ?? null),
+    singleImage(
+      initialProducer?.profileImage ?? null,
+      initialProducer?.profileImageUrl ?? null,
+    ),
   );
   const [coverImage, setCoverImage] = useState<ImageItem | null>(() =>
-    singleImage(initialProducer?.coverImage ?? null, initialProducer?.coverImageUrl ?? null),
+    singleImage(
+      initialProducer?.coverImage ?? null,
+      initialProducer?.coverImageUrl ?? null,
+    ),
   );
   const [errors, setErrors] = useState<ProducerApplicationFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -380,7 +430,8 @@ export default function ProducerApplicationForm({
     }
   }, [submitError]);
 
-  const isUploading = profileImage?.status === 'uploading' || coverImage?.status === 'uploading';
+  const isUploading =
+    profileImage?.status === 'uploading' || coverImage?.status === 'uploading';
 
   const clearError = (field: FieldName) => {
     setErrors((current) => {
@@ -391,7 +442,10 @@ export default function ProducerApplicationForm({
     });
   };
 
-  const updateValue = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
+  const updateValue = <K extends keyof FormValues>(
+    key: K,
+    value: FormValues[K],
+  ) => {
     setValues((current) => ({ ...current, [key]: value }));
     clearError(key as FieldName);
   };
@@ -420,12 +474,16 @@ export default function ProducerApplicationForm({
     uploadImage(file)
       .then(({ key }) =>
         setItem((current) =>
-          current?.localId === item.localId ? { ...current, key, status: 'done' } : current,
+          current?.localId === item.localId
+            ? { ...current, key, status: 'done' }
+            : current,
         ),
       )
       .catch(() =>
         setItem((current) =>
-          current?.localId === item.localId ? { ...current, status: 'error' } : current,
+          current?.localId === item.localId
+            ? { ...current, status: 'error' }
+            : current,
         ),
       );
   };
@@ -441,7 +499,10 @@ export default function ProducerApplicationForm({
     });
   };
 
-  const showErrors = (nextErrors: ProducerApplicationFormErrors, message: string) => {
+  const showErrors = (
+    nextErrors: ProducerApplicationFormErrors,
+    message: string,
+  ) => {
     setErrors(nextErrors);
     setSubmitError(null);
     window.setTimeout(() => setSubmitError(message), 0);
@@ -457,7 +518,8 @@ export default function ProducerApplicationForm({
     }
 
     const failedErrors: ProducerApplicationFormErrors = {};
-    const failedMsg = 'アップロードに失敗しました。もう一度選び直すか、外してください。';
+    const failedMsg =
+      'アップロードに失敗しました。もう一度選び直すか、外してください。';
     if (profileImage?.status === 'error') failedErrors.profileImage = failedMsg;
     if (coverImage?.status === 'error') failedErrors.coverImage = failedMsg;
 
@@ -485,20 +547,28 @@ export default function ProducerApplicationForm({
         const other = error.details.nonFieldErrors?.[0];
         showErrors(
           fieldErrors,
-          Object.keys(fieldErrors).length > 0 ? '入力内容を確認してください。' : (other ?? error.message),
+          Object.keys(fieldErrors).length > 0
+            ? '入力内容を確認してください。'
+            : (other ?? error.message),
         );
       } else if (error instanceof ApiError) {
         showErrors({}, error.message);
       } else {
-        showErrors({}, '通信に失敗しました。時間をおいて、もう一度お試しください。');
+        showErrors(
+          {},
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const errorEntries = Object.entries(errors).filter(([, message]) => message !== undefined);
-  const control = (error: string | undefined) => `${controlClassName} ${controlBorder(error)}`;
+  const errorEntries = Object.entries(errors).filter(
+    ([, message]) => message !== undefined,
+  );
+  const control = (error: string | undefined) =>
+    `${controlClassName} ${controlBorder(error)}`;
 
   return (
     <form
@@ -513,8 +583,12 @@ export default function ProducerApplicationForm({
           aria-label="運営からの確認コメント"
           className="box-border rounded-2xl border border-solid border-marche-orange bg-marche-orange/15 p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-ink">運営からのメッセージ（修正理由）</p>
-          <p className="m-0 mt-2 whitespace-pre-line text-marche-ink">{reviewComment}</p>
+          <p className="m-0 font-bold text-marche-ink">
+            運営からのメッセージ（修正理由）
+          </p>
+          <p className="m-0 mt-2 whitespace-pre-line text-marche-ink">
+            {reviewComment}
+          </p>
         </div>
       )}
 
@@ -555,10 +629,16 @@ export default function ProducerApplicationForm({
               maxLength={100}
               disabled={isSubmitting}
               aria-invalid={errors.businessName !== undefined}
-              aria-describedby={describedBy('app-businessName', true, errors.businessName)}
+              aria-describedby={describedBy(
+                'app-businessName',
+                true,
+                errors.businessName,
+              )}
               className={control(errors.businessName)}
               value={values.businessName}
-              onChange={(event) => updateValue('businessName', event.target.value)}
+              onChange={(event) =>
+                updateValue('businessName', event.target.value)
+              }
             />
           </Field>
 
@@ -575,10 +655,16 @@ export default function ProducerApplicationForm({
               maxLength={100}
               disabled={isSubmitting}
               aria-invalid={errors.representativeName !== undefined}
-              aria-describedby={describedBy('app-representativeName', true, errors.representativeName)}
+              aria-describedby={describedBy(
+                'app-representativeName',
+                true,
+                errors.representativeName,
+              )}
               className={control(errors.representativeName)}
               value={values.representativeName}
-              onChange={(event) => updateValue('representativeName', event.target.value)}
+              onChange={(event) =>
+                updateValue('representativeName', event.target.value)
+              }
             />
           </Field>
         </div>
@@ -591,9 +677,13 @@ export default function ProducerApplicationForm({
             aria-describedby={describedBy('app-genre', false, errors.genre)}
             className={control(errors.genre)}
             value={values.genre}
-            onChange={(event) => updateValue('genre', event.target.value as ProducerGenre)}
+            onChange={(event) =>
+              updateValue('genre', event.target.value as ProducerGenre)
+            }
           >
-            {(Object.entries(PRODUCER_GENRE_LABELS) as [ProducerGenre, string][]).map(([val, label]) => (
+            {(
+              Object.entries(PRODUCER_GENRE_LABELS) as [ProducerGenre, string][]
+            ).map(([val, label]) => (
               <option key={val} value={val}>
                 {label}
               </option>
@@ -602,15 +692,26 @@ export default function ProducerApplicationForm({
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="app-prefectureId" label="所在地の都道府県" required error={errors.prefectureId}>
+          <Field
+            id="app-prefectureId"
+            label="所在地の都道府県"
+            required
+            error={errors.prefectureId}
+          >
             <select
               id="app-prefectureId"
               disabled={isSubmitting}
               aria-invalid={errors.prefectureId !== undefined}
-              aria-describedby={describedBy('app-prefectureId', false, errors.prefectureId)}
+              aria-describedby={describedBy(
+                'app-prefectureId',
+                false,
+                errors.prefectureId,
+              )}
               className={control(errors.prefectureId)}
               value={values.prefectureId}
-              onChange={(event) => updateValue('prefectureId', event.target.value)}
+              onChange={(event) =>
+                updateValue('prefectureId', event.target.value)
+              }
             >
               <option value="">選んでください</option>
               {PREFECTURES.map((prefecture) => (
@@ -656,10 +757,16 @@ export default function ProducerApplicationForm({
             maxLength={100}
             disabled={isSubmitting}
             aria-invalid={errors.productionItems !== undefined}
-            aria-describedby={describedBy('app-productionItems', true, errors.productionItems)}
+            aria-describedby={describedBy(
+              'app-productionItems',
+              true,
+              errors.productionItems,
+            )}
             className={control(errors.productionItems)}
             value={values.productionItems}
-            onChange={(event) => updateValue('productionItems', event.target.value)}
+            onChange={(event) =>
+              updateValue('productionItems', event.target.value)
+            }
           />
         </Field>
 
@@ -697,10 +804,16 @@ export default function ProducerApplicationForm({
               disabled={isSubmitting}
               placeholder="例）2022"
               aria-invalid={errors.careerStartYear !== undefined}
-              aria-describedby={describedBy('app-careerStartYear', true, errors.careerStartYear)}
+              aria-describedby={describedBy(
+                'app-careerStartYear',
+                true,
+                errors.careerStartYear,
+              )}
               className={control(errors.careerStartYear)}
               value={values.careerStartYear}
-              onChange={(event) => updateValue('careerStartYear', event.target.value)}
+              onChange={(event) =>
+                updateValue('careerStartYear', event.target.value)
+              }
             />
           </Field>
 
@@ -718,10 +831,16 @@ export default function ProducerApplicationForm({
               disabled={isSubmitting}
               placeholder="例）1962"
               aria-invalid={errors.foundedYear !== undefined}
-              aria-describedby={describedBy('app-foundedYear', true, errors.foundedYear)}
+              aria-describedby={describedBy(
+                'app-foundedYear',
+                true,
+                errors.foundedYear,
+              )}
               className={control(errors.foundedYear)}
               value={values.foundedYear}
-              onChange={(event) => updateValue('foundedYear', event.target.value)}
+              onChange={(event) =>
+                updateValue('foundedYear', event.target.value)
+              }
             />
           </Field>
         </div>
@@ -764,7 +883,9 @@ export default function ProducerApplicationForm({
           error={errors.profileImage}
           shape="round"
           disabled={isSubmitting}
-          onSelect={(file) => selectSingle('profileImage', setProfileImage, file)}
+          onSelect={(file) =>
+            selectSingle('profileImage', setProfileImage, file)
+          }
           onRemove={() => removeSingle('profileImage', setProfileImage)}
         />
       </FormSection>
@@ -781,10 +902,16 @@ export default function ProducerApplicationForm({
             rows={4}
             disabled={isSubmitting}
             aria-invalid={errors.applicationReason !== undefined}
-            aria-describedby={describedBy('app-applicationReason', true, errors.applicationReason)}
+            aria-describedby={describedBy(
+              'app-applicationReason',
+              true,
+              errors.applicationReason,
+            )}
             className={`${control(errors.applicationReason)} min-h-28 resize-y leading-relaxed`}
             value={values.applicationReason}
-            onChange={(event) => updateValue('applicationReason', event.target.value)}
+            onChange={(event) =>
+              updateValue('applicationReason', event.target.value)
+            }
           />
         </Field>
       </FormSection>

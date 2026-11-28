@@ -22,11 +22,13 @@ import {
   Field,
   FormSection,
   PublishStatusField,
+  type PublishStatusOption,
+} from './DashboardFormParts';
+import {
   controlBorder,
   controlClassName,
   describedBy,
-  type PublishStatusOption,
-} from './DashboardFormParts';
+} from './dashboardFormValues';
 import { PlusIcon } from './DashboardIcons';
 import {
   EXPERIENCE_MAX_IMAGES,
@@ -62,9 +64,7 @@ type ExperienceFormValues = {
 type FieldName = keyof ExperienceFormValues | 'images';
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-// 画像1枚分（選んだ直後からアップロード完了まで）
 type ImageItem = {
-  // 画面内だけで使うID
   localId: number;
   previewUrl: string;
   status: 'uploading' | 'done' | 'error';
@@ -77,7 +77,11 @@ const publishStatusOptions: PublishStatusOption<ExperienceWritableStatus>[] = [
     label: '公開',
     description: 'お客さまの画面に表示し、予約枠から申し込めるようにします。',
   },
-  { value: 'private', label: '非公開', description: 'お客さまの画面には表示しません。' },
+  {
+    value: 'private',
+    label: '非公開',
+    description: 'お客さまの画面には表示しません。',
+  },
   { value: 'draft', label: '下書き', description: '作成中として保存します。' },
 ];
 
@@ -107,11 +111,14 @@ function toFormValues(experience: DashboardExperience): ExperienceFormValues {
     place: experience.place,
     description: experience.description,
     priceAdult: String(experience.priceAdult),
-    priceChild: experience.priceChild === null ? '' : String(experience.priceChild),
+    priceChild:
+      experience.priceChild === null ? '' : String(experience.priceChild),
     ageCondition: experience.ageCondition ?? '',
     familyOk: experience.familyOk,
     beginnerOk: experience.beginnerOk,
-    flow: (experience.flow ?? []).map(({ time, text }) => `${time} ${text}`).join('\n'),
+    flow: (experience.flow ?? [])
+      .map(({ time, text }) => `${time} ${text}`)
+      .join('\n'),
     belongings: lines(experience.belongings),
     notes: lines(experience.notes),
     cancelPolicy: experience.cancelPolicy,
@@ -185,11 +192,19 @@ const FLOW_LINE = /^((?:[01]\d|2[0-3]):[0-5]\d)\s+(.+)$/;
 
 function validateFlow(value: string): string | undefined {
   const items = toLines(value);
-  if (items.length > MAX_LIST_ITEMS) return `当日の流れは${MAX_LIST_ITEMS}行までにしてください。`;
-  if (items.some((item) => {
-    const match = FLOW_LINE.exec(item);
-    return match === null || match[2].trim().length === 0 || match[2].trim().length > MAX_LIST_ITEM_LENGTH;
-  })) return `当日の流れは「10:00 集合」の形式で、内容を${MAX_LIST_ITEM_LENGTH}文字以内で入力してください。`;
+  if (items.length > MAX_LIST_ITEMS)
+    return `当日の流れは${MAX_LIST_ITEMS}行までにしてください。`;
+  if (
+    items.some((item) => {
+      const match = FLOW_LINE.exec(item);
+      return (
+        match === null ||
+        match[2].trim().length === 0 ||
+        match[2].trim().length > MAX_LIST_ITEM_LENGTH
+      );
+    })
+  )
+    return `当日の流れは「10:00 集合」の形式で、内容を${MAX_LIST_ITEM_LENGTH}文字以内で入力してください。`;
   return undefined;
 }
 
@@ -206,7 +221,11 @@ function validate(values: ExperienceFormValues): FieldErrors {
     title: validateRequiredText(values.title, 'タイトル', 100),
     place: validateRequiredText(values.place, '開催場所', 200),
     description: validateRequiredText(values.description, '体験の説明', 10000),
-    cancelPolicy: validateRequiredText(values.cancelPolicy, 'キャンセルポリシー', 10000),
+    cancelPolicy: validateRequiredText(
+      values.cancelPolicy,
+      'キャンセルポリシー',
+      10000,
+    ),
     flow: validateFlow(values.flow),
     belongings: validateLines(values.belongings, '持ち物'),
     notes: validateLines(values.notes, '注意事項'),
@@ -356,7 +375,8 @@ function DashboardExperienceForm({
     const remaining = MAX_IMAGES - images.length;
     const accepted = files.filter(
       (file) =>
-        ACCEPTED_IMAGE_TYPES.includes(file.type) && file.size <= MAX_IMAGE_BYTES,
+        ACCEPTED_IMAGE_TYPES.includes(file.type) &&
+        file.size <= MAX_IMAGE_BYTES,
     );
 
     let message: string | undefined;
@@ -408,7 +428,8 @@ function DashboardExperienceForm({
     if (images.some(({ status: s }) => s === 'error')) {
       setErrors((current) => ({
         ...current,
-        images: 'アップロードに失敗した写真があります。削除してから、もう一度追加してください。',
+        images:
+          'アップロードに失敗した写真があります。削除してから、もう一度追加してください。',
       }));
       document.getElementById('experience-images')?.focus();
       return;
@@ -453,7 +474,9 @@ function DashboardExperienceForm({
         setErrors(serverErrors);
         setFormError(error.message);
       } else {
-        setFormError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setFormError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
 
       setSubmitting(null);
@@ -505,9 +528,12 @@ function DashboardExperienceForm({
       <FormSection title="写真">
         <div>
           <p className="m-0 text-sm">
-            {MAX_IMAGES}枚まで登録できます。1枚目が一覧に表示されるメインの写真になります。
+            {MAX_IMAGES}
+            枚まで登録できます。1枚目が一覧に表示されるメインの写真になります。
           </p>
-          <p className="m-0 text-xs text-marche-muted">JPEG・PNG、1枚 5MB まで。</p>
+          <p className="m-0 text-xs text-marche-muted">
+            JPEG・PNG、1枚 5MB まで。
+          </p>
         </div>
 
         <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-5">
@@ -525,7 +551,9 @@ function DashboardExperienceForm({
               )}
               {image.status !== 'done' && (
                 <span className="absolute inset-x-1.5 bottom-1.5 rounded-lg bg-white/90 px-1 py-0.5 text-center text-xs font-bold">
-                  {image.status === 'uploading' ? 'アップロード中…' : (
+                  {image.status === 'uploading' ? (
+                    'アップロード中…'
+                  ) : (
                     <span className="text-marche-red">失敗しました</span>
                   )}
                 </span>
@@ -548,7 +576,11 @@ function DashboardExperienceForm({
                 id="experience-images"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                aria-describedby={errors.images === undefined ? undefined : 'experience-images-error'}
+                aria-describedby={
+                  errors.images === undefined
+                    ? undefined
+                    : 'experience-images-error'
+                }
                 className={`box-border flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-marche-canvas p-0 text-sm font-bold text-marche-green font-[inherit] hover:bg-marche-sage ${errors.images === undefined ? 'border-marche-green/40' : 'border-marche-red'}`}
               >
                 <PlusIcon />
@@ -558,7 +590,11 @@ function DashboardExperienceForm({
           )}
         </ul>
         {images.length === MAX_IMAGES && (
-          <p id="experience-images" tabIndex={-1} className="m-0 text-xs text-marche-muted">
+          <p
+            id="experience-images"
+            tabIndex={-1}
+            className="m-0 text-xs text-marche-muted"
+          >
             写真は上限の{MAX_IMAGES}枚です。写真を削除すると追加できます。
           </p>
         )}
@@ -581,7 +617,12 @@ function DashboardExperienceForm({
       </FormSection>
 
       <FormSection title="体験の情報">
-        <Field id="experience-title" label="タイトル" required error={errors.title}>
+        <Field
+          id="experience-title"
+          label="タイトル"
+          required
+          error={errors.title}
+        >
           <input
             id="experience-title"
             type="text"
@@ -590,7 +631,11 @@ function DashboardExperienceForm({
             value={values.title}
             onChange={(event) => setValue('title', event.target.value)}
             aria-invalid={errors.title !== undefined}
-            aria-describedby={describedBy('experience-title', false, errors.title)}
+            aria-describedby={describedBy(
+              'experience-title',
+              false,
+              errors.title,
+            )}
             className={`${controlClassName} ${controlBorder(errors.title)}`}
           />
         </Field>
@@ -607,7 +652,11 @@ function DashboardExperienceForm({
               value={values.prefectureId}
               onChange={(event) => setValue('prefectureId', event.target.value)}
               aria-invalid={errors.prefectureId !== undefined}
-              aria-describedby={describedBy('experience-prefectureId', false, errors.prefectureId)}
+              aria-describedby={describedBy(
+                'experience-prefectureId',
+                false,
+                errors.prefectureId,
+              )}
               className={`${controlClassName} ${controlBorder(errors.prefectureId)}`}
             >
               <option value="">選んでください</option>
@@ -619,7 +668,12 @@ function DashboardExperienceForm({
             </select>
           </Field>
 
-          <Field id="experience-place" label="開催場所" required error={errors.place}>
+          <Field
+            id="experience-place"
+            label="開催場所"
+            required
+            error={errors.place}
+          >
             <input
               id="experience-place"
               type="text"
@@ -628,7 +682,11 @@ function DashboardExperienceForm({
               value={values.place}
               onChange={(event) => setValue('place', event.target.value)}
               aria-invalid={errors.place !== undefined}
-              aria-describedby={describedBy('experience-place', false, errors.place)}
+              aria-describedby={describedBy(
+                'experience-place',
+                false,
+                errors.place,
+              )}
               className={`${controlClassName} ${controlBorder(errors.place)}`}
             />
           </Field>
@@ -648,7 +706,11 @@ function DashboardExperienceForm({
             value={values.description}
             onChange={(event) => setValue('description', event.target.value)}
             aria-invalid={errors.description !== undefined}
-            aria-describedby={describedBy('experience-description', true, errors.description)}
+            aria-describedby={describedBy(
+              'experience-description',
+              true,
+              errors.description,
+            )}
             className={`${controlClassName} ${controlBorder(errors.description)} resize-y`}
           />
         </Field>
@@ -671,7 +733,11 @@ function DashboardExperienceForm({
                 value={values.priceAdult}
                 onChange={(event) => setValue('priceAdult', event.target.value)}
                 aria-invalid={errors.priceAdult !== undefined}
-                aria-describedby={describedBy('experience-priceAdult', false, errors.priceAdult)}
+                aria-describedby={describedBy(
+                  'experience-priceAdult',
+                  false,
+                  errors.priceAdult,
+                )}
                 className={`${controlClassName} ${controlBorder(errors.priceAdult)}`}
               />
               <span className="shrink-0 text-sm">円</span>
@@ -693,7 +759,11 @@ function DashboardExperienceForm({
                 value={values.priceChild}
                 onChange={(event) => setValue('priceChild', event.target.value)}
                 aria-invalid={errors.priceChild !== undefined}
-                aria-describedby={describedBy('experience-priceChild', true, errors.priceChild)}
+                aria-describedby={describedBy(
+                  'experience-priceChild',
+                  true,
+                  errors.priceChild,
+                )}
                 className={`${controlClassName} ${controlBorder(errors.priceChild)}`}
               />
               <span className="shrink-0 text-sm">円</span>
@@ -715,7 +785,11 @@ function DashboardExperienceForm({
             value={values.ageCondition}
             onChange={(event) => setValue('ageCondition', event.target.value)}
             aria-invalid={errors.ageCondition !== undefined}
-            aria-describedby={describedBy('experience-ageCondition', true, errors.ageCondition)}
+            aria-describedby={describedBy(
+              'experience-ageCondition',
+              true,
+              errors.ageCondition,
+            )}
             className={`${controlClassName} ${controlBorder(errors.ageCondition)}`}
           />
         </Field>
@@ -773,7 +847,11 @@ function DashboardExperienceForm({
             value={values.cancelPolicy}
             onChange={(event) => setValue('cancelPolicy', event.target.value)}
             aria-invalid={errors.cancelPolicy !== undefined}
-            aria-describedby={describedBy('experience-cancelPolicy', true, errors.cancelPolicy)}
+            aria-describedby={describedBy(
+              'experience-cancelPolicy',
+              true,
+              errors.cancelPolicy,
+            )}
             className={`${controlClassName} ${controlBorder(errors.cancelPolicy)} resize-y`}
           />
         </Field>
@@ -782,11 +860,19 @@ function DashboardExperienceForm({
       {isEdit && (
         <FormSection title="公開設定">
           {experience?.publishStatus === 'suspended' ? (
-            <p className="m-0 text-sm text-marche-muted">運営により掲載停止中です。内容は編集できますが、公開状態は変更できません。</p>
+            <p className="m-0 text-sm text-marche-muted">
+              運営により掲載停止中です。内容は編集できますが、公開状態は変更できません。
+            </p>
           ) : (
             <>
-              <PublishStatusField options={publishStatusOptions} value={publishStatus} onChange={setPublishStatus} />
-              <p className="m-0 text-xs text-marche-muted">公開しても、受付中の予約枠がないとお客さまは申し込めません。</p>
+              <PublishStatusField
+                options={publishStatusOptions}
+                value={publishStatus}
+                onChange={setPublishStatus}
+              />
+              <p className="m-0 text-xs text-marche-muted">
+                公開しても、受付中の予約枠がないとお客さまは申し込めません。
+              </p>
             </>
           )}
         </FormSection>
@@ -797,7 +883,10 @@ function DashboardExperienceForm({
           キャンセル
         </DashboardButton>
         {isEdit ? (
-          <DashboardButton type="submit" disabled={submitting !== null || isUploading}>
+          <DashboardButton
+            type="submit"
+            disabled={submitting !== null || isUploading}
+          >
             {submitting !== null ? '保存中…' : '変更を保存'}
           </DashboardButton>
         ) : (

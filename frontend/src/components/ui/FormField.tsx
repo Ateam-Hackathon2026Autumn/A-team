@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { HTMLInputTypeAttribute } from "react";
+import { useState } from 'react';
+import type { HTMLInputTypeAttribute } from 'react';
 
 type Props = {
   name: string;
@@ -23,7 +23,7 @@ export default function FormField({
   label,
   value,
   onChange,
-  type = "text",
+  type = 'text',
   error,
   describedBy,
   invalid = false,
@@ -31,7 +31,7 @@ export default function FormField({
   ...rest
 }: Props) {
   const [visible, setVisible] = useState(false);
-  const isPassword = type === "password";
+  const isPassword = type === 'password';
 
   return (
     <div className="mt-5">
@@ -39,10 +39,10 @@ export default function FormField({
         {label}
         <span
           className={`ml-2 text-xs font-normal ${
-            required ? "text-red-800" : "text-marche-muted"
+            required ? 'text-red-800' : 'text-marche-muted'
           }`}
         >
-          {required ? "必須" : "任意"}
+          {required ? '必須' : '任意'}
         </span>
       </label>
 
@@ -51,30 +51,34 @@ export default function FormField({
           {...rest}
           id={name}
           name={name}
-          type={isPassword && visible ? "text" : type}
+          type={isPassword && visible ? 'text' : type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           required={required}
           aria-invalid={Boolean(error) || invalid}
-          aria-describedby={[error ? `${name}-error` : '', describedBy].filter(Boolean).join(' ') || undefined}
+          aria-describedby={
+            [error ? `${name}-error` : '', describedBy]
+              .filter(Boolean)
+              .join(' ') || undefined
+          }
           className={[
-            "font-sans",
-            "block h-12 w-full min-w-0 rounded-lg border bg-white px-3",
-            "text-base text-marche-ink",
-            error || invalid ? "border-red-700" : "border-[#b8c3b5]",
-            isPassword ? "pr-16" : "",
-          ].join(" ")}
+            'font-sans',
+            'block h-12 w-full min-w-0 rounded-lg border bg-white px-3',
+            'text-base text-marche-ink',
+            error || invalid ? 'border-red-700' : 'border-[#b8c3b5]',
+            isPassword ? 'pr-16' : '',
+          ].join(' ')}
         />
 
         {isPassword && (
           <button
             type="button"
-            aria-label={visible ? "パスワードを隠す" : "パスワードを表示"}
+            aria-label={visible ? 'パスワードを隠す' : 'パスワードを表示'}
             aria-pressed={visible}
             onClick={() => setVisible((current) => !current)}
             className="font-sans cursor-pointer disabled:cursor-not-allowed absolute inset-y-0 right-1 my-auto min-h-10 border-0 bg-transparent px-3 text-xs font-bold text-marche-green"
           >
-            {visible ? "隠す" : "表示"}
+            {visible ? '隠す' : '表示'}
           </button>
         )}
       </div>

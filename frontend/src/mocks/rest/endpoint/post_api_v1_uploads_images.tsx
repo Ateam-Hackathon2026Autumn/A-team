@@ -2,14 +2,14 @@ import type { RestMock } from '../../types';
 import { registerUploadedImage } from '../store/common';
 
 // 画像アップロードAPI POST /api/v1/uploads/images
-//
+
 // multipart/form-data の file に画像（JPEG・PNG、5MB 以下）を入れて送る。DB には書き込まない
 //   key : S3 のキー（images/{userId}/{UUID}.jpg|png）。
 //         商品登録の imageKeys、生産者プロフィール更新の profileImage / coverImage などにそのまま渡す
 //   url : プレビュー表示用の URL
-//
+
 // エラーにしたい場合は status と body を下記に書き換える
-//
+
 // 入力不正（status: 400。file なし・JPEG/PNG 以外など）:
 //   {
 //     errorCode: 'VALIDATION_ERROR',
@@ -20,7 +20,7 @@ import { registerUploadedImage } from '../store/common';
 //   { errorCode: 'UNAUTHENTICATED', errorMsg: 'ログインしてください。' }
 // サイズ超過（status: 413。上限 5MB）:
 //   { errorCode: 'PAYLOAD_TOO_LARGE', errorMsg: '画像は5MB以下にしてください。' }
-//
+
 // 本物の API は画像ごとに別のキーを返すため、モックも呼ばれるたびに連番で別のキー・URL を返す
 // （同じキーだと、複数枚追加しても保存時に1枚にまとまってしまう）
 // キーは毎回別の UUID（再読み込み後も、登録済みの画像とキーが重ならないように）
@@ -32,7 +32,10 @@ const uploadsImageCreate: RestMock = {
   handler: (_url, init) => {
     const form = init?.body instanceof FormData ? init.body : null;
     const file = form?.get('file');
-    if (!(file instanceof File) || [...(form?.keys() ?? [])].some((key) => key !== 'file')) {
+    if (
+      !(file instanceof File) ||
+      [...(form?.keys() ?? [])].some((key) => key !== 'file')
+    ) {
       return {
         status: 400,
         body: {
@@ -42,7 +45,10 @@ const uploadsImageCreate: RestMock = {
         },
       };
     }
-    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    if (
+      !['image/jpeg', 'image/png'].includes(file.type) ||
+      file.size > 5 * 1024 * 1024
+    ) {
       return {
         status: 400,
         body: {

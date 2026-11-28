@@ -1,16 +1,16 @@
-import { startTransition, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { startTransition, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
 
-import { useSetAtom } from "jotai";
-import { signin, checkSession } from "../api/authApi";
-import ApiError from "../api/apiError";
-import { authenticatedNavigationAtom } from "../stores/userAtom";
-import { getAuthReturnPath } from "../utils/authRedirect";
-import type { UserInfo } from "../types/user";
-import Button from "../components/ui/Button";
-import FormField from "../components/ui/FormField";
-import { validateSignin } from "../utils/authValidation";
+import { useSetAtom } from 'jotai';
+import { signin, checkSession } from '../api/authApi';
+import ApiError from '../api/apiError';
+import { authenticatedNavigationAtom } from '../stores/userAtom';
+import { getAuthReturnPath } from '../utils/authRedirect';
+import type { UserInfo } from '../types/user';
+import Button from '../components/ui/Button';
+import FormField from '../components/ui/FormField';
+import { validateSignin } from '../utils/authValidation';
 
 export default function SigninPage() {
   const navigate = useNavigate();
@@ -18,13 +18,13 @@ export default function SigninPage() {
   const setAuthenticated = useSetAtom(authenticatedNavigationAtom);
   const submitting = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
   }>({});
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
 
   function finishSignin(user: UserInfo) {
     const to = getAuthReturnPath(location.state?.from);
@@ -40,7 +40,7 @@ export default function SigninPage() {
 
     const found = validateSignin(email, password);
     setErrors(found);
-    setMessage("");
+    setMessage('');
 
     if (found.email || found.password) return;
 
@@ -48,26 +48,41 @@ export default function SigninPage() {
     setIsSubmitting(true);
     try {
       const result = await signin(email, password);
-      setPassword("");
+      setPassword('');
       finishSignin(result.user);
     } catch (error) {
-      if (error instanceof ApiError && error.errorCode === "ALREADY_AUTHENTICATED") {
+      if (
+        error instanceof ApiError &&
+        error.errorCode === 'ALREADY_AUTHENTICATED'
+      ) {
         try {
           const session = await checkSession();
           if (session.authenticated) {
             finishSignin(session.user);
             return;
           }
-        } catch { /* 以下の再試行案内を表示 */ }
-        setMessage("ログイン状態を確認できませんでした。もう一度お試しください。");
+        } catch {
+          /* 再確認失敗は下で案内する */
+        }
+        setMessage(
+          'ログイン状態を確認できませんでした。もう一度お試しください。',
+        );
       } else if (error instanceof ApiError) {
-        if (error.status === 401) setMessage("メールアドレスまたはパスワードが正しくありません。");
-        else if (error.status === 429) setMessage("ログインの試行回数が上限に達しました。時間を置いてから再度お試しください。");
+        if (error.status === 401)
+          setMessage('メールアドレスまたはパスワードが正しくありません。');
+        else if (error.status === 429)
+          setMessage(
+            'ログインの試行回数が上限に達しました。時間を置いてから再度お試しください。',
+          );
         else {
-          setErrors({ email: error.details.email?.join(" "), password: error.details.password?.join(" ") });
+          setErrors({
+            email: error.details.email?.join(' '),
+            password: error.details.password?.join(' '),
+          });
           setMessage(error.message);
         }
-      } else setMessage("通信に失敗しました。接続を確認して再度お試しください。");
+      } else
+        setMessage('通信に失敗しました。接続を確認して再度お試しください。');
     } finally {
       submitting.current = false;
       setIsSubmitting(false);
@@ -112,7 +127,7 @@ export default function SigninPage() {
             onChange={(value) => {
               setEmail(value);
               setErrors((previous) => ({ ...previous, email: undefined }));
-              setMessage("");
+              setMessage('');
             }}
             error={errors.email}
             maxLength={254}
@@ -128,14 +143,14 @@ export default function SigninPage() {
             onChange={(value) => {
               setPassword(value);
               setErrors((previous) => ({ ...previous, password: undefined }));
-              setMessage("");
+              setMessage('');
             }}
             error={errors.password}
             autoComplete="current-password"
           />
 
           <Button block type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "ログイン中…" : "ログイン →"}
+            {isSubmitting ? 'ログイン中…' : 'ログイン →'}
           </Button>
         </fieldset>
       </form>

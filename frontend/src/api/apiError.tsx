@@ -32,11 +32,17 @@ async function toApiError(
       details?: Record<string, string[]>;
     };
 
-    return new ApiError(response.status, errorMsg ?? fallback, details, errorCode);
+    return new ApiError(
+      response.status,
+      errorMsg ?? fallback,
+      details,
+      errorCode,
+    );
   } catch {
     return new ApiError(response.status, fallback);
   }
 }
 
 export default ApiError;
+// eslint-disable-next-line react-refresh/only-export-components -- CommonJS スクリプトがこの関数を直接参照
 export { toApiError };

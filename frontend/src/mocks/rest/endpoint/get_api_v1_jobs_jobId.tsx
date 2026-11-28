@@ -4,11 +4,11 @@ import type { RestMock } from '../../types';
 import { daysFromNow } from '../../helpers';
 
 // 求人詳細取得API GET /api/v1/jobs/{jobId}
-//
+
 // 一覧のIDに対応する詳細を返す。求人1以外の詳細は画面確認用の簡易データ。
 // workDates は今日以降の勤務日（満員も含む）。応募時は選んだ id を workDateIds に入れて送る
 // applicationQuestions は現状の仕様では常に空配列
-//
+
 // 存在しない・非公開の場合（status: 404）:
 //   { errorCode: 'NOT_FOUND', errorMsg: '求人が見つかりません。' }
 const jobDetail: RestMock = {
@@ -36,17 +36,60 @@ const jobDetail: RestMock = {
     description:
       '収穫最盛期のりんご園で、ふじの収穫と選果（大きさ・色づきの仕分け）をお手伝いいただきます。\n' +
       '未経験の方にも、はさみの使い方から丁寧にお教えします。住み込み可（個室・食事付き）です。',
-    requirements: ['18歳以上の方', '3日以上勤務できる方', '屋外での立ち仕事に抵抗のない方'],
+    requirements: [
+      '18歳以上の方',
+      '3日以上勤務できる方',
+      '屋外での立ち仕事に抵抗のない方',
+    ],
     belongings: ['汚れてもよい服装', '長靴', '帽子', '飲み物'],
-    notes: ['雨天時は選果場での作業になります。', '住み込みを希望される方は応募メッセージでお知らせください。'],
+    notes: [
+      '雨天時は選果場での作業になります。',
+      '住み込みを希望される方は応募メッセージでお知らせください。',
+    ],
     workDates: {
       items: [
-        { id: 1, workDate: daysFromNow(5), neededCount: 5, remainingCount: 5, isSelectable: true },
-        { id: 2, workDate: daysFromNow(6), neededCount: 5, remainingCount: 5, isSelectable: true },
-        { id: 3, workDate: daysFromNow(12), neededCount: 5, remainingCount: 5, isSelectable: true },
-        { id: 4, workDate: daysFromNow(13), neededCount: 5, remainingCount: 5, isSelectable: true },
-        { id: 5, workDate: daysFromNow(26), neededCount: 3, remainingCount: 3, isSelectable: true },
-        { id: 6, workDate: daysFromNow(34), neededCount: 3, remainingCount: 3, isSelectable: true },
+        {
+          id: 1,
+          workDate: daysFromNow(5),
+          neededCount: 5,
+          remainingCount: 5,
+          isSelectable: true,
+        },
+        {
+          id: 2,
+          workDate: daysFromNow(6),
+          neededCount: 5,
+          remainingCount: 5,
+          isSelectable: true,
+        },
+        {
+          id: 3,
+          workDate: daysFromNow(12),
+          neededCount: 5,
+          remainingCount: 5,
+          isSelectable: true,
+        },
+        {
+          id: 4,
+          workDate: daysFromNow(13),
+          neededCount: 5,
+          remainingCount: 5,
+          isSelectable: true,
+        },
+        {
+          id: 5,
+          workDate: daysFromNow(26),
+          neededCount: 3,
+          remainingCount: 3,
+          isSelectable: true,
+        },
+        {
+          id: 6,
+          workDate: daysFromNow(34),
+          neededCount: 3,
+          remainingCount: 3,
+          isSelectable: true,
+        },
       ],
       total: 6,
       page: 1,
@@ -62,20 +105,47 @@ export { jobDetail };
 
 // 初期履歴はdemoJobApplicationsと同じ求人3・4。追加応募も詳細に反映する。
 const appliedJobIds = new Set([3, 4]);
-export function markMockJobApplied(id: number): void { appliedJobIds.add(id); }
+export function markMockJobApplied(id: number): void {
+  appliedJobIds.add(id);
+}
 
 export function getMockJob(id: number): JobDetail | undefined {
-  const item = (jobsList.body as { items?: Job[] } | undefined)?.items?.find(item => item.id === id);
+  const item = (jobsList.body as { items?: Job[] } | undefined)?.items?.find(
+    (item) => item.id === id,
+  );
   if (!item) return undefined;
   const original = jobDetail.body as JobDetail;
   if (id === 1) return { ...original, hasApplied: appliedJobIds.has(id) };
-  const dates = [3, 4, 5].map((offset, index) => ({ id: id * 10 + index, workDate: daysFromNow(offset), neededCount: item.slots, remainingCount: item.slots, isSelectable: true }));
-  return { ...original, ...item, description: `${item.producer.businessName}の「${item.title}」をお手伝いいただきます。詳細の説明はデモ用のサンプルです。`,
-    requirements: ['募集内容を確認し、勤務できる方'], belongings: ['動きやすい服装', '飲み物'], notes: ['集合場所や詳しい作業内容は事業者にご確認ください。'],
-    workDates: { items: dates, total: dates.length, page: 1, pageSize: 20, totalPages: 1 }, hasApplied: appliedJobIds.has(id),
+  const dates = [3, 4, 5].map((offset, index) => ({
+    id: id * 10 + index,
+    workDate: daysFromNow(offset),
+    neededCount: item.slots,
+    remainingCount: item.slots,
+    isSelectable: true,
+  }));
+  return {
+    ...original,
+    ...item,
+    description: `${item.producer.businessName}の「${item.title}」をお手伝いいただきます。詳細の説明はデモ用のサンプルです。`,
+    requirements: ['募集内容を確認し、勤務できる方'],
+    belongings: ['動きやすい服装', '飲み物'],
+    notes: ['集合場所や詳しい作業内容は事業者にご確認ください。'],
+    workDates: {
+      items: dates,
+      total: dates.length,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    },
+    hasApplied: appliedJobIds.has(id),
   };
 }
-jobDetail.handler = url => {
+jobDetail.handler = (url) => {
   const detail = getMockJob(Number(url.pathname.split('/').at(-1)));
-  return detail ? { status: 200, body: detail } : { status: 404, body: { errorCode: 'NOT_FOUND', errorMsg: '求人が見つかりません。' } };
+  return detail
+    ? { status: 200, body: detail }
+    : {
+        status: 404,
+        body: { errorCode: 'NOT_FOUND', errorMsg: '求人が見つかりません。' },
+      };
 };

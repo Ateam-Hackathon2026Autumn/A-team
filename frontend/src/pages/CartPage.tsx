@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useAtomValue } from "jotai";
-import { Link } from "react-router";
-import ApiError from "../api/apiError";
-import { getCart, removeCartItem, updateCartItem } from "../api/cartApi";
-import { getProduct } from "../api/productApi";
-import { SUPPLEMENTARY_FETCH } from "../api/client";
-import { apiErrorMessage } from "../utils/apiErrorMessage";
-import CartItemRow from "../components/cart/CartItemRow";
-import { yen } from "../components/products/ProductCard";
-import Button from "../components/ui/Button";
-import { USE_MOCK } from "../config/env";
-import { loginStatusAtom } from "../stores/userAtom";
-import type { Cart, CartItem } from "../types/cart";
-import type { ProductDetail } from "../types/publicProduct";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAtomValue } from 'jotai';
+import { Link } from 'react-router';
+import ApiError from '../api/apiError';
+import { getCart, removeCartItem, updateCartItem } from '../api/cartApi';
+import { getProduct } from '../api/productApi';
+import { SUPPLEMENTARY_FETCH } from '../api/client';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import CartItemRow from '../components/cart/CartItemRow';
+import { yen } from '../components/products/productCardValues';
+import Button from '../components/ui/Button';
+import { USE_MOCK } from '../config/env';
+import { loginStatusAtom } from '../stores/userAtom';
+import type { Cart, CartItem } from '../types/cart';
+import type { ProductDetail } from '../types/publicProduct';
 
 type CartGroup = {
   key: string;
@@ -20,28 +20,33 @@ type CartGroup = {
   items: CartItem[];
 };
 
-const temperatureLabels: Record<string, string> = { normal: "常温", chilled: "冷蔵", frozen: "冷凍" };
-const linkClass = "text-marche-green no-underline hover:underline";
+const temperatureLabels: Record<string, string> = {
+  normal: '常温',
+  chilled: '冷蔵',
+  frozen: '冷凍',
+};
+const linkClass = 'text-marche-green no-underline hover:underline';
 
 export default function CartPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [products, setProducts] = useState<Record<number, ProductDetail>>({});
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [actionError, setActionError] = useState("");
-  const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [message, setMessage] = useState('');
   const [detailsWarning, setDetailsWarning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const controller = useRef<AbortController | null>(null);
   const operationLock = useRef(false);
-  const loggedIn = useAtomValue(loginStatusAtom) === "loggedIn";
+  const loggedIn = useAtomValue(loginStatusAtom) === 'loggedIn';
 
   useEffect(() => {
     const request = new AbortController();
     controller.current = request;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 再試行時に読み込み表示を即時復帰
     setLoading(true);
-    setLoadError("");
+    setLoadError('');
     setProducts({});
     setDetailsWarning(false);
     async function load() {
@@ -51,14 +56,26 @@ export default function CartPage() {
         setCart(result);
         // 補足情報の取得に失敗しても、カートの商品・金額・削除操作は表示する。
         const ids = [...new Set(result.items.map((item) => item.productId))];
-        const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)));
+        const details = await Promise.allSettled(
+          ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)),
+        );
         if (request.signal.aborted) return;
         const available: Record<number, ProductDetail> = {};
-        for (const detail of details) if (detail.status === "fulfilled") available[detail.value.id] = detail.value;
+        for (const detail of details)
+          if (detail.status === 'fulfilled')
+            available[detail.value.id] = detail.value;
         setProducts(available);
-        setDetailsWarning(details.some((detail) => detail.status === "rejected"));
+        setDetailsWarning(
+          details.some((detail) => detail.status === 'rejected'),
+        );
       } catch (cause: unknown) {
-        if (!request.signal.aborted) setLoadError(apiErrorMessage(cause, "カートを取得できませんでした。時間をおいて再度お試しください。"));
+        if (!request.signal.aborted)
+          setLoadError(
+            apiErrorMessage(
+              cause,
+              'カートを取得できませんでした。時間をおいて再度お試しください。',
+            ),
+          );
       } finally {
         if (!request.signal.aborted) setLoading(false);
       }
@@ -71,7 +88,9 @@ export default function CartPage() {
     const result = new Map<string, CartGroup>();
     for (const item of cart?.items ?? []) {
       const product = products[item.productId];
-      const key = product ? `${product.producer.id}-${product.shipping.temperatureZone}` : `unknown-${item.id}`;
+      const key = product
+        ? `${product.producer.id}-${product.shipping.temperatureZone}`
+        : `unknown-${item.id}`;
       const group = result.get(key) ?? { key, product, items: [] };
       group.items.push(item);
       result.set(key, group);
@@ -84,8 +103,8 @@ export default function CartPage() {
     if (!request || request.signal.aborted || operationLock.current) return;
     operationLock.current = true;
     setBusy(true);
-    setActionError("");
-    setMessage("");
+    setActionError('');
+    setMessage('');
     try {
       let updated: Cart;
       if (quantity === undefined) {
@@ -96,26 +115,42 @@ export default function CartPage() {
       }
       if (request.signal.aborted) return;
       setCart(updated);
-      setMessage(quantity === undefined ? "商品をカートから削除しました。" : "数量を変更しました。");
+      setMessage(
+        quantity === undefined
+          ? '商品をカートから削除しました。'
+          : '数量を変更しました。',
+      );
     } catch (cause) {
       if (request.signal.aborted) return;
-      setActionError(apiErrorMessage(cause, "カートを更新できませんでした。", "quantity"));
+      setActionError(
+        apiErrorMessage(cause, 'カートを更新できませんでした。', 'quantity'),
+      );
       if (cause instanceof ApiError && [404, 409, 412].includes(cause.status)) {
         try {
           const latest = await getCart(request.signal);
           if (!request.signal.aborted) setCart(latest);
           const ids = [...new Set(latest.items.map((line) => line.productId))];
-          const details = await Promise.allSettled(ids.map((id) => getProduct(id, request.signal, SUPPLEMENTARY_FETCH)));
+          const details = await Promise.allSettled(
+            ids.map((id) =>
+              getProduct(id, request.signal, SUPPLEMENTARY_FETCH),
+            ),
+          );
           if (!request.signal.aborted) {
             const available: Record<number, ProductDetail> = {};
             for (const detail of details) {
-              if (detail.status === "fulfilled") available[detail.value.id] = detail.value;
+              if (detail.status === 'fulfilled')
+                available[detail.value.id] = detail.value;
             }
             setProducts(available);
-            setDetailsWarning(details.some((detail) => detail.status === "rejected"));
+            setDetailsWarning(
+              details.some((detail) => detail.status === 'rejected'),
+            );
           }
         } catch {
-          if (!request.signal.aborted) setActionError("カートを更新できず、最新の内容も取得できませんでした。「カートを再読み込み」をお試しください。");
+          if (!request.signal.aborted)
+            setActionError(
+              'カートを更新できず、最新の内容も取得できませんでした。「カートを再読み込み」をお試しください。',
+            );
         }
       }
     } finally {
@@ -124,21 +159,26 @@ export default function CartPage() {
     }
   }
 
-  const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
-  const canProceed = Boolean(cart?.items.length && cart.canCheckout && cart.items.every((item) => item.purchasable));
+  const itemCount =
+    cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const canProceed = Boolean(
+    cart?.items.length &&
+    cart.canCheckout &&
+    cart.items.every((item) => item.purchasable),
+  );
 
   async function resetCart() {
     if (!USE_MOCK || operationLock.current) return;
     operationLock.current = true;
     setBusy(true);
     try {
-      const { resetDemoCart } = await import("../mocks/demoCart");
+      const { resetDemoCart } = await import('../mocks/demoCart');
       await resetDemoCart();
-      setActionError("");
-      setMessage("デモカートを初期状態に戻しました。");
+      setActionError('');
+      setMessage('デモカートを初期状態に戻しました。');
       setRetry((value) => value + 1);
     } catch {
-      setActionError("デモカートを初期化できませんでした。");
+      setActionError('デモカートを初期化できませんでした。');
     } finally {
       operationLock.current = false;
       setBusy(false);
@@ -151,17 +191,11 @@ export default function CartPage() {
         aria-label="パンくず"
         className="mb-6 flex flex-wrap gap-2 text-xs text-marche-muted"
       >
-        <Link
-          to="/"
-          className={linkClass}
-        >
+        <Link to="/" className={linkClass}>
           ホーム
         </Link>
         <span aria-hidden="true">/</span>
-        <Link
-          to="/products"
-          className={linkClass}
-        >
+        <Link to="/products" className={linkClass}>
           商品一覧
         </Link>
         <span aria-hidden="true">/</span>
@@ -171,19 +205,30 @@ export default function CartPage() {
         aria-label="購入の手順"
         className="m-0 mb-8 grid list-none grid-cols-4 gap-2 p-0 text-xs sm:text-sm"
       >
-        {["カート", "お届け先・支払い", "確認", "完了"].map((label, index) => (
+        {['カート', 'お届け先・支払い', '確認', '完了'].map((label, index) => (
           <li
             key={label}
-            aria-current={index === 0 ? "step" : undefined}
-            className={index === 0 ? "font-bold text-marche-green" : "text-marche-muted"}
+            aria-current={index === 0 ? 'step' : undefined}
+            className={
+              index === 0 ? 'font-bold text-marche-green' : 'text-marche-muted'
+            }
           >
-            <span className={`mb-2 block h-1 rounded-full ${index === 0 ? "bg-marche-green" : "bg-marche-line"}`} />
+            <span
+              className={`mb-2 block h-1 rounded-full ${index === 0 ? 'bg-marche-green' : 'bg-marche-line'}`}
+            />
             {index + 1}. {label}
           </li>
         ))}
       </ol>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 font-serif text-3xl font-bold">カート {!loading && !loadError && <span className="text-base font-normal text-marche-muted">{itemCount}点</span>}</h1>
+        <h1 className="m-0 font-serif text-3xl font-bold">
+          カート{' '}
+          {!loading && !loadError && (
+            <span className="text-base font-normal text-marche-muted">
+              {itemCount}点
+            </span>
+          )}
+        </h1>
         <Link
           to="/products"
           className={`inline-flex min-h-11 items-center text-sm ${linkClass}`}
@@ -193,7 +238,9 @@ export default function CartPage() {
       </div>
       {USE_MOCK && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-marche-sage px-4 py-3">
-          <p className="m-0 text-xs text-marche-muted">画面確認用のデモです。実際の注文・決済は行いません。カートは同じタブのセッションに保存します。</p>
+          <p className="m-0 text-xs text-marche-muted">
+            画面確認用のデモです。実際の注文・決済は行いません。カートは同じタブのセッションに保存します。
+          </p>
           <button
             type="button"
             disabled={busy || loading}
@@ -204,10 +251,7 @@ export default function CartPage() {
           </button>
         </div>
       )}
-      <div
-        aria-live="polite"
-        aria-atomic="true"
-      >
+      <div aria-live="polite" aria-atomic="true">
         {message && (
           <p
             role="status"
@@ -227,7 +271,7 @@ export default function CartPage() {
             variant="outline"
             disabled={busy}
             onClick={() => {
-              setActionError("");
+              setActionError('');
               setRetry((value) => value + 1);
             }}
             className="mt-3"
@@ -238,10 +282,7 @@ export default function CartPage() {
       )}
 
       {loading ? (
-        <p
-          role="status"
-          className="m-0 rounded-2xl bg-white p-8"
-        >
+        <p role="status" className="m-0 rounded-2xl bg-white p-8">
           カートを読み込んでいます…
         </p>
       ) : loadError ? (
@@ -255,7 +296,9 @@ export default function CartPage() {
       ) : !cart?.items.length ? (
         <section className="rounded-3xl border border-marche-line bg-white px-5 py-14 text-center">
           <h2 className="m-0 font-serif text-2xl font-bold">カートは空です</h2>
-          <p className="m-0 mt-3 text-sm text-marche-muted">旬の商品や、応援したい生産者の商品を探してみましょう。</p>
+          <p className="m-0 mt-3 text-sm text-marche-muted">
+            旬の商品や、応援したい生産者の商品を探してみましょう。
+          </p>
           <Link
             to="/products"
             className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full bg-marche-green px-6 py-3 text-sm font-bold text-white no-underline hover:bg-marche-green-dark"
@@ -265,16 +308,22 @@ export default function CartPage() {
         </section>
       ) : (
         <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_310px]">
-          <div
-            className="min-w-0 space-y-5"
-            aria-busy={busy}
-          >
-            <p className="m-0 rounded-xl bg-marche-sage p-4 text-sm text-marche-muted">産地から直送するため、送料・お届け日・配送温度帯は生産者ごとに異なります。</p>
-            {detailsWarning && <p className="m-0 text-xs text-marche-muted">一部の商品画像・生産者・配送情報を取得できませんでした。商品名・数量・金額はカートの情報を表示しています。</p>}
+          <div className="min-w-0 space-y-5" aria-busy={busy}>
+            <p className="m-0 rounded-xl bg-marche-sage p-4 text-sm text-marche-muted">
+              産地から直送するため、送料・お届け日・配送温度帯は生産者ごとに異なります。
+            </p>
+            {detailsWarning && (
+              <p className="m-0 text-xs text-marche-muted">
+                一部の商品画像・生産者・配送情報を取得できませんでした。商品名・数量・金額はカートの情報を表示しています。
+              </p>
+            )}
             {groups.map((group) => (
               <section
                 key={group.key}
-                aria-label={group.product?.producer.businessName ?? "生産者情報を取得できない商品"}
+                aria-label={
+                  group.product?.producer.businessName ??
+                  '生産者情報を取得できない商品'
+                }
                 className="overflow-hidden rounded-2xl border border-marche-line bg-white"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-marche-line bg-marche-sage/50 px-5 py-4">
@@ -284,12 +333,21 @@ export default function CartPage() {
                       className="text-sm font-bold text-marche-ink no-underline hover:underline"
                     >
                       {group.product.producer.businessName}
-                      <span className="ml-2 text-xs font-normal text-marche-muted">{group.product.producer.prefectureName}</span>
+                      <span className="ml-2 text-xs font-normal text-marche-muted">
+                        {group.product.producer.prefectureName}
+                      </span>
                     </Link>
                   ) : (
                     <h2 className="m-0 text-sm font-bold">生産者情報未取得</h2>
                   )}
-                  {group.product && <span className="rounded-md bg-white px-2 py-1 text-xs">{temperatureLabels[group.product.shipping.temperatureZone] ?? group.product.shipping.temperatureZone}便</span>}
+                  {group.product && (
+                    <span className="rounded-md bg-white px-2 py-1 text-xs">
+                      {temperatureLabels[
+                        group.product.shipping.temperatureZone
+                      ] ?? group.product.shipping.temperatureZone}
+                      便
+                    </span>
+                  )}
                 </div>
                 <ul className="m-0 list-none divide-y divide-marche-line px-5 py-0">
                   {group.items.map((item) => (
@@ -298,7 +356,9 @@ export default function CartPage() {
                       item={item}
                       product={products[item.productId]}
                       busy={busy}
-                      onQuantityChange={(quantity) => void changeItem(item, quantity)}
+                      onQuantityChange={(quantity) =>
+                        void changeItem(item, quantity)
+                      }
                       onRemove={() => void changeItem(item)}
                     />
                   ))}
@@ -306,14 +366,26 @@ export default function CartPage() {
                 <div className="space-y-2 border-t border-marche-line px-5 py-4 text-sm">
                   <p className="m-0 flex justify-between gap-3">
                     <span>この便の商品小計</span>
-                    <span className="font-bold">{group.items.some((item) => item.subtotal === null) ? "一部金額未確定" : yen(group.items.reduce((sum, item) => sum + (item.subtotal ?? 0), 0))}</span>
+                    <span className="font-bold">
+                      {group.items.some((item) => item.subtotal === null)
+                        ? '一部金額未確定'
+                        : yen(
+                            group.items.reduce(
+                              (sum, item) => sum + (item.subtotal ?? 0),
+                              0,
+                            ),
+                          )}
+                    </span>
                   </p>
                   {group.product && (
                     <p className="m-0 text-xs text-marche-muted">
-                      {group.product.shipping.leadTimeText} · 参考送料 {yen(group.product.shipping.shippingFee)}
+                      {group.product.shipping.leadTimeText} · 参考送料{' '}
+                      {yen(group.product.shipping.shippingFee)}
                     </p>
                   )}
-                  <p className="m-0 text-xs text-marche-muted">送料はお届け先・注文内容に応じて購入手続きで確定します。</p>
+                  <p className="m-0 text-xs text-marche-muted">
+                    送料はお届け先・注文内容に応じて購入手続きで確定します。
+                  </p>
                 </div>
               </section>
             ))}
@@ -334,32 +406,34 @@ export default function CartPage() {
               </div>
               <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-marche-line pt-4">
                 <dt className="text-sm font-bold">商品合計（税込・送料別）</dt>
-                <dd className="m-0 text-2xl font-bold">{yen(cart.itemsTotal)}</dd>
+                <dd className="m-0 text-2xl font-bold">
+                  {yen(cart.itemsTotal)}
+                </dd>
               </div>
             </dl>
-            {cart.items.some((item) => item.subtotal === null) && <p className="m-0 mt-3 text-xs text-red-800">価格を取得できない商品は合計に含まれていません。</p>}
+            {cart.items.some((item) => item.subtotal === null) && (
+              <p className="m-0 mt-3 text-xs text-red-800">
+                価格を取得できない商品は合計に含まれていません。
+              </p>
+            )}
             {!canProceed && (
-              <p
-                role="status"
-                className="m-0 mt-4 text-sm text-red-800"
-              >
+              <p role="status" className="m-0 mt-4 text-sm text-red-800">
                 購入できない商品があります。数量を変更するか、対象商品を削除してください。
               </p>
             )}
             {canProceed && !busy ? (
               <Link
-                to={loggedIn ? "/checkout" : "/signin"}
-                state={loggedIn ? undefined : { from: { pathname: "/checkout" } }}
+                to={loggedIn ? '/checkout' : '/signin'}
+                state={
+                  loggedIn ? undefined : { from: { pathname: '/checkout' } }
+                }
                 className="mt-5 flex min-h-12 items-center justify-center rounded-full bg-marche-green px-4 py-3 text-sm font-bold text-white no-underline hover:bg-marche-green-dark"
               >
-                {loggedIn ? "購入手続きへ →" : "ログインして購入手続きへ"}
+                {loggedIn ? '購入手続きへ →' : 'ログインして購入手続きへ'}
               </Link>
             ) : (
-              <Button
-                disabled
-                className="mt-5 w-full"
-              >
-                {busy ? "更新しています…" : "購入手続きへ"}
+              <Button disabled className="mt-5 w-full">
+                {busy ? '更新しています…' : '購入手続きへ'}
               </Button>
             )}
             <Link

@@ -1,18 +1,29 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { useAtomValue } from 'jotai';
 
 import ApiError from '../../api/apiError';
-import { getDashboardStory, updateDashboardStory } from '../../api/dashboardStoryApi';
+import {
+  getDashboardStory,
+  updateDashboardStory,
+} from '../../api/dashboardStoryApi';
 import DashboardButton from '../../components/DashboardButton';
 import {
   Field,
   FormSection,
   PublishStatusField,
+  type PublishStatusOption,
+} from '../../components/DashboardFormParts';
+import {
   controlBorder,
   controlClassName,
   describedBy,
-  type PublishStatusOption,
-} from '../../components/DashboardFormParts';
+} from '../../components/dashboardFormValues';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
 import type {
@@ -25,8 +36,7 @@ import type {
 
 // 生産者ストーリーの編集（学ぶページ・生産者プロフィールの応援ブロックに載る内容）
 // 実API: GET・PUT /api/v1/dashboard/story（backend/api/views/dashboard/story.py）
-// 画面の流れ: Notion「生産者のストーリー編集」（取得 → 入力 → 保存 → 完了トースト／400 は項目ごとに表示）
-// レイアウト: 参考HTML（生産者管理のプロフィール編集。編集とプレビューを並べ、狭い画面では切り替え）
+// 画面仕様: Notion「生産者のストーリー編集」
 
 const MAX_TEXT = 2000;
 
@@ -49,7 +59,8 @@ const SUPPORT_FIELDS: StoryFieldDefinition[] = [
     field: 'reason',
     label: 'この仕事を始めた理由',
     hint: '生産者ページの「応援する」欄にも表示されます。',
-    placeholder: '例）祖父の代から続く園地を、次の世代にも残したいと思い戻りました。',
+    placeholder:
+      '例）祖父の代から続く園地を、次の世代にも残したいと思い戻りました。',
   },
   {
     field: 'goal',
@@ -71,29 +82,47 @@ const WORK_FIELDS: StoryFieldDefinition[] = [
     field: 'process',
     label: '商品ができるまで',
     hint: '種まき・収穫から出荷までの流れを書きます。',
-    placeholder: '例）春の摘花から秋の収穫まで、1本ずつ手作業で手入れしています。',
+    placeholder:
+      '例）春の摘花から秋の収穫まで、1本ずつ手作業で手入れしています。',
   },
   {
     field: 'environment',
     label: '環境への取り組み',
     hint: '土づくり・資源の循環など、環境のために続けていることを書きます。',
-    placeholder: '例）刈り取った下草を土に戻し、化学肥料に頼らない土づくりを続けています。',
+    placeholder:
+      '例）刈り取った下草を土に戻し、化学肥料に頼らない土づくりを続けています。',
   },
 ];
 
 const ALL_FIELDS = [...SUPPORT_FIELDS, ...WORK_FIELDS];
 
 // プレビュー（お客さまに見える画面）での並び順
-const PREVIEW_ORDER: StoryTextField[] = ['reason', 'craft', 'method', 'process', 'environment', 'goal'];
+const PREVIEW_ORDER: StoryTextField[] = [
+  'reason',
+  'craft',
+  'method',
+  'process',
+  'environment',
+  'goal',
+];
 
 const STATUS_OPTIONS: PublishStatusOption<StoryEditableStatus>[] = [
-  { value: 'draft', label: '下書き', description: 'お客さまには表示されません。書きかけのときに。' },
+  {
+    value: 'draft',
+    label: '下書き',
+    description: 'お客さまには表示されません。書きかけのときに。',
+  },
   {
     value: 'public',
     label: '公開',
-    description: '学ぶページと生産者ページに表示されます（農園のプロフィールも公開中のとき）。',
+    description:
+      '学ぶページと生産者ページに表示されます（農園のプロフィールも公開中のとき）。',
   },
-  { value: 'private', label: '非公開', description: '公開をやめて、お客さまに表示しないようにします。' },
+  {
+    value: 'private',
+    label: '非公開',
+    description: '公開をやめて、お客さまに表示しないようにします。',
+  },
 ];
 
 const STATUS_LABELS: Record<StoryPublishStatus, string> = {
@@ -110,7 +139,9 @@ const STATUS_BADGE_CLASS: Record<StoryPublishStatus, string> = {
   suspended: 'bg-marche-red/10 text-marche-red',
 };
 
-type FormValues = Record<StoryTextField, string> & { publishStatus: StoryEditableStatus };
+type FormValues = Record<StoryTextField, string> & {
+  publishStatus: StoryEditableStatus;
+};
 type FormErrors = Partial<Record<StoryTextField | 'publishStatus', string>>;
 
 function toFormValues(story: DashboardStory): FormValues {
@@ -122,7 +153,8 @@ function toFormValues(story: DashboardStory): FormValues {
     reason: story.reason ?? '',
     goal: story.goal ?? '',
     // 掲載停止中は保存できないため、フォームの値としては使わない
-    publishStatus: story.publishStatus === 'suspended' ? 'private' : story.publishStatus,
+    publishStatus:
+      story.publishStatus === 'suspended' ? 'private' : story.publishStatus,
   };
 }
 
@@ -146,11 +178,15 @@ function validate(values: FormValues): FormErrors {
 
   for (const { field, label } of ALL_FIELDS) {
     if (values[field].trim().length > MAX_TEXT) {
-      errors[field] = `${label}は${MAX_TEXT.toLocaleString()}文字以内で入力してください。`;
+      errors[field] =
+        `${label}は${MAX_TEXT.toLocaleString()}文字以内で入力してください。`;
     }
   }
 
-  if (values.publishStatus === 'public' && ALL_FIELDS.every(({ field }) => values[field].trim() === '')) {
+  if (
+    values.publishStatus === 'public' &&
+    ALL_FIELDS.every(({ field }) => values[field].trim() === '')
+  ) {
     errors.publishStatus = '公開するには本文を1項目以上入力してください。';
   }
 
@@ -160,7 +196,10 @@ function validate(values: FormValues): FormErrors {
 // 400 の details（{ craft: ['...'] }）を項目ごとのメッセージにする
 function errorsFromDetails(details: Record<string, string[]>): FormErrors {
   const errors: FormErrors = {};
-  const keys: (StoryTextField | 'publishStatus')[] = [...ALL_FIELDS.map(({ field }) => field), 'publishStatus'];
+  const keys: (StoryTextField | 'publishStatus')[] = [
+    ...ALL_FIELDS.map(({ field }) => field),
+    'publishStatus',
+  ];
 
   for (const key of keys) {
     const message = details[key]?.[0];
@@ -184,7 +223,9 @@ function dateTimeLabel(value: string): string {
 }
 
 function labelOf(field: StoryTextField): string {
-  return ALL_FIELDS.find((definition) => definition.field === field)?.label ?? field;
+  return (
+    ALL_FIELDS.find((definition) => definition.field === field)?.label ?? field
+  );
 }
 
 function Notice({ children }: { children: ReactNode }) {
@@ -213,7 +254,12 @@ function StoryTextarea({
   const isOver = length > MAX_TEXT;
 
   return (
-    <Field id={id} label={definition.label} hint={definition.hint} error={error}>
+    <Field
+      id={id}
+      label={definition.label}
+      hint={definition.hint}
+      error={error}
+    >
       <textarea
         id={id}
         name={definition.field}
@@ -237,7 +283,9 @@ function StoryTextarea({
 
 function StoryPreview({ values }: { values: FormValues }) {
   const sections = PREVIEW_ORDER.filter((field) => values[field].trim() !== '');
-  const hasSupport = (['craft', 'reason', 'goal'] as const).some((field) => values[field].trim() !== '');
+  const hasSupport = (['craft', 'reason', 'goal'] as const).some(
+    (field) => values[field].trim() !== '',
+  );
 
   return (
     <section
@@ -248,7 +296,9 @@ function StoryPreview({ values }: { values: FormValues }) {
         プレビュー（お客さまに見える画面）
       </p>
       <div className="p-5">
-        <p className="m-0 text-xs font-bold tracking-widest text-marche-green">STORY</p>
+        <p className="m-0 text-xs font-bold tracking-widest text-marche-green">
+          STORY
+        </p>
         {sections.length === 0 ? (
           <p className="m-0 mt-3 rounded-xl border border-dashed border-marche-line p-4 text-sm text-marche-muted">
             まだ何も書かれていません。入力した項目がここに表示されます。
@@ -256,7 +306,9 @@ function StoryPreview({ values }: { values: FormValues }) {
         ) : (
           sections.map((field) => (
             <div key={field} className="mt-4">
-              <h3 className="m-0 font-serif text-base font-bold">{labelOf(field)}</h3>
+              <h3 className="m-0 font-serif text-base font-bold">
+                {labelOf(field)}
+              </h3>
               <p className="m-0 mt-1 text-sm leading-loose whitespace-pre-wrap [overflow-wrap:anywhere]">
                 {values[field].trim()}
               </p>
@@ -317,7 +369,7 @@ function DashboardStoryEditPage() {
       });
 
     return () => controller.abort();
-  }, [canManage, reloadCount]);
+  }, [canManage, reloadCount, redirectToSignin]);
 
   useEffect(() => {
     if (toast === null) {
@@ -340,7 +392,8 @@ function DashboardStoryEditPage() {
   const isDirty =
     story !== null &&
     values !== null &&
-    JSON.stringify(toInput(values)) !== JSON.stringify(toInput(toFormValues(story)));
+    JSON.stringify(toInput(values)) !==
+      JSON.stringify(toInput(toFormValues(story)));
 
   // 保存していない変更があるときは、タブを閉じる前に確認する
   useEffect(() => {
@@ -366,8 +419,13 @@ function DashboardStoryEditPage() {
     setReloadCount((count) => count + 1);
   };
 
-  const updateValue = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
-    setValues((current) => (current === null ? current : { ...current, [key]: value }));
+  const updateValue = <K extends keyof FormValues>(
+    key: K,
+    value: FormValues[K],
+  ) => {
+    setValues((current) =>
+      current === null ? current : { ...current, [key]: value },
+    );
     setErrors((current) => {
       if (current[key] === undefined) {
         return current;
@@ -415,9 +473,13 @@ function DashboardStoryEditPage() {
       setStory(saved);
       // 送信後に入力が変わっていなければ、サーバーの値（前後の空白を除いたもの）にそろえる。
       // 変わっていれば入力をそのまま残し、「保存していない変更があります」と表示する
-      setValues((current) => (current === submittedValues ? toFormValues(saved) : current));
+      setValues((current) =>
+        current === submittedValues ? toFormValues(saved) : current,
+      );
       setToast(
-        saved.publishStatus === 'public' ? 'ストーリーを保存して公開しました。' : 'ストーリーを保存しました。',
+        saved.publishStatus === 'public'
+          ? 'ストーリーを保存して公開しました。'
+          : 'ストーリーを保存しました。',
       );
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -430,9 +492,14 @@ function DashboardStoryEditPage() {
 
         showErrors(
           fieldErrors,
-          Object.keys(fieldErrors).length > 0 ? '入力内容を確認してください。' : error.message,
+          Object.keys(fieldErrors).length > 0
+            ? '入力内容を確認してください。'
+            : error.message,
         );
-      } else if (error instanceof ApiError && error.errorCode === 'STORY_SUSPENDED') {
+      } else if (
+        error instanceof ApiError &&
+        error.errorCode === 'STORY_SUSPENDED'
+      ) {
         // 運営が掲載を止めた。最新の状態（掲載停止中）を読み込み直して入力を止める
         showErrors({}, error.message);
         getDashboardStory()
@@ -444,7 +511,10 @@ function DashboardStoryEditPage() {
         // 409 PRODUCER_SUSPENDED などは、サーバーのメッセージをそのまま出す
         showErrors({}, error.message);
       } else {
-        showErrors({}, '通信に失敗しました。時間をおいて、もう一度お試しください。');
+        showErrors(
+          {},
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
     } finally {
       setIsSaving(false);
@@ -453,7 +523,11 @@ function DashboardStoryEditPage() {
 
   const renderBody = () => {
     if (!canManage) {
-      return <Notice>ストーリーの編集は、生産者登録が承認されると使えるようになります。</Notice>;
+      return (
+        <Notice>
+          ストーリーの編集は、生産者登録が承認されると使えるようになります。
+        </Notice>
+      );
     }
 
     if (loadError) {
@@ -462,9 +536,17 @@ function DashboardStoryEditPage() {
           role="alert"
           className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-red">ストーリーを読み込めませんでした。</p>
-          <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-          <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+          <p className="m-0 font-bold text-marche-red">
+            ストーリーを読み込めませんでした。
+          </p>
+          <p className="m-0 mt-1 text-marche-muted">
+            時間をおいて、もう一度お試しください。
+          </p>
+          <DashboardButton
+            variant="secondary"
+            onClick={reload}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>
@@ -473,7 +555,11 @@ function DashboardStoryEditPage() {
 
     if (story === null || values === null) {
       return (
-        <div aria-busy="true" aria-label="読み込み中" className="flex flex-col gap-6">
+        <div
+          aria-busy="true"
+          aria-label="読み込み中"
+          className="flex flex-col gap-6"
+        >
           {Array.from({ length: 3 }, (_, i) => (
             <div
               key={i}
@@ -495,9 +581,15 @@ function DashboardStoryEditPage() {
             {STATUS_LABELS[story.publishStatus]}
           </span>
           <span className="text-marche-muted">
-            {story.updatedAt === null ? 'まだ保存していません' : `最終保存：${dateTimeLabel(story.updatedAt)}`}
+            {story.updatedAt === null
+              ? 'まだ保存していません'
+              : `最終保存：${dateTimeLabel(story.updatedAt)}`}
           </span>
-          {isDirty && <span className="font-bold text-marche-orange">保存していない変更があります</span>}
+          {isDirty && (
+            <span className="font-bold text-marche-orange">
+              保存していない変更があります
+            </span>
+          )}
         </div>
 
         {isSuspended && (
@@ -505,7 +597,9 @@ function DashboardStoryEditPage() {
             role="alert"
             className="mb-5 box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
           >
-            <p className="m-0 font-bold text-marche-red">このストーリーは運営により掲載停止中です。</p>
+            <p className="m-0 font-bold text-marche-red">
+              このストーリーは運営により掲載停止中です。
+            </p>
             <p className="m-0 mt-1 text-marche-muted">
               掲載停止中は内容を変更できません。くわしくは運営にお問い合わせください。
             </p>
@@ -594,14 +688,20 @@ function DashboardStoryEditPage() {
 
             {!isSuspended && (
               <FormSection title="公開設定">
-                <div id="story-publishStatus" tabIndex={-1} className="outline-none">
+                <div
+                  id="story-publishStatus"
+                  tabIndex={-1}
+                  className="outline-none"
+                >
                   <PublishStatusField
                     options={STATUS_OPTIONS}
                     value={values.publishStatus}
                     onChange={(value) => updateValue('publishStatus', value)}
                   />
                   {errors.publishStatus !== undefined && (
-                    <p className="m-0 mt-2 text-xs font-bold text-marche-red">{errors.publishStatus}</p>
+                    <p className="m-0 mt-2 text-xs font-bold text-marche-red">
+                      {errors.publishStatus}
+                    </p>
                   )}
                 </div>
               </FormSection>
@@ -609,8 +709,16 @@ function DashboardStoryEditPage() {
 
             {!isSuspended && (
               <div className="flex flex-wrap items-center gap-3">
-                <DashboardButton type="submit" disabled={isSaving} className="min-h-11 px-8">
-                  {isSaving ? '保存中…' : values.publishStatus === 'public' ? '保存して公開' : '保存する'}
+                <DashboardButton
+                  type="submit"
+                  disabled={isSaving}
+                  className="min-h-11 px-8"
+                >
+                  {isSaving
+                    ? '保存中…'
+                    : values.publishStatus === 'public'
+                      ? '保存して公開'
+                      : '保存する'}
                 </DashboardButton>
                 {isDirty && (
                   <DashboardButton
@@ -630,7 +738,9 @@ function DashboardStoryEditPage() {
             )}
           </form>
 
-          <div className={`min-w-0 ${mobileView === 'preview' ? 'block' : 'hidden xl:block'}`}>
+          <div
+            className={`min-w-0 ${mobileView === 'preview' ? 'block' : 'hidden xl:block'}`}
+          >
             <StoryPreview values={values} />
           </div>
         </div>
@@ -645,7 +755,10 @@ function DashboardStoryEditPage() {
         学ぶページでお客さまに伝える、あなたと農園の物語です。
       </p>
       {renderBody()}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-6 z-50 flex justify-center">
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-4 bottom-6 z-50 flex justify-center"
+      >
         {toast !== null && (
           <p className="m-0 max-w-full rounded-xl bg-marche-ink px-5 py-3 text-sm font-bold text-white shadow-lg">
             {toast}

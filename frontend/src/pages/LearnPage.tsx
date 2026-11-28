@@ -1,16 +1,25 @@
-import { Link, useSearchParams } from "react-router";
-import { getStories, storyLead } from "../api/storyApi";
-import { producerGenres } from "../components/producers/ProducerSummaryCard";
-import { ContentImage, ContentPage, ContentStatus, EmptyContent, textLinkClass } from "../components/ui/ContentPage";
-import { usePublicContent } from "../hooks/usePublicContent";
+import { Link, useSearchParams } from 'react-router';
+import { getStories, storyLead } from '../api/storyApi';
+import { producerGenres } from '../components/producers/producerLabels';
+import {
+  ContentImage,
+  ContentPage,
+  ContentStatus,
+  EmptyContent,
+} from '../components/ui/ContentPage';
+import { textLinkClass } from '../components/ui/contentPageValues';
+import { usePublicContent } from '../hooks/usePublicContent';
 export default function LearnPage() {
   const state = usePublicContent(getStories);
   const [params, setParams] = useSearchParams();
   // テーマは生産者のジャンル（農業・漁業・畜産など）。ストーリーのある生産者のジャンルだけボタンにする
-  const genre = params.get("genre") ?? "";
-  const genres = [...new Set((state.data ?? []).map((story) => story.producer.genre))]
-    .map((value) => [value, producerGenres[value] ?? value]);
-  const articles = (state.data ?? []).filter((story) => !genre || story.producer.genre === genre);
+  const genre = params.get('genre') ?? '';
+  const genres = [
+    ...new Set((state.data ?? []).map((story) => story.producer.genre)),
+  ].map((value) => [value, producerGenres[value] ?? value]);
+  const articles = (state.data ?? []).filter(
+    (story) => !genre || story.producer.genre === genre,
+  );
   const featured = articles[0];
   return (
     <ContentPage
@@ -25,13 +34,13 @@ export default function LearnPage() {
             aria-label="ストーリーのテーマ"
             className="mb-8 flex flex-wrap gap-3"
           >
-            {[["", "すべて"], ...genres].map(([id, name]) => (
+            {[['', 'すべて'], ...genres].map(([id, name]) => (
               <button
                 key={id}
                 type="button"
                 aria-pressed={genre === id}
                 onClick={() => setParams(id ? { genre: id } : {})}
-                className={`min-h-11 cursor-pointer rounded-full border border-marche-green px-5 py-2 font-sans text-sm font-bold ${genre === id ? "bg-marche-green text-white" : "bg-white text-marche-green hover:bg-marche-sage"}`}
+                className={`min-h-11 cursor-pointer rounded-full border border-marche-green px-5 py-2 font-sans text-sm font-bold ${genre === id ? 'bg-marche-green text-white' : 'bg-white text-marche-green hover:bg-marche-sage'}`}
               >
                 {name}
               </button>
@@ -51,17 +60,22 @@ export default function LearnPage() {
                     className="aspect-[4/3] h-full"
                   />
                   <div className="p-6 sm:p-10">
-                    <p className="text-sm font-bold text-marche-green">特集 ・ {producerGenres[featured.producer.genre] ?? featured.producer.genre}</p>
+                    <p className="text-sm font-bold text-marche-green">
+                      特集 ・{' '}
+                      {producerGenres[featured.producer.genre] ??
+                        featured.producer.genre}
+                    </p>
                     <h2 className="font-serif text-2xl leading-relaxed group-hover:underline">
                       {featured.producer.businessName}
                     </h2>
-                    <p className="line-clamp-4 whitespace-pre-line">{storyLead(featured)}</p>
-                    <p className="text-sm text-marche-muted">
-                      {featured.producer.prefectureName} {featured.producer.city}
+                    <p className="line-clamp-4 whitespace-pre-line">
+                      {storyLead(featured)}
                     </p>
-                    <span className={textLinkClass}>
-                      ストーリーを読む →
-                    </span>
+                    <p className="text-sm text-marche-muted">
+                      {featured.producer.prefectureName}{' '}
+                      {featured.producer.city}
+                    </p>
+                    <span className={textLinkClass}>ストーリーを読む →</span>
                   </div>
                 </Link>
               </article>
@@ -82,7 +96,10 @@ export default function LearnPage() {
                           alt={story.producer.businessName}
                           className="aspect-[4/3] rounded-xl"
                         />
-                        <p className="text-sm text-marche-green">{producerGenres[story.producer.genre] ?? story.producer.genre}</p>
+                        <p className="text-sm text-marche-green">
+                          {producerGenres[story.producer.genre] ??
+                            story.producer.genre}
+                        </p>
                         <h2 className="font-serif text-xl">
                           <span className={textLinkClass}>
                             {story.producer.businessName}
@@ -110,10 +127,7 @@ export default function LearnPage() {
           <aside className="mt-10 rounded-2xl bg-marche-sage p-6">
             <h2 className="font-serif text-xl">つくる人と、つながろう。</h2>
             <p>生産者のプロフィールで、商品や体験、お仕事を探せます。</p>
-            <Link
-              to="/producers"
-              className={textLinkClass}
-            >
+            <Link to="/producers" className={textLinkClass}>
               生産者の一覧を見る →
             </Link>
           </aside>

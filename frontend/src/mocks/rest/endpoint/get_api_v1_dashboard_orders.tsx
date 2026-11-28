@@ -2,11 +2,11 @@ import type { RestMock } from '../../types';
 import { daysFromNow, hoursFromNow } from '../../helpers';
 
 // 注文一覧取得API GET /api/v1/dashboard/orders
-//
+
 // ログイン中の生産者（山本農園）宛ての注文を新しい順に返す
 // shipments は本人の箱だけ。金額は注文時の保存値（税込・円）で、producerTotal = 商品合計 + 送料
 // 購入者の氏名・住所は一覧では返らない（注文詳細取得APIで取得する）
-//
+
 // 注文が1件もない場合:
 //   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
 const dashboardOrdersList: RestMock = {

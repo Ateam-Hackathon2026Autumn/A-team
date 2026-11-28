@@ -89,7 +89,10 @@ type ProductCreateInput = {
 
 // 商品更新API（PATCH /api/v1/dashboard/products/{productId}）のリクエスト
 // 在庫数はこのAPIでは変更できない（在庫更新APIを使う）
-type ProductUpdateInput = Omit<ProductCreateInput, 'stock' | 'publishStatus'> & {
+type ProductUpdateInput = Omit<
+  ProductCreateInput,
+  'stock' | 'publishStatus'
+> & {
   publishStatus?: Exclude<ProductPublishStatus, 'suspended'>;
 };
 

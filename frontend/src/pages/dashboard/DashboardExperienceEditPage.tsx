@@ -4,13 +4,19 @@ import { useAtomValue } from 'jotai';
 
 import { useScrollDashboardToTop } from '../../Layouts/dashboardScroll';
 import ApiError from '../../api/apiError';
-import { getDashboardExperience, updateExperience } from '../../api/dashboardExperienceApi';
+import {
+  getDashboardExperience,
+  updateExperience,
+} from '../../api/dashboardExperienceApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardExperienceForm from '../../components/DashboardExperienceForm';
 import DashboardExperienceSlots from '../../components/DashboardExperienceSlots';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
-import type { DashboardExperience, ExperienceInput } from '../../types/dashboardExperience';
+import type {
+  DashboardExperience,
+  ExperienceInput,
+} from '../../types/dashboardExperience';
 
 const EXPERIENCE_LIST_PATH = '/dashboard/experiences';
 
@@ -23,7 +29,10 @@ const CHANGED_ELSEWHERE_MESSAGE =
   '他の画面で体験の内容が更新されています。このまま保存すると最新の内容を読み込み直すため、入力内容を控えてから保存してください。';
 
 // 予約枠の変更では更新日時（updatedAt）だけが変わる。それ以外が同じなら同じ内容とみなす
-function hasSameContent(a: DashboardExperience, b: DashboardExperience): boolean {
+function hasSameContent(
+  a: DashboardExperience,
+  b: DashboardExperience,
+): boolean {
   const { updatedAt: _a, ...restA } = a;
   const { updatedAt: _b, ...restB } = b;
 
@@ -63,10 +72,14 @@ function DashboardExperienceEditPage() {
     }
   }, [location.pathname, location.state, navigate]);
 
-  const [experience, setExperience] = useState<DashboardExperience | null>(null);
+  const [experience, setExperience] = useState<DashboardExperience | null>(
+    null,
+  );
   // 体験の ETag（予約枠を変えると変わるため、フォームとは別に持って取り直す）
   const [etag, setEtag] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(null);
+  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(
+    null,
+  );
   const [notice, setNotice] = useState<string | null>(null);
   // 読み込み直すたびに増やす（フォームも作り直して最新の内容にする）
   const [reloadCount, setReloadCount] = useState(0);
@@ -93,7 +106,9 @@ function DashboardExperienceEditPage() {
 
         if (isActive) {
           setLoadError(
-            error instanceof ApiError && error.status === 404 ? 'notFound' : 'failed',
+            error instanceof ApiError && error.status === 404
+              ? 'notFound'
+              : 'failed',
           );
         }
       });
@@ -101,7 +116,7 @@ function DashboardExperienceEditPage() {
     return () => {
       isActive = false;
     };
-  }, [canManage, isValidId, experienceId, reloadCount]);
+  }, [canManage, isValidId, experienceId, reloadCount, redirectToSignin]);
 
   const reload = () => {
     setLoadError(null);
@@ -160,7 +175,9 @@ function DashboardExperienceEditPage() {
   const renderBody = () => {
     if (!canManage) {
       return (
-        <Notice>体験の登録・管理は、生産者登録が承認されると使えるようになります。</Notice>
+        <Notice>
+          体験の登録・管理は、生産者登録が承認されると使えるようになります。
+        </Notice>
       );
     }
 
@@ -171,7 +188,11 @@ function DashboardExperienceEditPage() {
           <p className="m-0 mt-1 text-marche-muted">
             削除されたか、URL が間違っている可能性があります。
           </p>
-          <DashboardButton to={EXPERIENCE_LIST_PATH} variant="secondary" className="mt-4">
+          <DashboardButton
+            to={EXPERIENCE_LIST_PATH}
+            variant="secondary"
+            className="mt-4"
+          >
             体験管理に戻る
           </DashboardButton>
         </Notice>
@@ -184,9 +205,17 @@ function DashboardExperienceEditPage() {
           role="alert"
           className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-red">体験を読み込めませんでした。</p>
-          <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-          <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+          <p className="m-0 font-bold text-marche-red">
+            体験を読み込めませんでした。
+          </p>
+          <p className="m-0 mt-1 text-marche-muted">
+            時間をおいて、もう一度お試しください。
+          </p>
+          <DashboardButton
+            variant="secondary"
+            onClick={reload}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>
@@ -208,7 +237,10 @@ function DashboardExperienceEditPage() {
 
     return (
       <>
-        <DashboardExperienceSlots experienceId={experience.id} onChanged={refreshEtag} />
+        <DashboardExperienceSlots
+          experienceId={experience.id}
+          onChanged={refreshEtag}
+        />
         <DashboardExperienceForm
           key={reloadCount}
           experience={experience}

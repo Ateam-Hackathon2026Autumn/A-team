@@ -69,7 +69,8 @@ function toUrlString(input: RequestInfo | URL): string {
 }
 
 const mockFetch: typeof fetch = async (input, init) => {
-  const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+  const signal =
+    init?.signal ?? (input instanceof Request ? input.signal : undefined);
   signal?.throwIfAborted();
   const method = (
     init?.method ?? (input instanceof Request ? input.method : 'GET')
@@ -98,7 +99,8 @@ const mockFetch: typeof fetch = async (input, init) => {
   }
 
   // statusを書き換えるだけで、動的なモックでも障害時の画面を確認できる。
-  const result: MockResult = mock.status >= 400 ? mock : mock.handler?.(url, init) ?? mock;
+  const result: MockResult =
+    mock.status >= 400 ? mock : (mock.handler?.(url, init) ?? mock);
   console.info(`[mock] ${key} -> ${result.status}`);
   return toResponse(result.status, result.body, result.headers);
 };

@@ -9,7 +9,8 @@ type StoryPublishStatus = 'draft' | 'public' | 'private' | 'suspended';
 type StoryEditableStatus = Exclude<StoryPublishStatus, 'suspended'>;
 
 // 本文の6項目（未入力は null）
-type StoryTextField = 'craft' | 'method' | 'process' | 'environment' | 'reason' | 'goal';
+type StoryTextField =
+  'craft' | 'method' | 'process' | 'environment' | 'reason' | 'goal';
 
 type StoryTexts = Record<StoryTextField, string | null>;
 

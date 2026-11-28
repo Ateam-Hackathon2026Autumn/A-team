@@ -4,7 +4,11 @@ import { useAtomValue } from 'jotai';
 
 import { useScrollDashboardToTop } from '../../Layouts/dashboardScroll';
 import ApiError from '../../api/apiError';
-import { getAllJobApplications, getDashboardJob, updateJob } from '../../api/dashboardJobApi';
+import {
+  getAllJobApplications,
+  getDashboardJob,
+  updateJob,
+} from '../../api/dashboardJobApi';
 import DashboardButton from '../../components/DashboardButton';
 import DashboardJobForm from '../../components/DashboardJobForm';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
@@ -45,7 +49,9 @@ function DashboardJobEditPage() {
   const canManage = userInfo?.isProducer === true;
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(null);
+  const [loadError, setLoadError] = useState<'notFound' | 'failed' | null>(
+    null,
+  );
   const [notice, setNotice] = useState<string | null>(null);
   // 読み込み直すたびに増やす（フォームも作り直して最新の内容にする）
   const [reloadCount, setReloadCount] = useState(0);
@@ -64,7 +70,9 @@ function DashboardJobEditPage() {
           setLoaded({
             job,
             lockedWorkDateIds: new Set(
-              applications.flatMap((application) => application.workDates.map((day) => day.id)),
+              applications.flatMap((application) =>
+                application.workDates.map((day) => day.id),
+              ),
             ),
             applicationCount: applications.length,
           });
@@ -77,14 +85,18 @@ function DashboardJobEditPage() {
         }
 
         if (isActive) {
-          setLoadError(error instanceof ApiError && error.status === 404 ? 'notFound' : 'failed');
+          setLoadError(
+            error instanceof ApiError && error.status === 404
+              ? 'notFound'
+              : 'failed',
+          );
         }
       });
 
     return () => {
       isActive = false;
     };
-  }, [canManage, isValidId, jobId, reloadCount]);
+  }, [canManage, isValidId, jobId, reloadCount, redirectToSignin]);
 
   const reload = (message: string | null = null) => {
     setNotice(message);
@@ -104,14 +116,20 @@ function DashboardJobEditPage() {
     // 掲載停止中の求人は公開状態を変えられないため、publishStatus を送らない
     const body: Partial<JobInput> =
       loaded.job.publishStatus === 'suspended'
-        ? Object.fromEntries(Object.entries(input).filter(([name]) => name !== 'publishStatus'))
+        ? Object.fromEntries(
+            Object.entries(input).filter(([name]) => name !== 'publishStatus'),
+          )
         : input;
 
     try {
       await updateJob(loaded.job.id, body);
     } catch (error) {
       // 409 は、希望者がいる勤務日の削除・日付変更（読み込んだ後に応募が入った場合）か、掲載停止中の公開状態の変更
-      if (error instanceof ApiError && error.status === 409 && error.errorCode !== 'CONTENT_SUSPENDED') {
+      if (
+        error instanceof ApiError &&
+        error.status === 409 &&
+        error.errorCode !== 'CONTENT_SUSPENDED'
+      ) {
         reload(WORK_DATE_LOCKED_MESSAGE);
         return;
       }
@@ -119,20 +137,32 @@ function DashboardJobEditPage() {
       throw error;
     }
 
-    navigate(JOB_LIST_PATH, { state: { flash: `「${input.title}」を保存しました。` } });
+    navigate(JOB_LIST_PATH, {
+      state: { flash: `「${input.title}」を保存しました。` },
+    });
   };
 
   const renderBody = () => {
     if (!canManage) {
-      return <Notice>求人の登録・管理は、生産者登録が承認されると使えるようになります。</Notice>;
+      return (
+        <Notice>
+          求人の登録・管理は、生産者登録が承認されると使えるようになります。
+        </Notice>
+      );
     }
 
     if (!isValidId || loadError === 'notFound') {
       return (
         <Notice>
           <p className="m-0 font-bold">求人が見つかりません。</p>
-          <p className="m-0 mt-1 text-marche-muted">削除されたか、URL が間違っている可能性があります。</p>
-          <DashboardButton to={JOB_LIST_PATH} variant="secondary" className="mt-4">
+          <p className="m-0 mt-1 text-marche-muted">
+            削除されたか、URL が間違っている可能性があります。
+          </p>
+          <DashboardButton
+            to={JOB_LIST_PATH}
+            variant="secondary"
+            className="mt-4"
+          >
             求人管理に戻る
           </DashboardButton>
         </Notice>
@@ -145,9 +175,17 @@ function DashboardJobEditPage() {
           role="alert"
           className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-red">求人を読み込めませんでした。</p>
-          <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-          <DashboardButton variant="secondary" onClick={() => reload()} className="mt-4">
+          <p className="m-0 font-bold text-marche-red">
+            求人を読み込めませんでした。
+          </p>
+          <p className="m-0 mt-1 text-marche-muted">
+            時間をおいて、もう一度お試しください。
+          </p>
+          <DashboardButton
+            variant="secondary"
+            onClick={() => reload()}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>
@@ -190,7 +228,11 @@ function DashboardJobEditPage() {
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <h1 className="m-0 font-serif text-2xl font-bold">求人編集</h1>
           {canManage && isValidId && loadError === null && (
-            <DashboardButton to={`/dashboard/jobs/${jobId}/applicants`} variant="secondary" size="sm">
+            <DashboardButton
+              to={`/dashboard/jobs/${jobId}/applicants`}
+              variant="secondary"
+              size="sm"
+            >
               応募者を見る
               {loaded !== null && `（${loaded.applicationCount}件）`}
             </DashboardButton>

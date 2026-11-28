@@ -1,4 +1,7 @@
-import type { FavoriteProducerItem, FavoriteProductItem } from '../../../types/favorite';
+import type {
+  FavoriteProducerItem,
+  FavoriteProductItem,
+} from '../../../types/favorite';
 import type { ProducerSummary } from '../../../types/producer';
 import { hoursFromNow } from '../../helpers';
 import type { MockResult } from '../../types';
@@ -20,7 +23,11 @@ const PRODUCTS_KEY = 'mock:favoriteProducts:v1';
 const PRODUCERS_KEY = 'mock:favoriteProducers:v1';
 
 type StoredProductFav = { productId: number; favoritedAt: string };
-type StoredProducerFav = { producerId: number; notify: boolean; favoritedAt: string };
+type StoredProducerFav = {
+  producerId: number;
+  notify: boolean;
+  favoritedAt: string;
+};
 
 const initialProductFavs = (): StoredProductFav[] => [
   { productId: 4, favoritedAt: hoursFromNow(-24 * 2) },
@@ -35,7 +42,12 @@ const initialProducerFavs = (): StoredProducerFav[] => [
 function isProductFavList(val: unknown): val is StoredProductFav[] {
   return (
     Array.isArray(val) &&
-    val.every((item) => isObject(item) && typeof item.productId === 'number' && typeof item.favoritedAt === 'string')
+    val.every(
+      (item) =>
+        isObject(item) &&
+        typeof item.productId === 'number' &&
+        typeof item.favoritedAt === 'string',
+    )
   );
 }
 
@@ -52,10 +64,13 @@ function isProducerFavList(val: unknown): val is StoredProducerFav[] {
   );
 }
 
-let productFavs: StoredProductFav[] = loadState(PRODUCTS_KEY, isProductFavList) ?? initialProductFavs();
-let producerFavs: StoredProducerFav[] = loadState(PRODUCERS_KEY, isProducerFavList) ?? initialProducerFavs();
+let productFavs: StoredProductFav[] =
+  loadState(PRODUCTS_KEY, isProductFavList) ?? initialProductFavs();
+let producerFavs: StoredProducerFav[] =
+  loadState(PRODUCERS_KEY, isProducerFavList) ?? initialProducerFavs();
 
-const allProducers = () => (producersList.body as { items: ProducerSummary[] }).items;
+const allProducers = () =>
+  (producersList.body as { items: ProducerSummary[] }).items;
 
 export function isProductFavorited(productId: number): boolean {
   return productFavs.some((f) => f.productId === productId);
@@ -73,7 +88,9 @@ export function getFavoritesMock(url: URL): MockResult {
     }
   }
   if (type !== 'product' && type !== 'producer') {
-    return validationError({ type: ['type は product または producer を指定してください。'] });
+    return validationError({
+      type: ['type は product または producer を指定してください。'],
+    });
   }
 
   if (type === 'product') {
@@ -89,7 +106,9 @@ export function getFavoritesMock(url: URL): MockResult {
       ];
     });
     const page = paginate(items, url);
-    return page === null ? validationError({ page: ['ページ番号を確認してください。'] }) : { status: 200, body: page };
+    return page === null
+      ? validationError({ page: ['ページ番号を確認してください。'] })
+      : { status: 200, body: page };
   }
 
   const producers = allProducers();
@@ -110,12 +129,24 @@ export function getFavoritesMock(url: URL): MockResult {
     ];
   });
   const page = paginate(items, url);
-  return page === null ? validationError({ page: ['ページ番号を確認してください。'] }) : { status: 200, body: page };
+  return page === null
+    ? validationError({ page: ['ページ番号を確認してください。'] })
+    : { status: 200, body: page };
 }
 
-export function putFavoriteProductMock(url: URL, init?: RequestInit): MockResult {
-  if (init?.body !== undefined && init?.body !== null && String(init.body).trim() !== '' && String(init.body).trim() !== '{}') {
-    return validationError({ nonFieldErrors: ['リクエスト本文は受け付けていません。'] });
+export function putFavoriteProductMock(
+  url: URL,
+  init?: RequestInit,
+): MockResult {
+  if (
+    init?.body !== undefined &&
+    init?.body !== null &&
+    String(init.body).trim() !== '' &&
+    String(init.body).trim() !== '{}'
+  ) {
+    return validationError({
+      nonFieldErrors: ['リクエスト本文は受け付けていません。'],
+    });
   }
   const productId = idFromPath(url, 0);
   const product = productSamples.find((p) => p.id === productId);
@@ -138,7 +169,10 @@ export function deleteFavoriteProductMock(url: URL): MockResult {
   return { status: 204 };
 }
 
-export function putFavoriteProducerMock(url: URL, init?: RequestInit): MockResult {
+export function putFavoriteProducerMock(
+  url: URL,
+  init?: RequestInit,
+): MockResult {
   const producerId = idFromPath(url, 0);
   const producer = allProducers().find((p) => p.id === producerId);
   if (!producer) {
@@ -146,7 +180,11 @@ export function putFavoriteProducerMock(url: URL, init?: RequestInit): MockResul
   }
 
   let notify: boolean | undefined;
-  if (init?.body !== undefined && init?.body !== null && String(init.body).trim() !== '') {
+  if (
+    init?.body !== undefined &&
+    init?.body !== null &&
+    String(init.body).trim() !== ''
+  ) {
     const body = readJsonBody(init);
     if (!isObject(body)) {
       return validationError({ nonFieldErrors: ['無効なデータです。'] });
@@ -158,7 +196,9 @@ export function putFavoriteProducerMock(url: URL, init?: RequestInit): MockResul
     }
     if ('notify' in body) {
       if (typeof body.notify !== 'boolean') {
-        return validationError({ notify: ['有効な真偽値を入力してください。'] });
+        return validationError({
+          notify: ['有効な真偽値を入力してください。'],
+        });
       }
       notify = body.notify;
     }
@@ -166,9 +206,14 @@ export function putFavoriteProducerMock(url: URL, init?: RequestInit): MockResul
 
   const existing = producerFavs.find((f) => f.producerId === producerId);
   if (!existing) {
-    producerFavs = [{ producerId, notify: Boolean(notify), favoritedAt: nowIso() }, ...producerFavs];
+    producerFavs = [
+      { producerId, notify: Boolean(notify), favoritedAt: nowIso() },
+      ...producerFavs,
+    ];
   } else if (notify !== undefined) {
-    producerFavs = producerFavs.map((f) => (f.producerId === producerId ? { ...f, notify: Boolean(notify) } : f));
+    producerFavs = producerFavs.map((f) =>
+      f.producerId === producerId ? { ...f, notify: Boolean(notify) } : f,
+    );
   }
   saveState(PRODUCERS_KEY, producerFavs);
   return { status: 204 };

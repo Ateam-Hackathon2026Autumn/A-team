@@ -12,7 +12,11 @@ import DashboardButton from '../../components/DashboardButton';
 import DashboardProductForm from '../../components/DashboardProductForm';
 import { useSigninRedirect } from '../../hooks/useSigninRedirect';
 import { userInfoAtom } from '../../stores/userAtom';
-import type { Category, ProductCreateInput, ShippingSetting } from '../../types/product';
+import type {
+  Category,
+  ProductCreateInput,
+  ShippingSetting,
+} from '../../types/product';
 
 const PRODUCT_LIST_PATH = '/dashboard/products';
 
@@ -28,7 +32,6 @@ function DashboardProductNewPage() {
   // 審査中は管理画面に入れるが、商品のAPIは承認済みの生産者のみ使える
   const canManageProducts = userInfo?.isProducer === true;
 
-  // カテゴリーと配送方法の選択肢
   const [choices, setChoices] = useState<Choices | null>(null);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [reloadCount, setReloadCount] = useState(0);
@@ -67,7 +70,7 @@ function DashboardProductNewPage() {
     return () => {
       isActive = false;
     };
-  }, [canManageProducts, reloadCount]);
+  }, [canManageProducts, reloadCount, redirectToSignin]);
 
   const handleReload = () => {
     setHasLoadError(false);
@@ -77,7 +80,8 @@ function DashboardProductNewPage() {
   const handleSubmit = async (input: ProductCreateInput) => {
     await createProduct(input);
 
-    const statusLabel = input.publishStatus === 'public' ? '公開' : '下書き保存';
+    const statusLabel =
+      input.publishStatus === 'public' ? '公開' : '下書き保存';
     navigate(PRODUCT_LIST_PATH, {
       state: { flash: `「${input.name}」を${statusLabel}しました。` },
     });
@@ -104,7 +108,11 @@ function DashboardProductNewPage() {
           <p className="m-0 mt-1 text-marche-muted">
             時間をおいて、もう一度お試しください。
           </p>
-          <DashboardButton variant="secondary" onClick={handleReload} className="mt-4">
+          <DashboardButton
+            variant="secondary"
+            onClick={handleReload}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>

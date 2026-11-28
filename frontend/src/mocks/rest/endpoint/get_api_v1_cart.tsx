@@ -5,13 +5,13 @@ import { productSamples } from './get_api_v1_products';
 import { productDetail } from './get_api_v1_products_productId';
 
 // カート取得API GET /api/v1/cart
-//
+
 // 商品1「安曇野ふじ」×1 と 商品6「あじの開き干し」×2 が入っている状態。
 // 実APIと同じく、shipments・shippingTotal・totalにサーバー側の見積りを返す。
-//
+
 // カートが空:
 //   { items: [], shipments: [], itemsTotal: 0, shippingTotal: 0, total: 0, canCheckout: false }
-//
+
 // 購入できない明細がある場合（canCheckout: false）の明細例:
 //   { id: 3, productId: 3, productName: null, quantity: 1, unitPrice: null, subtotal: null,
 //     purchasable: false, unavailableReason: 'PRODUCT_UNAVAILABLE' }
@@ -59,26 +59,68 @@ let revision = 1;
 
 function restoreCart(): Cart | null {
   try {
-    const saved: unknown = JSON.parse(window.sessionStorage.getItem(storageKey) ?? 'null');
-    if (typeof saved !== 'object' || saved === null || !('items' in saved) || !Array.isArray(saved.items)
-      || !('revision' in saved) || !Number.isSafeInteger(saved.revision) || Number(saved.revision) < 1) return null;
+    const saved: unknown = JSON.parse(
+      window.sessionStorage.getItem(storageKey) ?? 'null',
+    );
+    if (
+      typeof saved !== 'object' ||
+      saved === null ||
+      !('items' in saved) ||
+      !Array.isArray(saved.items) ||
+      !('revision' in saved) ||
+      !Number.isSafeInteger(saved.revision) ||
+      Number(saved.revision) < 1
+    )
+      return null;
     const ids = new Set<number>();
     const productIds = new Set<number>();
     const items: Cart['items'] = [];
     const entries: unknown[] = saved.items;
     for (const item of entries) {
-      if (typeof item !== 'object' || item === null
-        || !('id' in item) || typeof item.id !== 'number' || !Number.isSafeInteger(item.id) || item.id < 1
-        || !('productId' in item) || typeof item.productId !== 'number' || !Number.isSafeInteger(item.productId) || item.productId < 1
-        || !('quantity' in item) || typeof item.quantity !== 'number' || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 10
-        || ids.has(item.id) || productIds.has(item.productId)) return null;
+      if (
+        typeof item !== 'object' ||
+        item === null ||
+        !('id' in item) ||
+        typeof item.id !== 'number' ||
+        !Number.isSafeInteger(item.id) ||
+        item.id < 1 ||
+        !('productId' in item) ||
+        typeof item.productId !== 'number' ||
+        !Number.isSafeInteger(item.productId) ||
+        item.productId < 1 ||
+        !('quantity' in item) ||
+        typeof item.quantity !== 'number' ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > 10 ||
+        ids.has(item.id) ||
+        productIds.has(item.productId)
+      )
+        return null;
       ids.add(item.id);
       productIds.add(item.productId);
-      items.push({ id: item.id, productId: item.productId, quantity: item.quantity,
-        productName: null, volume: null, thumbnailUrl: null, unitPrice: null, subtotal: null, purchasable: false, unavailableReason: null });
+      items.push({
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        productName: null,
+        volume: null,
+        thumbnailUrl: null,
+        unitPrice: null,
+        subtotal: null,
+        purchasable: false,
+        unavailableReason: null,
+      });
     }
     revision = Number(saved.revision);
-    return { items, shipments: [], itemsTotal: 0, shippingTotal: 0, total: 0, canCheckout: false };
+    return {
+      items,
+      shipments: [],
+      itemsTotal: 0,
+      shippingTotal: 0,
+      total: 0,
+      canCheckout: false,
+    };
   } catch {
     // 保存領域を利用できない場合や破損時も、メモリー上でデモを利用できる。
     return null;
@@ -106,37 +148,69 @@ export function refreshMockCart(changed = false): Cart {
     item.thumbnailUrl = product?.thumbnailUrl ?? null;
     item.unitPrice = product?.salePrice ?? null;
     item.subtotal = product ? product.salePrice * item.quantity : null;
-    item.purchasable = Boolean(product && (product.stock === null || product.stock >= item.quantity));
-    item.unavailableReason = !product ? 'PRODUCT_UNAVAILABLE' : !item.purchasable ? 'INSUFFICIENT_STOCK' : null;
+    item.purchasable = Boolean(
+      product && (product.stock === null || product.stock >= item.quantity),
+    );
+    item.unavailableReason = !product
+      ? 'PRODUCT_UNAVAILABLE'
+      : !item.purchasable
+        ? 'INSUFFICIENT_STOCK'
+        : null;
   }
   // モックサーバー側で見積りを作る。画面はこの結果をそのまま使用する。
   const boxes = new Map<string, CartShipment>();
-  for (const item of mockCartBody.items.filter(line => line.purchasable)) {
-    const product = productDetail.handler!(new URL(`/api/v1/products/${item.productId}`, 'https://mock.local')).body as ProductDetail;
+  for (const item of mockCartBody.items.filter((line) => line.purchasable)) {
+    const product = productDetail.handler!(
+      new URL(`/api/v1/products/${item.productId}`, 'https://mock.local'),
+    ).body as ProductDetail;
     const key = `${product.producer.id}:${product.shipping.temperatureZone}`;
     const box = boxes.get(key) ?? {
-      producerId: product.producer.id, producerName: product.producer.businessName,
-      temperatureZone: product.shipping.temperatureZone, itemIds: [], itemsTotal: 0,
-      shippingFee: product.shipping.shippingFee, freeShippingThreshold: product.shipping.freeShippingThreshold,
+      producerId: product.producer.id,
+      producerName: product.producer.businessName,
+      temperatureZone: product.shipping.temperatureZone,
+      itemIds: [],
+      itemsTotal: 0,
+      shippingFee: product.shipping.shippingFee,
+      freeShippingThreshold: product.shipping.freeShippingThreshold,
     };
     box.itemIds.push(item.id);
     box.itemsTotal += item.subtotal ?? 0;
     boxes.set(key, box);
   }
-  mockCartBody.shipments = [...boxes.values()].map(box => ({ ...box,
-    shippingFee: box.freeShippingThreshold !== null && box.itemsTotal >= box.freeShippingThreshold ? 0 : box.shippingFee,
+  mockCartBody.shipments = [...boxes.values()].map((box) => ({
+    ...box,
+    shippingFee:
+      box.freeShippingThreshold !== null &&
+      box.itemsTotal >= box.freeShippingThreshold
+        ? 0
+        : box.shippingFee,
   }));
-  mockCartBody.itemsTotal = mockCartBody.shipments.reduce((sum, box) => sum + box.itemsTotal, 0);
-  mockCartBody.shippingTotal = mockCartBody.shipments.reduce((sum, box) => sum + box.shippingFee, 0);
+  mockCartBody.itemsTotal = mockCartBody.shipments.reduce(
+    (sum, box) => sum + box.itemsTotal,
+    0,
+  );
+  mockCartBody.shippingTotal = mockCartBody.shipments.reduce(
+    (sum, box) => sum + box.shippingFee,
+    0,
+  );
   mockCartBody.total = mockCartBody.itemsTotal + mockCartBody.shippingTotal;
-  mockCartBody.canCheckout = mockCartBody.items.length > 0 && mockCartBody.items.every((item) => item.purchasable);
+  mockCartBody.canCheckout =
+    mockCartBody.items.length > 0 &&
+    mockCartBody.items.every((item) => item.purchasable);
   if (changed) revision += 1;
   try {
     // 金額や購入可否は保存値を信用せず、商品データから毎回計算する。
-    window.sessionStorage.setItem(storageKey, JSON.stringify({
-      items: mockCartBody.items.map(({ id, productId, quantity }) => ({ id, productId, quantity })),
-      revision,
-    }));
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        items: mockCartBody.items.map(({ id, productId, quantity }) => ({
+          id,
+          productId,
+          quantity,
+        })),
+        revision,
+      }),
+    );
   } catch {
     // 保存に失敗しても、実行中のカート操作は継続する。
   }

@@ -20,10 +20,10 @@ import {
 } from './common';
 
 // ダッシュボード商品のモックストア
-//
+
 // 一覧・詳細・登録・更新（公開切り替えを含む）・在庫更新・削除の各モックが、このデータを読み書きする
 // 更新のたびに etag（"product-{id}-v{版数}"）と updatedAt が変わり、古い etag で更新すると 412 になる
-//
+
 // 初期データはログイン中の生産者（山本農園）の商品3件
 //   1: 安曇野ふじ（公開中）  2: シャインマスカット（公開中・残りわずか）  3: りんごのドライチップス（非公開）
 
@@ -117,7 +117,8 @@ function seedProducts(): DashboardProduct[] {
       price: 1500,
       taxRate: 8,
       discountRate: null,
-      description: '規格外のりんごを薄切りにして、低温でじっくり乾燥させました。砂糖不使用です。',
+      description:
+        '規格外のりんごを薄切りにして、低温でじっくり乾燥させました。砂糖不使用です。',
       method: null,
       isSubscription: false,
       isPreorder: false,
@@ -188,7 +189,9 @@ function calcSalePrice(price: number, discountRate: number | null): number {
 function toImages(keys: string[], current: ProductImage[]): ProductImage[] {
   let lastId = Math.max(
     0,
-    ...getState().products.flatMap((product) => product.images.map((image) => image.id)),
+    ...getState().products.flatMap((product) =>
+      product.images.map((image) => image.id),
+    ),
   );
 
   return keys.map((key, sortOrder) => {
@@ -204,9 +207,7 @@ function toImages(keys: string[], current: ProductImage[]): ProductImage[] {
   });
 }
 
-// ---------------------------------------------------------------------------
 // 入力チェック（画面側と同じ条件の最低限。本物の API の代わりに 400 を返す）
-// ---------------------------------------------------------------------------
 
 type ProductFields = Partial<
   Pick<
@@ -232,8 +233,10 @@ type FieldName = keyof ProductFields;
 
 const isText = (value: unknown, max: number) =>
   typeof value === 'string' && value.trim() !== '' && value.length <= max;
-const isOptionalText = (value: unknown) => value === null || typeof value === 'string';
-const isId = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 1;
+const isOptionalText = (value: unknown) =>
+  value === null || typeof value === 'string';
+const isId = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 1;
 const isCount = (value: unknown) =>
   Number.isInteger(value) && Number(value) >= 0 && Number(value) <= MAX_INT;
 
@@ -245,13 +248,15 @@ const fieldChecks: Record<FieldName, (value: unknown) => boolean> = {
   price: (value) => isCount(value) && Number(value) >= 1,
   taxRate: (value) => value === 8 || value === 10,
   discountRate: (value) =>
-    value === null || (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 99),
+    value === null ||
+    (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 99),
   description: isOptionalText,
   method: isOptionalText,
   isSubscription: (value) => typeof value === 'boolean',
   isPreorder: (value) => typeof value === 'boolean',
   acceptsDeliveryDate: (value) => typeof value === 'boolean',
-  publishStatus: (value) => value === 'draft' || value === 'public' || value === 'private',
+  publishStatus: (value) =>
+    value === 'draft' || value === 'public' || value === 'private',
   stock: (value) => value === null || isCount(value),
   imageKeys: (value) =>
     Array.isArray(value) &&
@@ -267,7 +272,10 @@ type ParseResult =
 // 送られた項目だけチェックする（required の項目は、送られていなければエラー）
 function parseFields(input: unknown, required: FieldName[]): ParseResult {
   if (!isObject(input)) {
-    return { ok: false, errors: { body: ['リクエストの形式が正しくありません。'] } };
+    return {
+      ok: false,
+      errors: { body: ['リクエストの形式が正しくありません。'] },
+    };
   }
 
   const errors: Record<string, string[]> = {};
@@ -298,15 +306,16 @@ function publishConflict(product: DashboardProduct): MockResult | null {
       (product.description ?? '').trim() === '' ||
       product.salePrice <= 0)
   ) {
-    return conflict('PRODUCT_NOT_PUBLISHABLE', '公開するには画像・商品説明・割引後の価格が必要です。');
+    return conflict(
+      'PRODUCT_NOT_PUBLISHABLE',
+      '公開するには画像・商品説明・割引後の価格が必要です。',
+    );
   }
 
   return null;
 }
 
-// ---------------------------------------------------------------------------
 // 各APIの処理
-// ---------------------------------------------------------------------------
 
 // GET /api/v1/dashboard/products（更新の新しい順）
 function listProducts(url: URL): MockResult {
@@ -324,7 +333,9 @@ function listProducts(url: URL): MockResult {
 function getProduct(url: URL): MockResult {
   const product = findProduct(url);
 
-  return product === undefined ? notFound(NOT_FOUND_MESSAGE) : { status: 200, body: product };
+  return product === undefined
+    ? notFound(NOT_FOUND_MESSAGE)
+    : { status: 200, body: product };
 }
 
 // POST /api/v1/dashboard/products
@@ -406,8 +417,14 @@ function updateProduct(url: URL, init?: RequestInit): MockResult {
     return validationError(parsed.errors);
   }
 
-  if (product.publishStatus === 'suspended' && parsed.fields.publishStatus !== undefined) {
-    return conflict('CONTENT_SUSPENDED', '運営により掲載停止中のため、公開状態は変更できません。');
+  if (
+    product.publishStatus === 'suspended' &&
+    parsed.fields.publishStatus !== undefined
+  ) {
+    return conflict(
+      'CONTENT_SUSPENDED',
+      '運営により掲載停止中のため、公開状態は変更できません。',
+    );
   }
 
   // 在庫は在庫更新APIで変える（この API では受け付けない）
@@ -415,7 +432,10 @@ function updateProduct(url: URL, init?: RequestInit): MockResult {
   const updated: DashboardProduct = {
     ...product,
     ...fields,
-    images: imageKeys === undefined ? product.images : toImages(imageKeys, product.images),
+    images:
+      imageKeys === undefined
+        ? product.images
+        : toImages(imageKeys, product.images),
   };
   updated.salePrice = calcSalePrice(updated.price, updated.discountRate);
 
@@ -448,7 +468,9 @@ function updateStock(url: URL, init?: RequestInit): MockResult {
   const input = readJsonBody(init);
 
   if (!isObject(input) || !(input.stock === null || isCount(input.stock))) {
-    return validationError({ stock: ['在庫数は0以上の整数で指定してください。'] });
+    return validationError({
+      stock: ['在庫数は0以上の整数で指定してください。'],
+    });
   }
 
   product.stock = input.stock as number | null;
@@ -479,8 +501,14 @@ function deleteProduct(url: URL, init?: RequestInit): MockResult {
     return preconditionFailed();
   }
 
-  if (product.publishStatus === 'public' || product.publishStatus === 'suspended') {
-    return conflict('PRODUCT_DELETE_CONFLICT', '公開中または注文のある商品は削除できません。');
+  if (
+    product.publishStatus === 'public' ||
+    product.publishStatus === 'suspended'
+  ) {
+    return conflict(
+      'PRODUCT_DELETE_CONFLICT',
+      '公開中または注文のある商品は削除できません。',
+    );
   }
 
   const products = getState().products;
@@ -492,7 +520,9 @@ function deleteProduct(url: URL, init?: RequestInit): MockResult {
 
 // ダッシュボード集計（GET /api/v1/dashboard/summary）用。公開中の商品数
 function countPublishedProducts(): number {
-  return getState().products.filter((product) => product.publishStatus === 'public').length;
+  return getState().products.filter(
+    (product) => product.publishStatus === 'public',
+  ).length;
 }
 
 export {

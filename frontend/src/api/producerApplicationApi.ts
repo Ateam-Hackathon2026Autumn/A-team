@@ -7,12 +7,19 @@ import type {
 import { toApiError } from './apiError';
 import { apiFetch } from './client';
 
-export async function getMyProducerApplication(signal?: AbortSignal): Promise<MyProducerApplication> {
-  const response = await apiFetch('/api/v1/producer-applications/me', { signal });
+export async function getMyProducerApplication(
+  signal?: AbortSignal,
+): Promise<MyProducerApplication> {
+  const response = await apiFetch('/api/v1/producer-applications/me', {
+    signal,
+  });
   if (response.ok) {
     return (await response.json()) as MyProducerApplication;
   }
-  throw await toApiError(response, '生産者登録申請の状況を取得できませんでした。');
+  throw await toApiError(
+    response,
+    '生産者登録申請の状況を取得できませんでした。',
+  );
 }
 
 export async function createProducerApplication(

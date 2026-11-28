@@ -1,9 +1,9 @@
 import type { RestMock } from '../../types';
 
 // カテゴリー一覧取得API GET /api/v1/categories
-//
+
 // 商品カテゴリーのマスタを全件返す（sortOrder 昇順）。商品0件のカテゴリーも含む
-//
+
 // マスタ0件:
 //   { items: [] }
 const categoriesList: RestMock = {

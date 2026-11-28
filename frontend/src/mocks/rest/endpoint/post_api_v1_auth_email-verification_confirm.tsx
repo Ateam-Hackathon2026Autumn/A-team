@@ -1,9 +1,9 @@
 import type { RestMock } from '../../types';
 
 // メール認証完了API POST /api/v1/auth/email-verification/confirm
-//
+
 // ログイン不要。自動ログインはしない
-//
+
 // トークンが無効・期限切れ・使用済み（400）:
 //   {
 //     errorCode: 'INVALID_OR_EXPIRED_TOKEN',

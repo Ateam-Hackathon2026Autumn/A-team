@@ -16,14 +16,13 @@ type ProductUpdateResult = {
   etag?: string;
 };
 
-// 実APIは ETag を返さない。旧モックが返す場合だけ If-Match を付ける
+// 実 API は ETag を返さない。モック互換のため値があれば If-Match を付ける
 async function sendProductRequest(
   path: string,
   method: 'PATCH' | 'DELETE',
   etag?: string,
   body?: unknown,
 ): Promise<Response> {
-
   return apiFetch(path, {
     method,
     headers: {
@@ -48,7 +47,9 @@ async function getDashboardProducts(
 }
 
 // 本人の商品を1件取得（編集画面用。下書き・非公開も取得できる）
-async function getDashboardProduct(productId: number): Promise<DashboardProduct> {
+async function getDashboardProduct(
+  productId: number,
+): Promise<DashboardProduct> {
   const response = await apiFetch(`/api/v1/dashboard/products/${productId}`);
 
   if (response.ok) {
@@ -59,7 +60,9 @@ async function getDashboardProduct(productId: number): Promise<DashboardProduct>
 }
 
 // カテゴリー一覧を取得（一覧画面の補足情報は options に SUPPLEMENTARY_FETCH を渡す）
-async function getCategories(options: ApiFetchOptions = {}): Promise<Category[]> {
+async function getCategories(
+  options: ApiFetchOptions = {},
+): Promise<Category[]> {
   const response = await apiFetch('/api/v1/categories', {}, options);
 
   if (response.ok) {

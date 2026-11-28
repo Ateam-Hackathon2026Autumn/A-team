@@ -4,7 +4,8 @@ type JobPublishStatus = 'draft' | 'public' | 'private' | 'suspended';
 type JobWritableStatus = Exclude<JobPublishStatus, 'suspended'>;
 type JobTermType = 'one_day' | 'short' | 'long';
 type JobPayUnit = 'hourly' | 'daily' | 'monthly';
-type JobApplicationStatus = 'applied' | 'screening' | 'hired' | 'rejected' | 'withdrawn' | 'completed';
+type JobApplicationStatus =
+  'applied' | 'screening' | 'hired' | 'rejected' | 'withdrawn' | 'completed';
 // 生産者が変更できる応募の状態（completed は長期の求人で採用済みの応募だけ）
 type JobDecisionStatus = 'screening' | 'hired' | 'rejected' | 'completed';
 

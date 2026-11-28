@@ -46,8 +46,8 @@ export type ProductListResponse = {
   totalPages: number;
 };
 
-export type ProductSort = "popular" | "price_asc" | "price_desc" | "rating";
-export type ProductPriceBand = "all" | "under2000" | "2000to4000" | "over4000";
+export type ProductSort = 'popular' | 'price_asc' | 'price_desc' | 'rating';
+export type ProductPriceBand = 'all' | 'under2000' | '2000to4000' | 'over4000';
 
 export type ProductQuery = {
   page?: number;

@@ -3,14 +3,14 @@ import type { RestMock } from '../../types';
 import { getMockProducerApplication } from '../store/producerApplications';
 
 // 生産者申請状況取得API GET /api/v1/producer-applications/me
-//
+
 // ログイン中の山本さん（承認済み）の最新申請を返す
-//
+
 // 状態を切り替えたい場合は status / reviewComment / reviewedAt / canResubmit を書き換える
 //   審査中    : 'pending'  / null                                   / null               / false
 //   差し戻し  : 'returned' / '生産品目を具体的に記載してください。' / hoursFromNow(-24) / true
 //   却下      : 'rejected' / '（却下理由）'                         / hoursFromNow(-24) / true
-//
+
 // 申請が一度もない（404）:
 //   { errorCode: 'APPLICATION_NOT_FOUND', errorMsg: '生産者登録申請はありません。' }
 const producerApplicationMe: RestMock = {

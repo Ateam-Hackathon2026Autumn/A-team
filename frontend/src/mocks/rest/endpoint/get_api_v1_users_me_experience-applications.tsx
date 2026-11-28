@@ -4,10 +4,10 @@ import { daysFromNow, hoursFromNow } from '../../helpers';
 import { conflict, idFromPath, notFound } from '../store/common';
 
 // 体験申込状況取得API GET /api/v1/users/me/experience-applications
-//
+
 // ログイン中の会員（山本 健太）が、ほかの生産者の体験に申し込んだ一覧
 // 申込後に体験が非公開になった場合は experience: { id, title: null, isPublic: false } になる
-//
+
 // 申込なしの場合:
 //   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
 // 未ログインの場合（status: 401）:
@@ -61,11 +61,15 @@ const initialExperienceApplications: MyExperienceApplication[] = [
   },
 ];
 
-let experienceApplicationsState: MyExperienceApplication[] = structuredClone(initialExperienceApplications);
+let experienceApplicationsState: MyExperienceApplication[] = structuredClone(
+  initialExperienceApplications,
+);
 
 export function cancelMockExperienceApplication(url: URL) {
   const applicationId = idFromPath(url, 1);
-  const target = experienceApplicationsState.find((item) => item.id === applicationId);
+  const target = experienceApplicationsState.find(
+    (item) => item.id === applicationId,
+  );
   if (!target) {
     return notFound('予約が見つかりません。');
   }

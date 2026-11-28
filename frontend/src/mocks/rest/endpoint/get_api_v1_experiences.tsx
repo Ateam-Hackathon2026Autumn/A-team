@@ -2,11 +2,11 @@ import type { RestMock } from '../../types';
 import { daysFromNow } from '../../helpers';
 
 // 体験一覧取得API（エリア絞り込み・生産者指定） GET /api/v1/experiences
-//
+
 // クエリ（page / pageSize / areaId / prefectureId / producerId）による絞り込みはモックでは行わない
 // areaId は 北海道1 / 東北2 / 関東3 / 中部4 / 近畿5 / 中国・四国6 / 九州・沖縄7
 // nextStartAt は将来の開催枠のうち最も早い日時（満席も含む）。開催枠なしは null
-//
+
 // 該当なしの場合:
 //   { items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 }
 const experiencesList: RestMock = {
@@ -116,11 +116,27 @@ const experiencesList: RestMock = {
 export { experiencesList };
 
 // 実APIと同じく、生産者で絞り込んでからページングする。
-experiencesList.handler = url => {
- const source = experiencesList.body as { items: import('../../../types/experience').Experience[] };
- const producerId = url.searchParams.get('producerId');
- const items = source.items.filter(item => !producerId || item.producer.id === Number(producerId));
- const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
- const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
- return { status: 200, body: { items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length, page, pageSize, totalPages: Math.ceil(items.length / pageSize) } };
+experiencesList.handler = (url) => {
+  const source = experiencesList.body as {
+    items: import('../../../types/experience').Experience[];
+  };
+  const producerId = url.searchParams.get('producerId');
+  const items = source.items.filter(
+    (item) => !producerId || item.producer.id === Number(producerId),
+  );
+  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+  const pageSize = Math.min(
+    100,
+    Math.max(1, Number(url.searchParams.get('pageSize')) || 20),
+  );
+  return {
+    status: 200,
+    body: {
+      items: items.slice((page - 1) * pageSize, page * pageSize),
+      total: items.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(items.length / pageSize),
+    },
+  };
 };

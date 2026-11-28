@@ -1,7 +1,7 @@
 import type { RestMock } from '../../types';
 
 // 本人情報取得API GET /api/v1/users/me
-//
+
 // 未ログイン（401）:
 //   { errorCode: 'NOT_AUTHENTICATED', errorMsg: 'ログインしてください。' }
 const usersMe: RestMock = {

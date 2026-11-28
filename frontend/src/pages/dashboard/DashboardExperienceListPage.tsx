@@ -80,13 +80,16 @@ function ExperienceRow({
         </Link>
         <p className="m-0 mt-1 text-sm text-marche-muted">
           大人 {formatYen(experience.priceAdult)}
-          {experience.priceChild !== null && ` ・ 子ども ${formatYen(experience.priceChild)}`}
+          {experience.priceChild !== null &&
+            ` ・ 子ども ${formatYen(experience.priceChild)}`}
         </p>
         <dl className="m-0 mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
           <div className="flex gap-1">
             <dt className="text-marche-muted">次回開催</dt>
             <dd className="m-0 font-bold">
-              {experience.nextStartAt === null ? '予定なし' : formatDateTime(experience.nextStartAt)}
+              {experience.nextStartAt === null
+                ? '予定なし'
+                : formatDateTime(experience.nextStartAt)}
             </dd>
           </div>
           <div className="flex gap-1">
@@ -142,7 +145,9 @@ function DashboardExperienceListPage() {
     }
   }, [location.pathname, location.state, navigate]);
 
-  const [experiences, setExperiences] = useState<DashboardExperienceSummary[] | null>(null);
+  const [experiences, setExperiences] = useState<
+    DashboardExperienceSummary[] | null
+  >(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(1);
@@ -198,7 +203,7 @@ function DashboardExperienceListPage() {
     return () => {
       isActive = false;
     };
-  }, [canManage, page, statusFilter, reloadCount]);
+  }, [canManage, page, statusFilter, reloadCount, redirectToSignin]);
 
   const reload = () => {
     setHasLoadError(false);
@@ -255,7 +260,10 @@ function DashboardExperienceListPage() {
         setActionError(
           `「${experience.title}」は予約履歴があるため削除できません。非公開にしてください。`,
         );
-      } else if (error instanceof ApiError && (error.status === 404 || error.status === 412)) {
+      } else if (
+        error instanceof ApiError &&
+        (error.status === 404 || error.status === 412)
+      ) {
         setActionError(
           '他の画面で体験が更新・削除されていたため、最新の内容を読み込み直しました。',
         );
@@ -263,7 +271,9 @@ function DashboardExperienceListPage() {
       } else if (error instanceof ApiError) {
         setActionError(error.message);
       } else {
-        setActionError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setActionError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
     } finally {
       setPendingId(null);
@@ -287,7 +297,9 @@ function DashboardExperienceListPage() {
         <h1 className="m-0 font-serif text-2xl font-bold">
           体験管理
           {experiences !== null && (
-            <span className="ml-2 text-sm font-normal text-marche-muted">{total}件</span>
+            <span className="ml-2 text-sm font-normal text-marche-muted">
+              {total}件
+            </span>
           )}
         </h1>
         <DashboardButton to={NEW_EXPERIENCE_PATH}>
@@ -296,7 +308,11 @@ function DashboardExperienceListPage() {
         </DashboardButton>
       </header>
 
-      <div role="group" aria-label="公開状態で絞り込み" className="flex flex-wrap gap-2">
+      <div
+        role="group"
+        aria-label="公開状態で絞り込み"
+        className="flex flex-wrap gap-2"
+      >
         {statusFilters.map(({ value, label }) => (
           <button
             key={value}
@@ -342,9 +358,17 @@ function DashboardExperienceListPage() {
           role="alert"
           className="box-border rounded-2xl border border-solid border-marche-red/30 bg-white p-5 text-sm"
         >
-          <p className="m-0 font-bold text-marche-red">体験の一覧を読み込めませんでした。</p>
-          <p className="m-0 mt-1 text-marche-muted">時間をおいて、もう一度お試しください。</p>
-          <DashboardButton variant="secondary" onClick={reload} className="mt-4">
+          <p className="m-0 font-bold text-marche-red">
+            体験の一覧を読み込めませんでした。
+          </p>
+          <p className="m-0 mt-1 text-marche-muted">
+            時間をおいて、もう一度お試しください。
+          </p>
+          <DashboardButton
+            variant="secondary"
+            onClick={reload}
+            className="mt-4"
+          >
             再読み込み
           </DashboardButton>
         </div>
@@ -368,7 +392,9 @@ function DashboardExperienceListPage() {
               </DashboardButton>
             </>
           ) : (
-            <p className="m-0 text-sm text-marche-muted">該当する体験はありません。</p>
+            <p className="m-0 text-sm text-marche-muted">
+              該当する体験はありません。
+            </p>
           )}
         </div>
       ) : (
@@ -385,7 +411,10 @@ function DashboardExperienceListPage() {
       )}
 
       {!hasLoadError && experiences !== null && totalPages > 1 && (
-        <nav aria-label="ページ移動" className="flex items-center justify-center gap-4">
+        <nav
+          aria-label="ページ移動"
+          className="flex items-center justify-center gap-4"
+        >
           <DashboardButton
             variant="secondary"
             size="sm"

@@ -1,9 +1,9 @@
-import { useAtomValue } from "jotai";
-import { Link } from "react-router";
-import { loginStatusAtom } from "../../stores/userAtom";
+import { useAtomValue } from 'jotai';
+import { Link } from 'react-router';
+import { loginStatusAtom } from '../../stores/userAtom';
 
 export default function Footer() {
-  const isLoggedIn = useAtomValue(loginStatusAtom) === "loggedIn";
+  const isLoggedIn = useAtomValue(loginStatusAtom) === 'loggedIn';
 
   return (
     <footer className="mt-16 border-t border-marche-line">
@@ -13,7 +13,12 @@ export default function Footer() {
             to="/"
             className="inline-flex items-center gap-2 font-serif text-lg font-bold text-marche-ink no-underline hover:no-underline"
           >
-            <img src="/favicon.svg" alt="" aria-hidden="true" className="size-8 shrink-0 rounded-full" />
+            <img
+              src="/favicon.svg"
+              alt=""
+              aria-hidden="true"
+              className="size-8 shrink-0 rounded-full"
+            />
             つながるマルシェ
           </Link>
 
@@ -22,18 +27,30 @@ export default function Footer() {
             className="flex flex-wrap gap-5 text-sm text-marche-green"
           >
             {isLoggedIn ? (
-              <Link to="/mypage" className="no-underline text-inherit hover:underline">
+              <Link
+                to="/mypage"
+                className="no-underline text-inherit hover:underline"
+              >
                 マイページ
               </Link>
             ) : (
               <>
-                <Link to="/signup?purpose=producer" className="no-underline text-inherit hover:underline">
+                <Link
+                  to="/signup?purpose=producer"
+                  className="no-underline text-inherit hover:underline"
+                >
                   生産者の方へ
                 </Link>
-                <Link to="/signin" className="no-underline text-inherit hover:underline">
+                <Link
+                  to="/signin"
+                  className="no-underline text-inherit hover:underline"
+                >
                   ログイン
                 </Link>
-                <Link to="/signup" className="no-underline text-inherit hover:underline">
+                <Link
+                  to="/signup"
+                  className="no-underline text-inherit hover:underline"
+                >
                   新規登録
                 </Link>
               </>

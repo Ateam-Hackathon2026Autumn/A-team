@@ -22,12 +22,16 @@ import {
   toJstDateTime,
 } from '../utils/experienceFormat';
 import DashboardButton from './DashboardButton';
-import { Field, controlBorder, controlClassName, describedBy } from './DashboardFormParts';
+import { Field } from './DashboardFormParts';
+import {
+  controlBorder,
+  controlClassName,
+  describedBy,
+} from './dashboardFormValues';
 
 const MAX_DURATION_MIN = 10080;
 const MAX_INT = 2147483647;
 
-// 予約枠の入力欄の値
 type SlotFormValues = {
   date: string;
   time: string;
@@ -54,7 +58,10 @@ function isWholeNumber(value: string) {
   return /^\d+$/.test(value) && Number(value) <= MAX_INT;
 }
 
-function validateSlot(values: SlotFormValues, checkFuture: boolean): SlotFormErrors {
+function validateSlot(
+  values: SlotFormValues,
+  checkFuture: boolean,
+): SlotFormErrors {
   const errors: SlotFormErrors = {};
 
   if (values.date === '') {
@@ -142,10 +149,20 @@ function SlotFields({
 
   return (
     <div className="grid gap-4 sm:grid-cols-4">
-      <Field id={`${idPrefix}-date`} label="開催日" required error={errors.date}>
+      <Field
+        id={`${idPrefix}-date`}
+        label="開催日"
+        required
+        error={errors.date}
+      >
         {input('date', { type: 'date', disabled: timeLocked })}
       </Field>
-      <Field id={`${idPrefix}-time`} label="開始時刻" required error={errors.time}>
+      <Field
+        id={`${idPrefix}-time`}
+        label="開始時刻"
+        required
+        error={errors.time}
+      >
         {input('time', { type: 'time', disabled: timeLocked })}
       </Field>
       <Field
@@ -154,9 +171,18 @@ function SlotFields({
         required
         error={errors.durationMin}
       >
-        {input('durationMin', { type: 'text', inputMode: 'numeric', disabled: timeLocked })}
+        {input('durationMin', {
+          type: 'text',
+          inputMode: 'numeric',
+          disabled: timeLocked,
+        })}
       </Field>
-      <Field id={`${idPrefix}-capacity`} label="定員（人）" required error={errors.capacity}>
+      <Field
+        id={`${idPrefix}-capacity`}
+        label="定員（人）"
+        required
+        error={errors.capacity}
+      >
         {input('capacity', { type: 'text', inputMode: 'numeric' })}
       </Field>
     </div>
@@ -170,7 +196,10 @@ type DashboardExperienceSlotsProps = {
 };
 
 // 体験の予約枠の一覧・追加・編集・受付停止・中止・削除
-function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperienceSlotsProps) {
+function DashboardExperienceSlots({
+  experienceId,
+  onChanged,
+}: DashboardExperienceSlotsProps) {
   const redirectToSignin = useSigninRedirect();
   const [slots, setSlots] = useState<ExperienceSlot[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -211,7 +240,7 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
     return () => {
       isActive = false;
     };
-  }, [experienceId, reloadCount]);
+  }, [experienceId, reloadCount, redirectToSignin]);
 
   const reloadSlots = () => {
     setSlots(null);
@@ -223,7 +252,8 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
   const replaceSlot = (updated: ExperienceSlot) => {
     setSlots(
       (current) =>
-        current?.map((slot) => (slot.id === updated.id ? updated : slot)) ?? null,
+        current?.map((slot) => (slot.id === updated.id ? updated : slot)) ??
+        null,
     );
   };
 
@@ -252,12 +282,16 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
         );
         reloadSlots();
       } else if (error instanceof ApiError && error.status === 404) {
-        setActionError('予約枠が見つかりませんでした。最新の内容を読み込み直しました。');
+        setActionError(
+          '予約枠が見つかりませんでした。最新の内容を読み込み直しました。',
+        );
         reloadSlots();
       } else if (error instanceof ApiError) {
         setActionError(error.message);
       } else {
-        setActionError('通信に失敗しました。時間をおいて、もう一度お試しください。');
+        setActionError(
+          '通信に失敗しました。時間をおいて、もう一度お試しください。',
+        );
       }
 
       return false;
@@ -291,7 +325,8 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
       setSlots((current) =>
         [...(current ?? []), created].sort(
           (a, b) =>
-            new Date(a.startAt).getTime() - new Date(b.startAt).getTime() || a.id - b.id,
+            new Date(a.startAt).getTime() - new Date(b.startAt).getTime() ||
+            a.id - b.id,
         ),
       );
 
@@ -338,7 +373,10 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
     // 変えた項目だけ送る（予約がある枠の日時を送ると 409 になるため）
     const input: ExperienceSlotUpdateInput = {};
 
-    if (!timeLocked && (editValues.date !== original.date || editValues.time !== original.time)) {
+    if (
+      !timeLocked &&
+      (editValues.date !== original.date || editValues.time !== original.time)
+    ) {
       input.startAt = toJstDateTime(editValues.date, editValues.time);
     }
 
@@ -366,10 +404,14 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
     }
   };
 
-  const handleStatusChange = (slot: ExperienceSlot, status: ExperienceSlotStatus) => {
-    const reservationWarning = slot.reservedCount > 0
-      ? `予約人数は${slot.reservedCount}人です。申込中・確定済みの予約はキャンセルされ、予約者に通知とメールが送られます。`
-      : '';
+  const handleStatusChange = (
+    slot: ExperienceSlot,
+    status: ExperienceSlotStatus,
+  ) => {
+    const reservationWarning =
+      slot.reservedCount > 0
+        ? `予約人数は${slot.reservedCount}人です。申込中・確定済みの予約はキャンセルされ、予約者に通知とメールが送られます。`
+        : '';
     if (
       status === 'canceled' &&
       !window.confirm(
@@ -401,7 +443,9 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
 
     runAction(slot.id, async () => {
       await deleteExperienceSlot(experienceId, slot);
-      setSlots((current) => current?.filter(({ id }) => id !== slot.id) ?? null);
+      setSlots(
+        (current) => current?.filter(({ id }) => id !== slot.id) ?? null,
+      );
 
       return '予約枠を削除しました。';
     });
@@ -442,7 +486,11 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
             >
               キャンセル
             </DashboardButton>
-            <DashboardButton size="sm" disabled={isPending} onClick={() => handleEditSave(slot)}>
+            <DashboardButton
+              size="sm"
+              disabled={isPending}
+              onClick={() => handleEditSave(slot)}
+            >
               {isPending ? '保存中…' : '変更を保存'}
             </DashboardButton>
           </div>
@@ -470,8 +518,10 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
             )}
           </p>
           <p className="m-0 mt-1 text-sm text-marche-muted">
-            {formatDuration(slot.durationMin)} ・ 予約 {slot.reservedCount} / 定員 {slot.capacity}人
-            {slot.status !== 'canceled' && `（残り ${slot.remainingCapacity}人）`}
+            {formatDuration(slot.durationMin)} ・ 予約 {slot.reservedCount} /
+            定員 {slot.capacity}人
+            {slot.status !== 'canceled' &&
+              `（残り ${slot.remainingCapacity}人）`}
           </p>
         </div>
 
@@ -519,7 +569,12 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
               </DashboardButton>
             )}
             {!hasReservations && !past && (
-              <DashboardButton variant="danger" size="sm" disabled={isPending} onClick={() => handleDelete(slot)}>
+              <DashboardButton
+                variant="danger"
+                size="sm"
+                disabled={isPending}
+                onClick={() => handleDelete(slot)}
+              >
                 削除
               </DashboardButton>
             )}
@@ -535,7 +590,10 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
       className="box-border flex flex-col gap-5 rounded-2xl border border-solid border-marche-line bg-white p-5 md:p-6"
     >
       <div>
-        <h2 id="experience-slots-heading" className="m-0 font-serif text-lg font-bold">
+        <h2
+          id="experience-slots-heading"
+          className="m-0 font-serif text-lg font-bold"
+        >
           予約枠
         </h2>
         <p className="m-0 mt-1 text-xs text-marche-muted">
@@ -556,19 +614,31 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
 
       {loadError ? (
         <div role="alert" className="text-sm">
-          <p className="m-0 font-bold text-marche-red">予約枠を読み込めませんでした。</p>
-          <DashboardButton variant="secondary" size="sm" onClick={reloadSlots} className="mt-3">
+          <p className="m-0 font-bold text-marche-red">
+            予約枠を読み込めませんでした。
+          </p>
+          <DashboardButton
+            variant="secondary"
+            size="sm"
+            onClick={reloadSlots}
+            className="mt-3"
+          >
             再読み込み
           </DashboardButton>
         </div>
       ) : slots === null ? (
-        <div aria-busy="true" className="h-20 animate-pulse rounded-xl bg-marche-canvas" />
+        <div
+          aria-busy="true"
+          className="h-20 animate-pulse rounded-xl bg-marche-canvas"
+        />
       ) : slots.length === 0 ? (
         <p className="m-0 rounded-xl bg-marche-canvas p-4 text-sm text-marche-muted">
           まだ予約枠がありません。下のフォームから追加してください。
         </p>
       ) : (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">{slots.map(renderSlot)}</ul>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {slots.map(renderSlot)}
+        </ul>
       )}
 
       <form
@@ -592,12 +662,18 @@ function DashboardExperienceSlots({ experienceId, onChanged }: DashboardExperien
             <input
               type="checkbox"
               checked={addStatus === 'closed'}
-              onChange={(event) => setAddStatus(event.target.checked ? 'closed' : 'open')}
+              onChange={(event) =>
+                setAddStatus(event.target.checked ? 'closed' : 'open')
+              }
               className="m-0 size-4 accent-marche-green"
             />
             受付停止の状態で追加する
           </label>
-          <DashboardButton type="submit" size="sm" disabled={pendingId === 'new'}>
+          <DashboardButton
+            type="submit"
+            size="sm"
+            disabled={pendingId === 'new'}
+          >
             {pendingId === 'new' ? '追加中…' : '予約枠を追加'}
           </DashboardButton>
         </div>

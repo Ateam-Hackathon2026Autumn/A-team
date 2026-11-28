@@ -84,14 +84,27 @@ let currentApplication: MyProducerApplication =
   loadState(STORAGE_KEY, isApplication) ?? initialApplication();
 
 const knownUrls = new Map<string, string>();
-if (currentApplication.producer.profileImage && currentApplication.producer.profileImageUrl) {
-  knownUrls.set(currentApplication.producer.profileImage, currentApplication.producer.profileImageUrl);
+if (
+  currentApplication.producer.profileImage &&
+  currentApplication.producer.profileImageUrl
+) {
+  knownUrls.set(
+    currentApplication.producer.profileImage,
+    currentApplication.producer.profileImageUrl,
+  );
 }
-if (currentApplication.producer.coverImage && currentApplication.producer.coverImageUrl) {
-  knownUrls.set(currentApplication.producer.coverImage, currentApplication.producer.coverImageUrl);
+if (
+  currentApplication.producer.coverImage &&
+  currentApplication.producer.coverImageUrl
+) {
+  knownUrls.set(
+    currentApplication.producer.coverImage,
+    currentApplication.producer.coverImageUrl,
+  );
 }
 
-const urlFor = (key: string | null) => (key === null ? null : (knownUrls.get(key) ?? imageUrlFor(key)));
+const urlFor = (key: string | null) =>
+  key === null ? null : (knownUrls.get(key) ?? imageUrlFor(key));
 
 function validateFields(
   body: Record<string, unknown>,
@@ -115,7 +128,8 @@ function validateFields(
     }
     const val = body[field];
     if (val === null) add(field, 'この項目はnullにできません。');
-    else if (typeof val !== 'string') add(field, '有効な文字列を入力してください。');
+    else if (typeof val !== 'string')
+      add(field, '有効な文字列を入力してください。');
     else if (val.trim() === '') add(field, 'この項目は空にできません。');
     else if (max !== null && val.trim().length > max) {
       add(field, `この項目が${max}文字より長くならないようにしてください。`);
@@ -149,7 +163,8 @@ function validateFields(
   for (const bField of ['acceptsExperience', 'recruiting']) {
     if (!partial || bField in body) {
       if (!(bField in body)) add(bField, 'この項目は必須です。');
-      else if (typeof body[bField] !== 'boolean') add(bField, '有効な真偽値を入力してください。');
+      else if (typeof body[bField] !== 'boolean')
+        add(bField, '有効な真偽値を入力してください。');
     }
   }
 
@@ -157,7 +172,8 @@ function validateFields(
   for (const yField of ['careerStartYear', 'foundedYear']) {
     if (yField in body && body[yField] !== null && body[yField] !== undefined) {
       const y = body[yField];
-      if (typeof y !== 'number' || !Number.isInteger(y)) add(yField, '有効な整数を入力してください。');
+      if (typeof y !== 'number' || !Number.isInteger(y))
+        add(yField, '有効な整数を入力してください。');
       else if (y < 1) add(yField, 'この値は1以上にしてください。');
       else if (y > 9999) add(yField, 'この値は9999以下にしてください。');
       else if (y > thisYear) add(yField, '今年以前の年を入力してください。');
@@ -165,21 +181,38 @@ function validateFields(
   }
 
   for (const imgField of ['profileImage', 'coverImage']) {
-    if (imgField in body && body[imgField] !== null && body[imgField] !== undefined) {
+    if (
+      imgField in body &&
+      body[imgField] !== null &&
+      body[imgField] !== undefined
+    ) {
       const k = body[imgField];
-      if (typeof k !== 'string' || k.trim() === '' || k.length > 500 || k.includes('..')) {
+      if (
+        typeof k !== 'string' ||
+        k.trim() === '' ||
+        k.length > 500 ||
+        k.includes('..')
+      ) {
         add(imgField, 'アップロードした画像を指定してください。');
       }
     }
   }
 
-  if ('applicationReason' in body && body.applicationReason !== null && body.applicationReason !== undefined) {
+  if (
+    'applicationReason' in body &&
+    body.applicationReason !== null &&
+    body.applicationReason !== undefined
+  ) {
     if (typeof body.applicationReason !== 'string') {
       add('applicationReason', '有効な文字列を入力してください。');
     }
   }
 
-  if (partial && Object.keys(details).length === 0 && Object.keys(body).length === 0) {
+  if (
+    partial &&
+    Object.keys(details).length === 0 &&
+    Object.keys(body).length === 0
+  ) {
     details.nonFieldErrors = ['変更する項目を指定してください。'];
   }
 
@@ -191,17 +224,26 @@ function applyChanges(
   changes: Record<string, unknown>,
 ): MyProducerApplicationProducer {
   const next = { ...base };
-  if (typeof changes.businessName === 'string') next.businessName = changes.businessName.trim();
-  if (typeof changes.representativeName === 'string') next.representativeName = changes.representativeName.trim();
-  if (typeof changes.genre === 'string') next.genre = changes.genre as MyProducerApplicationProducer['genre'];
-  if (typeof changes.prefectureId === 'number') next.prefectureId = changes.prefectureId;
+  if (typeof changes.businessName === 'string')
+    next.businessName = changes.businessName.trim();
+  if (typeof changes.representativeName === 'string')
+    next.representativeName = changes.representativeName.trim();
+  if (typeof changes.genre === 'string')
+    next.genre = changes.genre as MyProducerApplicationProducer['genre'];
+  if (typeof changes.prefectureId === 'number')
+    next.prefectureId = changes.prefectureId;
   if (typeof changes.city === 'string') next.city = changes.city.trim();
-  if (typeof changes.productionItems === 'string') next.productionItems = changes.productionItems.trim();
+  if (typeof changes.productionItems === 'string')
+    next.productionItems = changes.productionItems.trim();
   if (typeof changes.intro === 'string') next.intro = changes.intro.trim();
-  if (typeof changes.acceptsExperience === 'boolean') next.acceptsExperience = changes.acceptsExperience;
-  if (typeof changes.recruiting === 'boolean') next.recruiting = changes.recruiting;
-  if ('careerStartYear' in changes) next.careerStartYear = (changes.careerStartYear as number | null) ?? null;
-  if ('foundedYear' in changes) next.foundedYear = (changes.foundedYear as number | null) ?? null;
+  if (typeof changes.acceptsExperience === 'boolean')
+    next.acceptsExperience = changes.acceptsExperience;
+  if (typeof changes.recruiting === 'boolean')
+    next.recruiting = changes.recruiting;
+  if ('careerStartYear' in changes)
+    next.careerStartYear = (changes.careerStartYear as number | null) ?? null;
+  if ('foundedYear' in changes)
+    next.foundedYear = (changes.foundedYear as number | null) ?? null;
   if ('profileImage' in changes) {
     const key = (changes.profileImage as string | null) ?? null;
     next.profileImage = key;
@@ -213,7 +255,10 @@ function applyChanges(
     next.coverImageUrl = urlFor(key);
   }
   if ('applicationReason' in changes) {
-    const reason = typeof changes.applicationReason === 'string' ? changes.applicationReason.trim() : '';
+    const reason =
+      typeof changes.applicationReason === 'string'
+        ? changes.applicationReason.trim()
+        : '';
     next.applicationReason = reason || null;
   }
   return next;
@@ -293,7 +338,11 @@ export function patchMockProducerApplication(init?: RequestInit): MockResult {
       topDetails[key] = ['この項目は受け付けていません。'];
     }
   }
-  if (typeof body.applicationId !== 'number' || !Number.isInteger(body.applicationId) || body.applicationId < 1) {
+  if (
+    typeof body.applicationId !== 'number' ||
+    !Number.isInteger(body.applicationId) ||
+    body.applicationId < 1
+  ) {
     topDetails.applicationId = ['有効な整数を入力してください。'];
   }
   if (!isObject(body.changes)) {
@@ -310,10 +359,16 @@ export function patchMockProducerApplication(init?: RequestInit): MockResult {
   }
 
   if (body.applicationId !== currentApplication.applicationId) {
-    return conflict('APPLICATION_CONFLICT', '申請情報が更新されました。再取得してください。');
+    return conflict(
+      'APPLICATION_CONFLICT',
+      '申請情報が更新されました。再取得してください。',
+    );
   }
   if (!['returned', 'rejected'].includes(currentApplication.status)) {
-    return conflict('APPLICATION_NOT_RETURNED', '差し戻し・却下された申請のみ再申請できます。');
+    return conflict(
+      'APPLICATION_NOT_RETURNED',
+      '差し戻し・却下された申請のみ再申請できます。',
+    );
   }
 
   const submittedAt = nowIso();

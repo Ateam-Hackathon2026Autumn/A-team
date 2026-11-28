@@ -32,7 +32,9 @@ function formatDateTime(iso: string): string {
   }
 
   const parts = Object.fromEntries(
-    dateTimeFormatter.formatToParts(date).map(({ type, value }) => [type, value]),
+    dateTimeFormatter
+      .formatToParts(date)
+      .map(({ type, value }) => [type, value]),
   );
 
   return `${parts.year}/${parts.month}/${parts.day}(${parts.weekday}) ${parts.hour}:${parts.minute}`;

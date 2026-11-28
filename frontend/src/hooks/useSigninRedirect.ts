@@ -5,10 +5,8 @@ import { useSetAtom } from 'jotai';
 import { getAuthReturnPath } from '../utils/authRedirect';
 import { loginStatusAtom, userInfoAtom } from '../stores/userAtom';
 
-// セッション切れ（401）時にサインイン画面へ移動する。
-// AuthWrapper と同じく認証状態を未ログインに戻し、現在の画面を state.from に保持して、
-// ログイン後に元の画面へ戻れるようにする（window.location による全画面再読み込みはしない）。
-// 返される関数は再描画しても同一参照のため、useEffect / useCallback の依存配列に入れても再実行されない。
+// 401 時に未ログインへ戻し、遷移元を state.from に入れてサインインへ移動（全画面リロードはしない）
+// 戻り値は同一参照なので、依存配列に入れても再実行されない
 export function useSigninRedirect(): () => void {
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,6 +22,9 @@ export function useSigninRedirect(): () => void {
     const current = latest.current;
     current.setUserInfo(null);
     current.setLoginStatus('loggedOut');
-    current.navigate('/signin', { replace: true, state: { from: getAuthReturnPath(current.location) } });
+    current.navigate('/signin', {
+      replace: true,
+      state: { from: getAuthReturnPath(current.location) },
+    });
   }, []);
 }
